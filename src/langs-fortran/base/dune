@@ -1,0 +1,11 @@
+
+(library
+ (public_name diffast-langs-fortran.base)
+ (name fortran_base)
+ (libraries diffast-misc diffast-core
+            diffast-langs-fortran-parsing
+            diffast-langs-fortran-spec
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

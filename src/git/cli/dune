@@ -1,0 +1,32 @@
+
+(rule
+ (action
+  (write-file link_flags.txt "(-ccopt -Wl,-no_warn_duplicate_libraries)")
+ )
+ (enabled_if (= %{system} macosx))
+)
+
+(rule
+ (action
+  (write-file link_flags.txt "()")
+ )
+ (enabled_if (<> %{system} macosx))
+)
+
+(executables
+ (names git_diffast)
+ (libraries dynlink cmdliner mtime mtime.clock
+            fmt.cli fmt.tty logs.fmt logs.cli
+            git-unix diffast-api diffast-git vlt)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(install
+ (section bin)
+ (files
+  (git_diffast.exe as ogit) ogit-debug
+ )
+ (package diffast-git-cli)
+)

@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-verilog-spec)
+ (name Sverilog)
+ (modules Sverilog)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_verilog_spec)
+ (libraries diffast-langs-verilog-spec)
+ (site (diffast-core lang_specs))
+)

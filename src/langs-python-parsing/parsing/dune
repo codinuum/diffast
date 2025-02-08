@@ -1,0 +1,22 @@
+
+(library
+ (public_name diffast-langs-python-parsing)
+ (name python_parsing)
+ (modules (:standard tokens))
+ (flags (:standard -w -67))
+ (libraries camlp-streams sedlex menhirLib diffast-langs-common vlt)
+ (preprocess
+  (pps sedlex.ppx vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(menhir
+ (modules parser)
+ (flags --table --external-tokens Tokens_ --inspection)
+)
+
+(rule
+ (targets tokens.ml tokens.mli)
+ (action
+  (run menhir --base tokens --only-tokens parser.mly --table --inspection))
+)
+

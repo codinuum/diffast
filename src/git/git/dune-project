@@ -1,0 +1,31 @@
+(lang dune 3.17)
+
+(name diffast-git)
+
+(generate_opam_files false)
+
+(source
+ (github codinuum/diffast))
+
+(authors
+  "Codinuum <codinuum@me.com>"
+  "Masatomo Hashimoto <m.hashimoto@stair.center>"
+)
+
+(maintainers
+  "Codinuum <codinuum@me.com>"
+  "Masatomo Hashimoto <m.hashimoto@stair.center>"
+)
+
+(license Apache-2.0)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name diffast-git)
+ (synopsis "Git functions for Diff/AST")
+ (description "Git functions for Diff/AST API")
+ (depends
+   ocaml dune git-unix diffast-misc vlt
+ )
+)

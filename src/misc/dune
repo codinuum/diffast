@@ -1,0 +1,9 @@
+(include_subdirs unqualified)
+
+(library
+ (public_name diffast-misc)
+ (name diffast_misc)
+ (libraries str cryptokit bytesrw.zlib markup base64.rfc2045 vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

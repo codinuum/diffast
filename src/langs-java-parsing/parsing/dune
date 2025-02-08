@@ -1,0 +1,23 @@
+
+(library
+ (public_name diffast-langs-java-parsing)
+ (name java_parsing)
+ (flags (:standard -w -67))
+ (modules common classinfo classtbl printer ast parser_aux token tokens tokens_
+          ulexer scanner parser lib)
+ (libraries sedlex menhirLib diffast-langs-common vlt)
+ (preprocess
+  (pps sedlex.ppx vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(menhir
+ (modules parser)
+ (flags --table --external-tokens Tokens_ --inspection)
+)
+
+(rule
+ (targets tokens.ml tokens.mli)
+ (action
+  (run menhir --base tokens --only-tokens parser.mly --table --inspection))
+)
+

@@ -1,0 +1,6 @@
+
+(install
+ (section etc)
+ (files logger.conf logger.debug.conf logger.info.conf)
+ (package diffast-etc)
+)

@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-astml-spec)
+ (name Sastml)
+ (modules Sastml)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_astml_spec)
+ (libraries diffast-langs-astml-spec)
+ (site (diffast-core lang_specs))
+)

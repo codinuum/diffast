@@ -1,0 +1,29 @@
+
+(rule
+ (action
+  (write-file link_flags.txt "(-ccopt -Wl,-no_warn_duplicate_libraries)")
+ )
+ (enabled_if (= %{system} macosx))
+)
+
+(rule
+ (action
+  (write-file link_flags.txt "()")
+ )
+ (enabled_if (<> %{system} macosx))
+)
+
+(executable
+ (public_name python-parser.exe)
+ (name main)
+ (libraries dynlink threads diffast-langs-python-parsing)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(install
+ (section bin)
+ (files python-parser-test python-parser-debug
+ )
+)

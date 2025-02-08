@@ -1,0 +1,2 @@
+#define SET2NULL
+#define ABI_CONTIGUOUS

@@ -1,0 +1,30 @@
+mldiff 1.03
+
+OVERVIEW
+
+This is the diff algorithm written in OCaml.
+
+The files diff.mli and diff.ml, library files can be used
+independantly for other programs (see LICENSE) to compute
+differences between what one wants (lines or other).
+
+COMPILATION
+
+You need OCaml and Camlp5 to compile.
+
+Just do "make".
+Result: an OCaml executable named "mldiff".
+
+Command: "mldiff file1 file2" which prints the results as in the
+command "diff" of Unix on 2 files (no option implemented).
+
+LIBRARY
+
+The main "diff" algorithm (Diff.f) is a function taking 2 polymorphic
+arrays and returning 2 arrays of booleans, each boolean meaning "this
+item is changed (True) or not (False) in the other array".
+
+AUTHOR
+
+Daniel de Rauglaudre
+2006-09-08

@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-python-spec)
+ (name Spython)
+ (modules Spython)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_python_spec)
+ (libraries diffast-langs-python-spec)
+ (site (diffast-core lang_specs))
+)

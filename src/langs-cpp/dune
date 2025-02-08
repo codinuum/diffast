@@ -1,0 +1,18 @@
+
+(library
+ (public_name diffast-langs-cpp)
+ (name Mcpp)
+ (libraries diffast-misc diffast-core
+            diffast-langs-cpp-parsing
+            diffast-langs-cpp-spec
+            diffast-langs-cpp.base
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(plugin
+ (name diffast_langs_cpp)
+ (libraries diffast-langs-cpp)
+ (site (diffast-core langs))
+)

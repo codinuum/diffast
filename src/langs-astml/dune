@@ -1,0 +1,16 @@
+
+(library
+ (public_name diffast-langs-astml)
+ (name Mastml)
+ (libraries diffast-misc diffast-core markup
+            diffast-langs-astml-spec diffast-langs-astml.base
+            vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_astml)
+ (libraries diffast-langs-astml)
+ (site (diffast-core langs))
+)

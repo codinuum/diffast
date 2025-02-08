@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-fortran-spec)
+ (name Sfortran)
+ (modules Sfortran)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_fortran_spec)
+ (libraries diffast-langs-fortran-spec)
+ (site (diffast-core lang_specs))
+)

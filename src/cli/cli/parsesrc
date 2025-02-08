@@ -1,0 +1,4 @@
+#!/bin/sh
+CMDDIR=$(dirname $0)
+ETCDIR=${CMDDIR}/../etc/diffast-etc
+exec /usr/bin/env BOLT_FILE=${ETCDIR}/logger.conf ${CMDDIR}/parsesrc.exe $*

@@ -1,0 +1,13 @@
+
+(rule
+ (target version.ml)
+ (action (run ./genver.sh))
+)
+
+(library
+ (public_name diffast-api)
+ (name diffast_api)
+ (libraries diffast-misc diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

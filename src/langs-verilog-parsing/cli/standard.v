@@ -1,0 +1,8 @@
+/*
+`undef OR1200_IC_1W_512B
+`undef OR1200_IC_1W_4KB
+`define OR1200_IC_1W_8KB
+
+`undef OR1200_DC_1W_4KB
+`define OR1200_DC_1W_8KB
+*/

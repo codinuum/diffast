@@ -1,0 +1,18 @@
+(include_subdirs unqualified)
+
+(library
+ (public_name diffast-core)
+ (name diffast_core)
+ (libraries uuidm csv base64 dune-site
+            dune-site.plugins diffast-misc
+            camlp-streams sedlex menhirLib
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(generate_sites_module
+ (module sites)
+ (relocatable true)
+ (plugins (diffast-core lang_specs) (diffast-core langs))
+)

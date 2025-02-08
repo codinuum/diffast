@@ -1,0 +1,11 @@
+
+(library
+ (public_name diffast-langs-python.base)
+ (name python_base)
+ (libraries diffast-misc diffast-core
+            diffast-langs-python-parsing
+            diffast-langs-python-spec
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

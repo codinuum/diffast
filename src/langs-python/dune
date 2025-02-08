@@ -1,0 +1,18 @@
+
+(library
+ (public_name diffast-langs-python)
+ (name Mpython)
+ (libraries diffast-misc diffast-core
+            diffast-langs-python-parsing
+            diffast-langs-python-spec
+            diffast-langs-python.base
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(plugin
+ (name diffast_langs_python)
+ (libraries diffast-langs-python)
+ (site (diffast-core langs))
+)

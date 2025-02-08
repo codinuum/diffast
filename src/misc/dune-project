@@ -1,0 +1,31 @@
+(lang dune 3.17)
+
+(name diffast-misc)
+
+(generate_opam_files false)
+
+(source
+ (github codinuum/diffast))
+
+(authors
+  "Codinuum <codinuum@me.com>"
+  "Masatomo Hashimoto <m.hashimoto@stair.center>"
+)
+
+(maintainers
+  "Codinuum <codinuum@me.com>"
+  "Masatomo Hashimoto <m.hashimoto@stair.center>"
+)
+
+(license Apache-2.0)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name diffast-misc)
+ (synopsis "Miscellaneous functions for Diff/AST")
+ (description "Miscellaneous functions for Diff/AST")
+ (depends
+   ocaml dune base64 bytesrw cryptokit markup vlt
+ )
+)

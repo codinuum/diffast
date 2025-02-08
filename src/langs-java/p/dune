@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-java.p)
+ (name Mjava_p)
+ (libraries diffast-misc diffast-core diffast-langs-java-parsing diffast-langs-java-spec
+            diffast-langs-java.base vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(plugin
+ (name diffast_langs_java_p)
+ (libraries diffast-langs-java.p)
+ (site (diffast-core langs))
+)

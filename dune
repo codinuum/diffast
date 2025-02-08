@@ -1,0 +1,135 @@
+
+(alias
+ (name misc)
+ (deps
+  (package diffast-misc)
+ )
+)
+
+(alias
+ (name etc)
+ (deps
+  (package diffast-etc)
+ )
+)
+
+(alias
+ (name core)
+ (deps
+  (package diffast-core)
+ )
+)
+
+(alias
+ (name api)
+ (deps
+  (package diffast-api)
+ )
+)
+
+(alias
+ (name cli)
+ (deps
+  (package diffast-cli)
+ )
+)
+
+(alias
+ (name git)
+ (deps
+  (package diffast-git)
+ )
+)
+
+(alias
+ (name git-cli)
+ (deps
+  (package diffast-git-cli)
+ )
+)
+
+(alias
+ (name langs-common)
+ (deps
+  (package diffast-langs-common)
+ )
+)
+
+;
+
+(alias
+ (name langs-astml)
+ (deps
+  (package diffast-langs-astml)
+ )
+)
+
+(alias
+ (name langs-cpp)
+ (deps
+  (package diffast-langs-cpp)
+ )
+)
+
+(alias
+ (name langs-fortran)
+ (deps
+  (package diffast-langs-fortran)
+ )
+)
+
+(alias
+ (name langs-java)
+ (deps
+  (package diffast-langs-java)
+ )
+)
+
+(alias
+ (name langs-python)
+ (deps
+  (package diffast-langs-python)
+ )
+)
+
+(alias
+ (name langs-verilog)
+ (deps
+  (package diffast-langs-verilog)
+ )
+)
+
+(alias
+ (name cpp-parsing)
+ (deps
+  (package diffast-langs-cpp-parsing)
+ )
+)
+
+(alias
+ (name fortran-parsing)
+ (deps
+  (package diffast-langs-fortran-parsing)
+ )
+)
+
+(alias
+ (name java-parsing)
+ (deps
+  (package diffast-langs-java-parsing)
+ )
+)
+
+(alias
+ (name python-parsing)
+ (deps
+  (package diffast-langs-python-parsing)
+ )
+)
+
+(alias
+ (name verilog-parsing)
+ (deps
+  (package diffast-langs-verilog-parsing)
+ )
+)

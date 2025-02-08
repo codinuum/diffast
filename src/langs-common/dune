@@ -1,0 +1,9 @@
+(include_subdirs unqualified)
+
+(library
+ (public_name diffast-langs-common)
+ (name langs_common)
+ (libraries diffast-misc sedlex menhirLib vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

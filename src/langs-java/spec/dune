@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-java-spec)
+ (name Sjava)
+ (modules Sjava)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_java_spec)
+ (libraries diffast-langs-java-spec)
+ (site (diffast-core lang_specs))
+)

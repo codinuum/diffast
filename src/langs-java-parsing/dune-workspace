@@ -1,0 +1,13 @@
+(lang dune 3.17)
+
+(env
+ (release
+  (flags (:standard \ -opaque))
+  (ocamlopt_flags -O3)
+ )
+ (debug
+  (env-vars (DIFFAST_LOG_LEVEL DEBUG))
+ )
+)
+
+(profile release)

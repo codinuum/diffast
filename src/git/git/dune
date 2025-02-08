@@ -1,0 +1,10 @@
+;(include_subdirs unqualified)
+
+(library
+ (public_name diffast-git)
+ (name diffast_git)
+ (libraries git-unix diffast-misc vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN})
+ )
+)

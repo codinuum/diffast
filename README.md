@@ -67,12 +67,12 @@ You can also build parsers and Diff/AST in person.
 
 * [OCaml](http://ocaml.org/) (>=4.14)
 * [Dune](https://github.com/ocaml/dune)
-* [OPAM](https://opam.ocaml.org/) (for installing bytesrw, camlzip, cryptokit, csv, git-unix, markup, menhir, sedlex, uuidm, and vlt.)
+* [OPAM](https://opam.ocaml.org/) (for installing required packages)
 
 ### Compilation
 
 The following will create `./dist/bin/{parsesrc,diffast}`.
-
+    $ opam install bytesrw camlp-streams camlzip cryptokit csv dune dune-site git-unix markup menhir sedlex uuidm vlt
     $ dune build --relocatable --prefix ./dist
 
 ## Using with Git

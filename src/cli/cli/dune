@@ -1,0 +1,34 @@
+
+(rule
+ (action
+  (write-file link_flags.txt "(-ccopt -Wl,-no_warn_duplicate_libraries)")
+ )
+ (enabled_if (= %{system} macosx))
+)
+
+(rule
+ (action
+  (write-file link_flags.txt "()")
+ )
+ (enabled_if (<> %{system} macosx))
+)
+
+(executables
+ (names parsesrc simast diffast patchast)
+ (libraries threads dynlink diffast-api vlt)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(install
+ (section bin)
+ (files
+  parsesrc.exe simast.exe diffast.exe patchast.exe
+  parsesrc parsesrc-debug
+  simast simast-debug
+  diffast diffast-debug
+  patchast patchast-debug
+ )
+ (package diffast-cli)
+)

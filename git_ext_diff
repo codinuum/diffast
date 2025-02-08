@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+
+'''
+  A driver script for Diff/AST
+
+  Copyright 2025 Codinuum Software Lab <https://codinuum.com>
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+'''
+
+import sys
+import os
+import subprocess
+
+EXTS = set([
+    'java',
+    'py',
+    'v',
+    'f', 'F', 'for', 'FOR', 'f77', 'F77',
+    'f90', 'F90', 'f95', 'F95', 'f03', 'F03', 'f08', 'F08'
+    'c', 'h', 'cc', 'hh', 'cpp', 'hpp', 'C', 'H',
+])
+
+#
+
+DIFFAST_CMD = '/opt/cca/bin/diffast.exe'
+VIEWER_CMD = '/opt/cca/bin/diffviewer/run.py'
+
+DIST_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+if not os.path.exists(DIFFAST_CMD):
+    DIFFAST_CMD = os.path.join(DIST_DIR, 'dist', 'bin', 'diffast.exe')
+if not os.path.exists(VIEWER_CMD):
+    VIEWER_CMD = os.path.join(DIST_DIR, 'diffviewer', 'run.py')
+
+#
+
+DIFFAST_CMD_FMT = f'{DIFFAST_CMD} -dump:delta {{}} {{}}'
+VIEWER_CMD_FMT = f'{VIEWER_CMD} --foreground {{}} {{}}'
+
+DIFF_CMD_FMT = 'diff -u {} {}'
+
+#
+
+
+def is_src(path):
+    _, ext = os.path.splitext(path)
+    b = False
+    try:
+        b = ext[1:] in EXTS
+    except Exception:
+        pass
+    return b
+
+
+def diff(file1, file2):
+    cmd = DIFF_CMD_FMT.format(file1, file2)
+    subprocess.run(cmd, shell=True, universal_newlines=True)
+
+
+def diffast(file1, file2):
+    diffast_cmd = DIFFAST_CMD_FMT.format(file1, file2)
+    p = subprocess.run(diffast_cmd, shell=True, universal_newlines=True)
+    if p.returncode == 0:
+        viewer_cmd = VIEWER_CMD_FMT.format(file1, file2)
+        subprocess.run(viewer_cmd, shell=True, universal_newlines=True)
+
+
+def main():
+    args = sys.argv[1:]
+
+    file1 = args[0]
+    file2 = args[1]
+
+    file1_is_src = is_src(file1)
+    file2_is_src = is_src(file2)
+
+    if file1_is_src and file2_is_src:
+        print(f'\nSource file comparison found: {file1} {file2}', flush=True)
+        while True:
+            a = input('Do you want to launch diffast (y/n)? ')
+            if a == 'y':
+                break
+            elif a == 'n':
+                return
+
+        print('launching diffast...', flush=True)
+        diffast(file1, file2)
+        # diff(file1, file2)  # for testing
+    else:
+        print('.', end='', flush=True)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

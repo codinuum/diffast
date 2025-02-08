@@ -1,0 +1,11 @@
+
+(library
+ (public_name diffast-langs-verilog.base)
+ (name verilog_base)
+ (libraries diffast-misc diffast-core
+            diffast-langs-verilog-parsing
+            diffast-langs-verilog-spec
+            vlt)
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)

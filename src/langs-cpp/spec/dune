@@ -1,0 +1,15 @@
+
+(library
+ (public_name diffast-langs-cpp-spec)
+ (name Scpp)
+ (modules Scpp)
+ (libraries diffast-core vlt)
+ (preprocess
+  (pps vlt.ppx))
+)
+
+(plugin
+ (name diffast_langs_cpp_spec)
+ (libraries diffast-langs-cpp-spec)
+ (site (diffast-core lang_specs))
+)
