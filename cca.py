@@ -27,8 +27,7 @@ from subprocess import run
 # from threading import Thread
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-# IMAGE_NAME = 'codinuum/diffast'
-IMAGE_NAME = 'diffast5'
+IMAGE_NAME = 'codinuum/diffast'
 
 #
 
