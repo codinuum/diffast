@@ -1,0 +1,3 @@
+[submodule "diffviewer"]
+	path = diffviewer
+	url = https://github.com/codinuum/diffviewer

@@ -38,11 +38,17 @@ The following command line executes Diff/AST within a container to compare sampl
 
     $ ./cca.py diffast -c results samples/java/0/Test.java samples/java/1/Test.java
 
-Once you have built [DiffViewer](diffviewer), you can inspect the AST differences in a viewer window. See [`diffviewer/README.md`](diffviewer/README.md) for details.
+If you want to inspect the AST differences in a viewer window, you have to initialize a submodule `diffviewer` first.
+
+    $ git submodule init
+    $ git submodule update
+
+See [`diffviewer/README.md`](diffviewer/README.md) to build the viewer.
+Once you heve built the viewer, you can run the viewer as follows.
 
     $ diffviewer/run.py -c results samples/java/0/Test.java samples/java/1/Test.java
 
-You can run both Diff/AST and DiffViewer by the following line.
+You can also run both at once.
 
     $ ./cca.py diffast -c results --view samples/java/0/Test.java samples/java/1/Test.java
 
