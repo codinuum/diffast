@@ -67,7 +67,7 @@
    bytesrw
    cryptokit
    markup
-   (vlt (>= 0.2.4))
+   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -77,17 +77,17 @@
  (synopsis "Core of Diff/AST")
  (description "Core of Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   dune-site
-   camlp-streams
-   uuidm
-   csv
-   base64
-   sedlex
-   menhir
-   diffast-misc
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  dune-site
+  camlp-streams
+  uuidm
+  csv
+  base64
+  sedlex
+  menhir
+  diffast-misc
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
  (tags
   ("abstract syntax tree" differencing))
@@ -108,11 +108,11 @@
  (synopsis "Diff/AST API")
  (description "Diff/AST API")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   diffast-misc
-   diffast-core
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  diffast-misc
+  diffast-core
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -121,10 +121,10 @@
  (synopsis "Diff/AST command line")
  (description "Diff/AST command line")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   diffast-core
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  diffast-core
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -133,11 +133,11 @@
  (synopsis "Git functions for Diff/AST")
  (description "Git functions for Diff/AST API")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   git-unix
-   diffast-misc
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  git-unix
+  diffast-misc
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -146,12 +146,12 @@
  (synopsis "Git-Diff/AST command line")
  (description "Git-Diff/AST command line")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   diffast-core
-   diffast-api
-   diffast-git
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  diffast-core
+  diffast-api
+  diffast-git
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -160,12 +160,12 @@
  (synopsis "Common functions for parsers of Diff/AST")
  (description "Common functions for parsers of Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   dune
-   sedlex
-   mehirLib
-   diffast-misc
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  dune
+  sedlex
+  mehirLib
+  diffast-misc
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -174,12 +174,12 @@
  (synopsis "C++/C parser for Diff/AST")
  (description "C++/C parser for Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   camlp-streams
-   sedlex
-   menhir
-   diffast-langs-common
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  camlp-streams
+  sedlex
+  menhir
+  diffast-langs-common
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -188,12 +188,12 @@
  (synopsis "Fortran parser for Diff/AST")
  (description "Fortran parser for Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   camlp-streams
-   sedlex
-   menhir
-   diffast-langs-common
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  camlp-streams
+  sedlex
+  menhir
+  diffast-langs-common
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -202,12 +202,12 @@
  (synopsis "Java parser for Diff/AST")
  (description "Java parser for Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   camlp-streams
-   sedlex
-   menhir
-   diffast-langs-common
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  camlp-streams
+  sedlex
+  menhir
+  diffast-langs-common
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -216,12 +216,12 @@
  (synopsis "Python parser for Diff/AST")
  (description "Python parser for Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   camlp-streams
-   sedlex
-   menhir
-   diffast-langs-common
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  camlp-streams
+  sedlex
+  menhir
+  diffast-langs-common
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -230,12 +230,12 @@
  (synopsis "Verilog parser for Diff/AST")
  (description "Verilog parser for Diff/AST")
  (depends
-   (ocaml (>= 4.14))
-   camlp-streams
-   sedlex
-   menhir
-   diffast-langs-common
-   (vlt (>= 0.2.4))
+  (ocaml (>= 4.14))
+  camlp-streams
+  sedlex
+  menhir
+  diffast-langs-common
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -252,7 +252,7 @@
  (depends
   dune-site
   diffast-cpp-parsing
-  (vlt (>= 0.2.4))
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -263,7 +263,7 @@
  (depends
   dune-site
   diffast-fortran-parsing
-  (vlt (>= 0.2.4))
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -274,7 +274,7 @@
  (depends
   dune-site
   diffast-java-parsing
-  (vlt (>= 0.2.4))
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -285,7 +285,7 @@
  (depends
   dune-site
   diffast-python-parsing
-  (vlt (>= 0.2.4))
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
@@ -296,7 +296,7 @@
  (depends
   dune-site
   diffast-verilog-parsing
-  (vlt (>= 0.2.4))
+  (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
 
