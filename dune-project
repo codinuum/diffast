@@ -67,7 +67,7 @@
    bytesrw
    cryptokit
    markup
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -87,7 +87,7 @@
    sedlex
    menhir
    diffast-misc
-   vlt
+   (vlt (>= 0.2.4))
  )
  (tags
   ("abstract syntax tree" differencing))
@@ -112,7 +112,7 @@
    dune
    diffast-misc
    diffast-core
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -124,7 +124,7 @@
    (ocaml (>= 4.14))
    dune
    diffast-core
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -137,7 +137,7 @@
    dune
    git-unix
    diffast-misc
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -151,7 +151,7 @@
    diffast-core
    diffast-api
    diffast-git
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -165,7 +165,7 @@
    sedlex
    mehirLib
    diffast-misc
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -179,7 +179,7 @@
    sedlex
    menhir
    diffast-langs-common
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -193,7 +193,7 @@
    sedlex
    menhir
    diffast-langs-common
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -207,7 +207,7 @@
    sedlex
    menhir
    diffast-langs-common
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -221,7 +221,7 @@
    sedlex
    menhir
    diffast-langs-common
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -235,7 +235,7 @@
    sedlex
    menhir
    diffast-langs-common
-   vlt
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -252,7 +252,7 @@
  (depends
   dune-site
   diffast-cpp-parsing
-  vlt
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -263,7 +263,7 @@
  (depends
   dune-site
   diffast-fortran-parsing
-  vlt
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -274,7 +274,7 @@
  (depends
   dune-site
   diffast-java-parsing
-  vlt
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -285,7 +285,7 @@
  (depends
   dune-site
   diffast-python-parsing
-  vlt
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -296,7 +296,7 @@
  (depends
   dune-site
   diffast-verilog-parsing
-  vlt
+  (vlt (>= 0.2.4))
  )
 )
 
