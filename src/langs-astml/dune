@@ -11,6 +11,7 @@
 
 (plugin
  (name diffast_langs_astml)
+ (package diffast-langs-astml)
  (libraries diffast-langs-astml)
  (site (diffast-core langs))
 )

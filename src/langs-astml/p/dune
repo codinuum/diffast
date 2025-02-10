@@ -12,6 +12,7 @@
 
 (plugin
  (name diffast_langs_astml_p)
+ (package diffast-langs-astml)
  (libraries diffast-langs-astml.p)
  (site (diffast-core langs))
 )

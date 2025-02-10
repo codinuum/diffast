@@ -13,6 +13,7 @@
 
 (plugin
  (name diffast_langs_verilog_p)
+ (package diffast-langs-verilog)
  (libraries diffast-langs-verilog.p)
  (site (diffast-core langs))
 )

@@ -16,6 +16,7 @@
 (executable
  (public_name python-parser.exe)
  (name main)
+ (package diffast-langs-python-parsing-cli)
  (libraries dynlink threads diffast-langs-python-parsing)
  (link_flags (:include link_flags.txt))
  (preprocess
@@ -24,6 +25,7 @@
 
 (install
  (section bin)
+ (package diffast-langs-python-parsing-cli)
  (files python-parser-test python-parser-debug
  )
 )

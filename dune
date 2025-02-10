@@ -58,6 +58,43 @@
 ;
 
 (alias
+ (name cpp-parsing)
+ (deps
+  (package diffast-langs-cpp-parsing)
+ )
+)
+
+(alias
+ (name fortran-parsing)
+ (deps
+  (package diffast-langs-fortran-parsing)
+ )
+)
+
+(alias
+ (name java-parsing)
+ (deps
+  (package diffast-langs-java-parsing)
+ )
+)
+
+(alias
+ (name python-parsing)
+ (deps
+  (package diffast-langs-python-parsing)
+ )
+)
+
+(alias
+ (name verilog-parsing)
+ (deps
+  (package diffast-langs-verilog-parsing)
+ )
+)
+
+;
+
+(alias
  (name langs-astml)
  (deps
   (package diffast-langs-astml)
@@ -96,40 +133,5 @@
  (name langs-verilog)
  (deps
   (package diffast-langs-verilog)
- )
-)
-
-(alias
- (name cpp-parsing)
- (deps
-  (package diffast-langs-cpp-parsing)
- )
-)
-
-(alias
- (name fortran-parsing)
- (deps
-  (package diffast-langs-fortran-parsing)
- )
-)
-
-(alias
- (name java-parsing)
- (deps
-  (package diffast-langs-java-parsing)
- )
-)
-
-(alias
- (name python-parsing)
- (deps
-  (package diffast-langs-python-parsing)
- )
-)
-
-(alias
- (name verilog-parsing)
- (deps
-  (package diffast-langs-verilog-parsing)
  )
 )

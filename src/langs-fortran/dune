@@ -13,6 +13,7 @@
 
 (plugin
  (name diffast_langs_fortran)
+ (package diffast-langs-fortran)
  (libraries diffast-langs-fortran)
  (site (diffast-core langs))
 )

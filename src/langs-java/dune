@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_java)
+ (package diffast-langs-java)
  (libraries diffast-langs-java)
  (site (diffast-core langs))
 )

@@ -16,6 +16,7 @@
 (executable
  (public_name fortran-parser.exe)
  (name main)
+ (package diffast-langs-fortran-parsing-cli)
  (libraries dynlink threads diffast-langs-fortran-parsing)
  (link_flags (:include link_flags.txt))
  (preprocess
@@ -24,10 +25,12 @@
 
 (install
  (section bin)
+ (package diffast-langs-fortran-parsing-cli)
  (files fortran-parser-test fortran-parser-debug)
 )
 
 (install
  (section etc)
+ (package diffast-langs-fortran-parsing-cli)
  (files standard.f)
 )

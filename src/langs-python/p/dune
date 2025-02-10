@@ -13,6 +13,7 @@
 
 (plugin
  (name diffast_langs_python_p)
+ (package diffast-langs-python)
  (libraries diffast-langs-python.p)
  (site (diffast-core langs))
 )

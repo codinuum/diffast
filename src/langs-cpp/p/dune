@@ -13,6 +13,7 @@
 
 (plugin
  (name diffast_langs_cpp_p)
+ (package diffast-langs-cpp)
  (libraries diffast-langs-cpp.p)
  (site (diffast-core langs))
 )

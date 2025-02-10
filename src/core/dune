@@ -3,9 +3,9 @@
 (library
  (public_name diffast-core)
  (name diffast_core)
- (libraries uuidm csv base64 dune-site
-            dune-site.plugins diffast-misc
+ (libraries uuidm csv base64 dune-site dune-site.plugins
             camlp-streams sedlex menhirLib
+            diffast-misc
             vlt)
  (preprocess
   (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))

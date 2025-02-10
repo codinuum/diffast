@@ -16,6 +16,7 @@
 (executable
  (public_name cpp-parser.exe)
  (name main)
+ (package diffast-langs-cpp-parsing-cli)
  (modules main)
  (libraries dynlink threads diffast-langs-cpp-parsing)
  (link_flags (:include link_flags.txt))
@@ -26,6 +27,7 @@
 (executable
  (public_name cpp-parse-tokens.exe)
  (name parse_tokens)
+ (package diffast-langs-cpp-parsing-cli)
  (modules parse_tokens)
  (libraries dynlink threads diffast-langs-cpp-parsing vlt)
  (link_flags (:include link_flags.txt))
@@ -35,6 +37,7 @@
 
 (install
  (section bin)
+ (package diffast-langs-cpp-parsing-cli)
  (files cpp-parser-test cpp-parser-debug
  )
 )
