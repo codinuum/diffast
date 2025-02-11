@@ -17,7 +17,7 @@ depends: [
   "dune" {>= "3.17"}
   "dynlink"
   "threads"
-  "diffast-langs-verilog-parsing"
+  "diffast-langs-verilog-parsing" {= version}
   "odoc" {with-doc}
 ]
 build: [

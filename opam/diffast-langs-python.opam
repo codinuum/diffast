@@ -17,7 +17,7 @@ bug-reports: "https://github.com/codinuum/diffast/issues"
 depends: [
   "dune" {>= "3.17"}
   "dune-site"
-  "diffast-python-parsing"
+  "diffast-python-parsing" {= version}
   "vlt" {platform != "windows" | >= "0.2.4"}
   "odoc" {with-doc}
 ]

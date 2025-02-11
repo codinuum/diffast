@@ -17,9 +17,9 @@ bug-reports: "https://github.com/codinuum/diffast/issues"
 depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.17"}
-  "diffast-core"
-  "diffast-api"
-  "diffast-git"
+  "diffast-core" {= version}
+  "diffast-api" {= version}
+  "diffast-git" {= version}
   "vlt" {platform != "windows" | >= "0.2.4"}
   "odoc" {with-doc}
 ]

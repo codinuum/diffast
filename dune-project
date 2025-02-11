@@ -32,27 +32,25 @@
  (allow_empty)
  (depends
    (ocaml (>= 4.14))
-   diffast-misc
-   diffast-core
-   diffast-etc
-   diffast-api
-   diffast-cli
-   diffast-git
-   diffast-git-cli
-
-   diffast-langs-common
-   diffast-langs-cpp-parsing
-   diffast-langs-fortran-parsing
-   diffast-langs-java-parsing
-   diffast-langs-python-parsing
-   diffast-langs-verilog-parsing
-
-   ;diffast-langs-astml
-   diffast-langs-cpp
-   diffast-langs-fortran
-   diffast-langs-java
-   diffast-langs-python
-   diffast-langs-verilog
+   (diffast-misc (= :version))
+   (diffast-core (= :version))
+   (diffast-etc (= :version))
+   (diffast-api (= :version))
+   (diffast-cli (= :version))
+   (diffast-git (= :version))
+   (diffast-git-cli (= :version))
+   (diffast-langs-common (= :version))
+   (diffast-langs-cpp-parsing (= :version))
+   (diffast-langs-fortran-parsing (= :version))
+   (diffast-langs-java-parsing (= :version))
+   (diffast-langs-python-parsing (= :version))
+   (diffast-langs-verilog-parsing (= :version))
+   ;(diffast-langs-astml (= :version))
+   (diffast-langs-cpp (= :version))
+   (diffast-langs-fortran (= :version))
+   (diffast-langs-java (= :version))
+   (diffast-langs-python (= :version))
+   (diffast-langs-verilog (= :version))
  )
 )
 
@@ -86,7 +84,7 @@
   base64
   sedlex
   menhir
-  diffast-misc
+  (diffast-misc (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
  (tags
@@ -110,8 +108,8 @@
  (depends
   (ocaml (>= 4.14))
   dune
-  diffast-misc
-  diffast-core
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -123,7 +121,7 @@
  (depends
   (ocaml (>= 4.14))
   dune
-  diffast-core
+  (diffast-core (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -136,7 +134,7 @@
   (ocaml (>= 4.14))
   dune
   git-unix
-  diffast-misc
+  (diffast-misc (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -148,9 +146,9 @@
  (depends
   (ocaml (>= 4.14))
   dune
-  diffast-core
-  diffast-api
-  diffast-git
+  (diffast-core (= :version))
+  (diffast-api (= :version))
+  (diffast-git (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -164,7 +162,7 @@
   dune
   sedlex
   mehirLib
-  diffast-misc
+  (diffast-misc (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -178,7 +176,7 @@
   camlp-streams
   sedlex
   menhir
-  diffast-langs-common
+  (diffast-langs-common (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -192,7 +190,7 @@
   camlp-streams
   sedlex
   menhir
-  diffast-langs-common
+  (diffast-langs-common (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -206,7 +204,7 @@
   camlp-streams
   sedlex
   menhir
-  diffast-langs-common
+  (diffast-langs-common (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -220,7 +218,7 @@
   camlp-streams
   sedlex
   menhir
-  diffast-langs-common
+  (diffast-langs-common (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -234,7 +232,7 @@
   camlp-streams
   sedlex
   menhir
-  diffast-langs-common
+  (diffast-langs-common (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -251,7 +249,7 @@
  (description "C++/C parser plugin for Diff/AST")
  (depends
   dune-site
-  diffast-cpp-parsing
+  (diffast-cpp-parsing (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -262,7 +260,7 @@
  (description "Fortran parser plugin for Diff/AST")
  (depends
   dune-site
-  diffast-fortran-parsing
+  (diffast-fortran-parsing (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -273,7 +271,7 @@
  (description "Java parser plugin for Diff/AST")
  (depends
   dune-site
-  diffast-java-parsing
+  (diffast-java-parsing (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -284,7 +282,7 @@
  (description "Python parser plugin for Diff/AST")
  (depends
   dune-site
-  diffast-python-parsing
+  (diffast-python-parsing (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -295,7 +293,7 @@
  (description "Verilog parser plugin for Diff/AST")
  (depends
   dune-site
-  diffast-verilog-parsing
+  (diffast-verilog-parsing (= :version))
   (vlt (or (<> :platform windows) (>= 0.2.4)))
  )
 )
@@ -306,7 +304,9 @@
   (name diffast-langs-cpp-parsing-cli)
   (synopsis "C/C++ parser CLI")
   (depends
-   dynlink threads diffast-langs-cpp-parsing
+   dynlink
+   threads
+   (diffast-langs-cpp-parsing (= :version))
   )
 )
 
@@ -314,7 +314,9 @@
   (name diffast-langs-fortran-parsing-cli)
   (synopsis "Fortran parser CLI")
   (depends
-   dynlink threads diffast-langs-fortran-parsing
+   dynlink
+   threads
+   (diffast-langs-fortran-parsing (= :version))
   )
 )
 
@@ -322,7 +324,9 @@
   (name diffast-langs-java-parsing-cli)
   (synopsis "Java parser CLI")
   (depends
-   dynlink threads diffast-langs-java-parsing
+   dynlink
+   threads
+   (diffast-langs-java-parsing (= :version))
   )
 )
 
@@ -330,7 +334,9 @@
   (name diffast-langs-python-parsing-cli)
   (synopsis "Python parser CLI")
   (depends
-   dynlink threads diffast-langs-python-parsing
+   dynlink
+   threads
+   (diffast-langs-python-parsing (= :version))
   )
 )
 
@@ -338,6 +344,8 @@
   (name diffast-langs-verilog-parsing-cli)
   (synopsis "Verilog parser CLI")
   (depends
-   dynlink threads diffast-langs-verilog-parsing
+   dynlink
+   threads
+   (diffast-langs-verilog-parsing (= :version))
   )
 )

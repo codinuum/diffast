@@ -17,24 +17,24 @@ bug-reports: "https://github.com/codinuum/diffast/issues"
 depends: [
   "dune" {>= "3.17"}
   "ocaml" {>= "4.14"}
-  "diffast-misc"
-  "diffast-core"
-  "diffast-etc"
-  "diffast-api"
-  "diffast-cli"
-  "diffast-git"
-  "diffast-git-cli"
-  "diffast-langs-common"
-  "diffast-langs-cpp-parsing"
-  "diffast-langs-fortran-parsing"
-  "diffast-langs-java-parsing"
-  "diffast-langs-python-parsing"
-  "diffast-langs-verilog-parsing"
-  "diffast-langs-cpp"
-  "diffast-langs-fortran"
-  "diffast-langs-java"
-  "diffast-langs-python"
-  "diffast-langs-verilog"
+  "diffast-misc" {= version}
+  "diffast-core" {= version}
+  "diffast-etc" {= version}
+  "diffast-api" {= version}
+  "diffast-cli" {= version}
+  "diffast-git" {= version}
+  "diffast-git-cli" {= version}
+  "diffast-langs-common" {= version}
+  "diffast-langs-cpp-parsing" {= version}
+  "diffast-langs-fortran-parsing" {= version}
+  "diffast-langs-java-parsing" {= version}
+  "diffast-langs-python-parsing" {= version}
+  "diffast-langs-verilog-parsing" {= version}
+  "diffast-langs-cpp" {= version}
+  "diffast-langs-fortran" {= version}
+  "diffast-langs-java" {= version}
+  "diffast-langs-python" {= version}
+  "diffast-langs-verilog" {= version}
   "odoc" {with-doc}
 ]
 build: [
