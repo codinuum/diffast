@@ -694,10 +694,17 @@ module F (Stat : Aux.STATE_T) = struct
               Common.parse_warning_loc loc "failed to parse dec:%s" line;
               self#pp ()
       end
-      | RAW {DL.tag=DL.XLF;DL.head=trigger;DL.line=line;DL.fixed_cont=_;DL.free_cont=free_cont;_} -> begin
+      | RAW {DL.tag=DL.XLF;
+             DL.head=trigger;
+             DL.line=line;
+             DL.queue=q;
+             DL.fixed_cont=_;
+             DL.free_cont=free_cont;
+             _
+           } -> begin
           [%debug_log "processing %s" (Token.rawtoken_to_string tok)];
           env#current_source#add_ext_IBM;
-          let whole_line = ref line in
+          let queue = q in
           begin
             let cur_free_cont = ref free_cont in
             try
@@ -705,11 +712,17 @@ module F (Stat : Aux.STATE_T) = struct
                 let ntok = tokensrc#peek_nth_rawtok 1 in
                 [%debug_log "next token: %s" (Token.rawtoken_to_string ntok)];
                 match ntok with
-                | RAW {DL.tag=DL.XLF;DL.line=nline;DL.fixed_cont=nfix_cont;DL.free_cont=nfree_cont;_} ->
+                | RAW {DL.tag=DL.XLF;
+                       DL.line=nline;
+                       DL.queue=nq;
+                       DL.fixed_cont=nfix_cont;
+                       DL.free_cont=nfree_cont;
+                       _
+                     } ->
                     if !cur_free_cont || nfix_cont then begin
                       [%debug_log "continued: %s" nline];
                       let _ = tokensrc#get() in
-                      whole_line := !whole_line ^ nline;
+                      nq#transfer queue;
                       cur_free_cont := nfree_cont
                     end
                     else
@@ -719,11 +732,28 @@ module F (Stat : Aux.STATE_T) = struct
             with
               Exit -> ()
           end;
-          [%debug_log "whole line: \"%s\"" !whole_line];
 
-          let ofs = (String.length trigger) + 1 in (* length of '!' + trigger const. *)
-          let ulb = lexbuf_from_line loc ofs (!whole_line^"\n") in
-          let scanner () = PB.qtoken_to_token (U.scan_xlf ulb) in
+          let last_t = ref (Obj.repr qtoken) in
+          queue#iter (fun t -> last_t := t);
+          queue#add (Obj.repr (EOL, Token.qtoken_to_loc (Obj.obj !last_t)));
+
+          begin %debug_block
+            [%debug_log "queue:"];
+            queue#iter (fun r -> [%debug_log " %s" (Token.qtoken_to_string (Obj.obj r))])
+          end;
+
+          let scanner () =
+            let t =
+              try
+                Obj.obj queue#take
+              with
+                Xqueue.Empty -> raise Sedlexing.MalFormed
+            in
+            let rt, _ = t in
+            let _ = rt in
+            [%debug_log "--> %s" (Token.rawtoken_to_string rt)];
+            PB.qtoken_to_token t
+          in
           try
             let nd = (PB.mkparser P.xlf) scanner in
             nd#set_lloc (LLoc.merge (env#mklloc loc) nd#lloc);
@@ -736,11 +766,17 @@ module F (Stat : Aux.STATE_T) = struct
             else
               tok', loc
           with
-            _ ->
-              Common.parse_warning_loc loc "failed to parse xlf:%s" line;
+            exn ->
+              Common.parse_warning_loc loc "failed to parse xlf: [%s]:%s" line (Printexc.to_string exn);
               self#pp ()
       end
-      | RAW {DL.tag=DL.OMP;DL.line=line;DL.queue=q;DL.fixed_cont=_;DL.free_cont=free_cont;_} -> begin
+      | RAW {DL.tag=DL.OMP;
+             DL.line=line;
+             DL.queue=q;
+             DL.fixed_cont=_;
+             DL.free_cont=free_cont;
+             _
+           } -> begin
           [%debug_log "processing %s" (Token.rawtoken_to_string tok)];
           let queue = q(*#copy*) in
           begin
@@ -750,7 +786,13 @@ module F (Stat : Aux.STATE_T) = struct
                 let ntok = tokensrc#peek_nth_rawtok 1 in
                 [%debug_log "next token: %s" (Token.rawtoken_to_string ntok)];
                 match ntok with
-                | RAW {DL.tag=DL.OMP;DL.line=nline;DL.queue=nq;DL.fixed_cont=nfix_cont;DL.free_cont=nfree_cont;_} ->
+                | RAW {DL.tag=DL.OMP;
+                       DL.line=nline;
+                       DL.queue=nq;
+                       DL.fixed_cont=nfix_cont;
+                       DL.free_cont=nfree_cont;
+                       _
+                     } ->
                     let _ = nline in
                     if !cur_free_cont || nfix_cont then begin
                       [%debug_log "continued: %s" nline];
@@ -897,7 +939,7 @@ module F (Stat : Aux.STATE_T) = struct
             | _ -> false
           in
 
-          let scanner() =
+          let scanner () =
             let final_t =
               try
                 let t = queue3#take in
@@ -1020,9 +1062,15 @@ module F (Stat : Aux.STATE_T) = struct
                 "failed to parse omp: [%s]:%s" line (Printexc.to_string exn);
               self#pp ()
       end
-      | RAW {DL.tag=DL.ACC;DL.line=line;DL.fixed_cont=_;DL.free_cont=free_cont;_} -> begin
+      | RAW {DL.tag=DL.ACC;
+             DL.line=line;
+             DL.queue=q;
+             DL.fixed_cont=_;
+             DL.free_cont=free_cont;
+             _
+           } -> begin
           [%debug_log "processing %s" (Token.rawtoken_to_string tok)];
-          let whole_line = ref line in
+          let queue = q in
           begin
             let cur_free_cont = ref free_cont in
             try
@@ -1030,11 +1078,18 @@ module F (Stat : Aux.STATE_T) = struct
                 let ntok = tokensrc#peek_nth_rawtok 1 in
                 [%debug_log "next token: %s" (Token.rawtoken_to_string ntok)];
                 match ntok with
-                | RAW {DL.tag=DL.ACC;DL.line=nline;DL.fixed_cont=nfix_cont;DL.free_cont=nfree_cont;_} ->
+                | RAW {DL.tag=DL.ACC;
+                       DL.line=nline;
+                       DL.queue=nq;
+                       DL.fixed_cont=nfix_cont;
+                       DL.free_cont=nfree_cont;
+                       _
+                     } ->
+                    let _ = nline in
                     if !cur_free_cont || nfix_cont then begin
                       [%debug_log "continued: %s" nline];
                       let _ = tokensrc#get() in
-                      whole_line := !whole_line ^ nline;
+                      nq#transfer queue;
                       cur_free_cont := nfree_cont
                     end
                     else
@@ -1044,11 +1099,28 @@ module F (Stat : Aux.STATE_T) = struct
             with
               Exit -> ()
           end;
-          [%debug_log "whole line: \"%s\"" !whole_line];
 
-          let ofs = 5 in (* length of '!$acc' *)
-          let ulb = lexbuf_from_line loc ofs (!whole_line^"\n") in
-          let scanner () = PB.qtoken_to_token (U.scan_acc ulb) in
+          let last_t = ref (Obj.repr qtoken) in
+          queue#iter (fun t -> last_t := t);
+          queue#add (Obj.repr (EOL, Token.qtoken_to_loc (Obj.obj !last_t)));
+
+          begin %debug_block
+            [%debug_log "queue:"];
+            queue#iter (fun r -> [%debug_log " %s" (Token.qtoken_to_string (Obj.obj r))])
+          end;
+
+          let scanner () =
+            let t =
+              try
+                Obj.obj queue#take
+              with
+                Xqueue.Empty -> raise Sedlexing.MalFormed
+            in
+            let rt, _ = t in
+            let _ = rt in
+            [%debug_log "--> %s" (Token.rawtoken_to_string rt)];
+            PB.qtoken_to_token t
+          in
           try
             let nd = (PB.mkparser P.acc) scanner in
             nd#set_lloc (LLoc.merge (env#mklloc loc) nd#lloc);
@@ -1061,8 +1133,9 @@ module F (Stat : Aux.STATE_T) = struct
             else
               tok', loc
           with
-            _ ->
-              Common.parse_warning_loc loc "failed to parse acc:%s" line;
+            exn ->
+              Common.parse_warning_loc loc
+                "failed to parse acc: [%s]:%s" line (Printexc.to_string exn);
               self#pp ()
       end
       | PP_BRANCH (PPD.Ifdef id | PPD.Ifndef id) -> begin

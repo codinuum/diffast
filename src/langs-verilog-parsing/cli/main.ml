@@ -74,7 +74,7 @@ let _ =
             (Filename.concat
                (Filename.dirname (Filename.dirname (Sys.argv.(0))))
                "etc"
-            ) "diffast-langs-verilog-parsing-cl"
+            ) "diffast-langs-verilog-parsing-cli"
         in
         Filename.concat d "standard.v"
       in

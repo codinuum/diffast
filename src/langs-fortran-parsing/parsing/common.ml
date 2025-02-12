@@ -67,11 +67,11 @@ module DirectiveLine = struct
     free_cont  = free_cont;
   }
 
-  let mkacc line fixed_cont free_cont = {
+  let mkacc line q fixed_cont free_cont = {
     tag        = ACC;
     head       = "!$acc";
     line       = line;
-    queue      = dummy_queue;
+    queue      = q;
     fixed_cont = fixed_cont;
     free_cont  = free_cont;
   }
@@ -94,11 +94,11 @@ module DirectiveLine = struct
     free_cont  = false;
   }
 
-  let mkxlf trigger line fixed_cont free_cont = {
+  let mkxlf trigger line q fixed_cont free_cont = {
     tag        = XLF;
     head       = trigger;
     line       = line;
-    queue      = dummy_queue;
+    queue      = q;
     fixed_cont = fixed_cont;
     free_cont  = free_cont;
   }

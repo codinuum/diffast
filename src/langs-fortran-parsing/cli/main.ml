@@ -85,7 +85,7 @@ let _ =
             (Filename.concat
                (Filename.dirname (Filename.dirname (Sys.argv.(0))))
                "etc"
-            ) "diffast-langs-fortran-parsing-cl"
+            ) "diffast-langs-fortran-parsing-cli"
         in
         Filename.concat d "standard.f"
       in

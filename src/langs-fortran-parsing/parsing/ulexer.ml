@@ -5387,8 +5387,42 @@ module F (Stat : Parser_aux.STATE_T) = struct
     (not assume_free_source_form || is_free_source_form()) &&
     Xstring.endswith (Xstring.rstrip line) "&"
 
+
+  and get_xxx_token_queue scan pos ofs line =
+    [%debug_log "line=^%s$" line];
+    let ulbuf = lexbuf_from_line pos ofs line in
+    Sedlexing.set_filename ulbuf env#current_source#path;
+    let scanner () = scan ulbuf in
+    let qtoken_list = ref [] in
+    begin
+      try
+        while true do
+          qtoken_list := (scanner()) :: !qtoken_list
+        done
+      with
+        End_of_file -> ()
+    end;
+    qtoken_list := List.rev !qtoken_list;
+
+    begin %debug_block
+      [%debug_log "token_list:"];
+      List.iter (fun t -> [%debug_log " %s" (Token.qtoken_to_string t)]) !qtoken_list
+    end;
+
+    let queue = new Xqueue.c in
+    let queue_add t = queue#add (Obj.repr t) in
+
+    List.iter queue_add !qtoken_list;
+
+    queue
+
+
+  and get_xlf_token_queue pos ofs line = get_xxx_token_queue scan_xlf pos ofs line
+
+
   and xlf trigger ?(pending_EOL=None) pure_comment st line lexbuf =
-    [%debug_log "@"];
+    [%debug_log "st.pos_cnum=%d line=%s" st.Lexing.pos_cnum line];
+    let offset = String.length trigger in
     match %sedlex lexbuf with
     | line_terminator -> begin
         let _ = lexeme lexbuf in
@@ -5402,6 +5436,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
         let fixed_cont =  trigger <> "" && is_fixed_cont_line line in
         let free_cont = is_free_cont_line line in
 
+        [%debug_log "fixed_cont=%B free_cont=%B" fixed_cont free_cont];
+
         let line =
           if fixed_cont then begin
             let b = Bytes.of_string line in
@@ -5411,9 +5447,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
           else
             line
         in
-
+        let q = get_xlf_token_queue st offset line in
         let xlf_qtoken =
-          mktok ~start_opt:(Some st) (RAW (DL.mkxlf trigger line fixed_cont free_cont)) lexbuf
+          mktok ~start_opt:(Some st) (RAW (DL.mkxlf trigger line q fixed_cont free_cont)) lexbuf
         in
 
         if pure_comment then begin
@@ -5486,6 +5522,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
   and get_omp_token_queue pos ofs line =
     [%debug_log "line=^%s$" line];
     let ulbuf = lexbuf_from_line pos ofs line in
+    Sedlexing.set_filename ulbuf env#current_source#path;
     let scanner () = scan_omp ulbuf in
     let qtoken_list = ref [] in
     begin
@@ -5536,7 +5573,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
         let fixed_cont = is_fixed_cont_line (*~assume_fixed_source_form:false*) line in
         let free_cont = is_free_cont_line (*~assume_free_source_form:false*) line in
+
         [%debug_log "fixed_cont:%B free_cont:%B" fixed_cont free_cont];
+
         let line =
           if fixed_cont && offset > 0 then begin
             let b = Bytes.of_string line in
@@ -5612,36 +5651,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     | _ -> failwith "Ulexer.omp"
 
 
-  and get_acc_token_queue pos ofs line =
-    [%debug_log "line=^%s$" line];
-    let ulbuf = lexbuf_from_line pos ofs line in
-    let scanner () = scan_acc ulbuf in
-    let qtoken_list = ref [] in
-    begin
-      try
-        while true do
-          qtoken_list := (scanner()) :: !qtoken_list
-        done
-      with
-        End_of_file -> ()
-    end;
-    qtoken_list := List.rev !qtoken_list;
-
-    begin %debug_block
-      [%debug_log "token_list:"];
-      List.iter (fun t -> [%debug_log " %s" (Token.qtoken_to_string t)]) !qtoken_list
-    end;
-
-    let queue = new Xqueue.c in
-    let queue_add t = queue#add (Obj.repr t) in
-
-    List.iter queue_add !qtoken_list;
-
-    queue
+  and get_acc_token_queue pos ofs line = get_xxx_token_queue scan_acc pos ofs line
 
 
-  and acc ?(pending_EOL=None) pure_comment st line lexbuf =
-    [%debug_log "@"];
+  and acc ?(pending_EOL=None) ?(offset=5(* length of '!$acc' *)) pure_comment st line lexbuf =
+    [%debug_log "st.pos_cnum=%d line=%s" st.Lexing.pos_cnum line];
     match %sedlex lexbuf with
     | line_terminator -> begin
         let _ = lexeme lexbuf in
@@ -5655,8 +5669,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
         let fixed_cont = is_fixed_cont_line line in
         let free_cont = is_free_cont_line line in
 
+        [%debug_log "fixed_cont=%B free_cont=%B" fixed_cont free_cont];
+
         let line =
-          if fixed_cont then begin
+          if fixed_cont && offset > 0 then begin
             let b = Bytes.of_string line in
             Bytes.set b 0 ' ';
             Bytes.to_string b
@@ -5664,9 +5680,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
           else
             line
         in
-
+        let q = get_acc_token_queue st offset line in
         let acc_qtoken =
-          mktok ~start_opt:(Some st) (RAW (DL.mkacc line fixed_cont free_cont)) lexbuf
+          mktok ~start_opt:(Some st) (RAW (DL.mkacc line q fixed_cont free_cont)) lexbuf
         in
 
         if pure_comment then begin
