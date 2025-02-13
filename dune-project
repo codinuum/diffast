@@ -65,7 +65,7 @@
    bytesrw
    cryptokit
    markup
-   (vlt (or (<> :platform windows) (>= 0.2.4)))
+   (vlt (>= 0.2.4))
  )
 )
 
@@ -85,7 +85,7 @@
   sedlex
   menhir
   (diffast-misc (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
  (tags
   ("abstract syntax tree" differencing))
@@ -110,7 +110,7 @@
   dune
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -122,7 +122,7 @@
   (ocaml (>= 4.14))
   dune
   (diffast-core (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -135,7 +135,7 @@
   dune
   git-unix
   (diffast-misc (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -149,7 +149,7 @@
   (diffast-core (= :version))
   (diffast-api (= :version))
   (diffast-git (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -163,7 +163,7 @@
   sedlex
   mehirLib
   (diffast-misc (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -177,7 +177,7 @@
   sedlex
   menhir
   (diffast-langs-common (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -191,7 +191,7 @@
   sedlex
   menhir
   (diffast-langs-common (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -205,7 +205,7 @@
   sedlex
   menhir
   (diffast-langs-common (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -219,7 +219,7 @@
   sedlex
   menhir
   (diffast-langs-common (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -233,7 +233,7 @@
   sedlex
   menhir
   (diffast-langs-common (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -250,7 +250,7 @@
  (depends
   dune-site
   (diffast-cpp-parsing (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -261,7 +261,7 @@
  (depends
   dune-site
   (diffast-fortran-parsing (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -272,7 +272,7 @@
  (depends
   dune-site
   (diffast-java-parsing (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -283,7 +283,7 @@
  (depends
   dune-site
   (diffast-python-parsing (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 
@@ -294,7 +294,7 @@
  (depends
   dune-site
   (diffast-verilog-parsing (= :version))
-  (vlt (or (<> :platform windows) (>= 0.2.4)))
+  (vlt (>= 0.2.4))
  )
 )
 

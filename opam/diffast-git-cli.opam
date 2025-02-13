@@ -20,7 +20,7 @@ depends: [
   "diffast-core" {= version}
   "diffast-api" {= version}
   "diffast-git" {= version}
-  "vlt" {platform != "windows" | >= "0.2.4"}
+  "vlt" {>= "0.2.4"}
   "odoc" {with-doc}
 ]
 build: [
