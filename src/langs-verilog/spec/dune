@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_verilog_spec)
+ (package diffast-langs-verilog-spec)
  (libraries diffast-langs-verilog-spec)
  (site (diffast-core lang_specs))
 )

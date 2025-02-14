@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_astml_spec)
+ (package diffast-langs-astml-spec)
  (libraries diffast-langs-astml-spec)
  (site (diffast-core lang_specs))
 )

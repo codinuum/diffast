@@ -95,6 +95,50 @@
 ;
 
 (alias
+ (name astml-spec)
+ (deps
+  (package diffast-langs-astml-spec)
+ )
+)
+
+(alias
+ (name cpp-spec)
+ (deps
+  (package diffast-langs-cpp-spec)
+ )
+)
+
+(alias
+ (name fortran-spec)
+ (deps
+  (package diffast-langs-fortran-spec)
+ )
+)
+
+(alias
+ (name java-spec)
+ (deps
+  (package diffast-langs-java-spec)
+ )
+)
+
+(alias
+ (name python-spec)
+ (deps
+  (package diffast-langs-python-spec)
+ )
+)
+
+(alias
+ (name verilog-spec)
+ (deps
+  (package diffast-langs-verilog-spec)
+ )
+)
+
+;
+
+(alias
  (name langs-astml)
  (deps
   (package diffast-langs-astml)

@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_python_spec)
+ (package diffast-langs-python-spec)
  (libraries diffast-langs-python-spec)
  (site (diffast-core lang_specs))
 )

@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_cpp_spec)
+ (package diffast-langs-cpp-spec)
  (libraries diffast-langs-cpp-spec)
  (site (diffast-core lang_specs))
 )

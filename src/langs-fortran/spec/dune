@@ -10,6 +10,7 @@
 
 (plugin
  (name diffast_langs_fortran_spec)
+ (package diffast-langs-fortran-spec)
  (libraries diffast-langs-fortran-spec)
  (site (diffast-core lang_specs))
 )
