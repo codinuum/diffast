@@ -28,7 +28,7 @@
 (package
  (name diffast)
  (synopsis "Diff/AST: A fine-grained source code differencing tool")
- (description "Diff/AST: A fine-grained source code differencing tool")
+ (description "Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
  (allow_empty)
  (depends
    (ocaml (>= 4.14))
@@ -45,6 +45,11 @@
    (diffast-langs-java-parsing (= :version))
    (diffast-langs-python-parsing (= :version))
    (diffast-langs-verilog-parsing (= :version))
+   (diffast-langs-cpp-spec (= :version))
+   (diffast-langs-fortran-spec (= :version))
+   (diffast-langs-java-spec (= :version))
+   (diffast-langs-python-spec (= :version))
+   (diffast-langs-verilog-spec (= :version))
    ;(diffast-langs-astml (= :version))
    (diffast-langs-cpp (= :version))
    (diffast-langs-fortran (= :version))
@@ -133,7 +138,7 @@
  (depends
   (ocaml (>= 4.14))
   dune
-  git-unix
+  (git-unix (>= 3.17))
   (diffast-misc (= :version))
   (vlt (>= 0.2.4))
  )
@@ -331,7 +336,10 @@
  (depends
   (ocaml (>= 4.14))
   dune-site
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-cpp-parsing (= :version))
+  (diffast-cpp-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -343,7 +351,10 @@
  (depends
   (ocaml (>= 4.14))
   dune-site
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-fortran-parsing (= :version))
+  (diffast-fortran-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -355,7 +366,10 @@
  (depends
   (ocaml (>= 4.14))
   dune-site
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-java-parsing (= :version))
+  (diffast-java-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -367,7 +381,10 @@
  (depends
   (ocaml (>= 4.14))
   dune-site
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-python-parsing (= :version))
+  (diffast-python-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -379,7 +396,10 @@
  (depends
   (ocaml (>= 4.14))
   dune-site
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-verilog-parsing (= :version))
+  (diffast-verilog-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
