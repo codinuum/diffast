@@ -238,7 +238,7 @@ let _ =
 
 let _ =
   if !show_version_flag then begin
-    printf "Parse/SRC %s\n" Version.version;
+    printf "Parse/SRC %s\n%s\n" Version.version Version.copyright;
     exit 0
   end
 

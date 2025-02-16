@@ -18,6 +18,10 @@ bug-reports: "https://github.com/codinuum/diffast/issues"
 depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.17"}
+  "cmdliner"
+  "mtime"
+  "fmt"
+  "logs"
   "diffast-core" {= version}
   "diffast-api" {= version}
   "diffast-git" {= version}

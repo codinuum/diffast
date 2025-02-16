@@ -1,7 +1,39 @@
 
+(subdir
+ pkg
+ (rule
+  (target v)
+  (action (write-file %{target} %{version:diffast-api}))
+ )
+)
+
+(subdir
+ dev
+ (rule
+  (target v)
+  (action
+   (with-stdout-to %{target} (run git describe --always --dirty))
+  )
+ )
+)
+
+(rule
+ (target v)
+ (enabled_if (<> %{read:pkg/v} ""))
+ (action (write-file %{target} %{read:pkg/v}))
+)
+
+(rule
+ (target v)
+ (enabled_if (= %{read:pkg/v} ""))
+ (action (write-file %{target} %{read-lines:dev/v}))
+)
+
 (rule
  (target version.ml)
- (action (run ./genver.sh))
+ (action
+  (write-file %{target} "let version=\"%{read:v}\"\nlet copyright=\"Copyright 2010-2025 Codinuum Software Lab <codinuum@me.com>\"\n")
+ )
 )
 
 (library

@@ -151,6 +151,10 @@
  (depends
   (ocaml (>= 4.14))
   dune
+  cmdliner
+  mtime
+  fmt
+  logs
   (diffast-core (= :version))
   (diffast-api (= :version))
   (diffast-git (= :version))
@@ -166,7 +170,7 @@
   (ocaml (>= 4.14))
   dune
   sedlex
-  mehirLib
+  menhirLib
   (diffast-misc (= :version))
   (vlt (>= 0.2.4))
  )
