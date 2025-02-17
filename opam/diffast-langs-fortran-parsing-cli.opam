@@ -19,6 +19,7 @@ depends: [
   "dynlink"
   "threads"
   "diffast-langs-fortran-parsing" {= version}
+  "diffast-etc" {= version}
   "odoc" {with-doc}
 ]
 build: [

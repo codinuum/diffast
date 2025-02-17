@@ -25,6 +25,7 @@ depends: [
   "diffast-core" {= version}
   "diffast-api" {= version}
   "diffast-git" {= version}
+  "diffast-etc" {= version}
   "vlt" {>= "0.2.4"}
   "odoc" {with-doc}
 ]

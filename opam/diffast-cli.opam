@@ -19,6 +19,7 @@ depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.17"}
   "diffast-api" {= version}
+  "diffast-etc" {= version}
   "vlt" {>= "0.2.4"}
   "odoc" {with-doc}
 ]

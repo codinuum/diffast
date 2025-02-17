@@ -127,6 +127,7 @@
   (ocaml (>= 4.14))
   dune
   (diffast-api (= :version))
+  (diffast-etc (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -158,6 +159,7 @@
   (diffast-core (= :version))
   (diffast-api (= :version))
   (diffast-git (= :version))
+  (diffast-etc (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -418,6 +420,7 @@
   dynlink
   threads
   (diffast-langs-cpp-parsing (= :version))
+  (diffast-etc (= :version))
  )
 )
 
@@ -429,6 +432,7 @@
   dynlink
   threads
   (diffast-langs-fortran-parsing (= :version))
+  (diffast-etc (= :version))
  )
 )
 
@@ -440,6 +444,7 @@
   dynlink
   threads
   (diffast-langs-java-parsing (= :version))
+  (diffast-etc (= :version))
  )
 )
 
@@ -451,6 +456,7 @@
   dynlink
   threads
   (diffast-langs-python-parsing (= :version))
+  (diffast-etc (= :version))
  )
 )
 
@@ -462,5 +468,6 @@
   dynlink
   threads
   (diffast-langs-verilog-parsing (= :version))
+  (diffast-etc (= :version))
  )
 )
