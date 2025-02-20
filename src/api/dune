@@ -12,7 +12,9 @@
  (rule
   (target v)
   (action
-   (with-stdout-to %{target} (run git describe --always --dirty))
+   (with-accepted-exit-codes (or 0 128)
+    (with-stdout-to %{target} (run git describe --always --dirty))
+   )
   )
  )
 )
@@ -25,8 +27,14 @@
 
 (rule
  (target v)
- (enabled_if (= %{read:pkg/v} ""))
+ (enabled_if (and (= %{read:pkg/v} "") (<> %{read:dev/v} "")))
  (action (write-file %{target} %{read-lines:dev/v}))
+)
+
+(rule
+ (target v)
+ (enabled_if (and (= %{read:pkg/v} "") (= %{read:dev/v} "")))
+ (action (write-file %{target} "unknown"))
 )
 
 (rule
