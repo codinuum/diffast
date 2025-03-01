@@ -19,9 +19,10 @@ depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.17"}
   "cmdliner"
-  "mtime"
+  "mtime" {>= "2.0"}
   "fmt"
   "logs"
+  "diffast-misc" {= version}
   "diffast-core" {= version}
   "diffast-api" {= version}
   "diffast-git" {= version}

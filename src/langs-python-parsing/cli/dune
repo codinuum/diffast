@@ -17,7 +17,7 @@
  (public_name python-parser.exe)
  (name main)
  (package diffast-langs-python-parsing-cli)
- (libraries dynlink threads diffast-langs-python-parsing)
+ (libraries diffast-langs-python-parsing)
  (link_flags (:include link_flags.txt))
  (preprocess
   (pps vlt.ppx))

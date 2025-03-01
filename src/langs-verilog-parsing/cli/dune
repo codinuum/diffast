@@ -17,7 +17,7 @@
  (public_name verilog-parser.exe)
  (name main)
  (package diffast-langs-verilog-parsing-cli)
- (libraries dynlink threads diffast-langs-verilog-parsing)
+ (libraries diffast-langs-verilog-parsing)
  (link_flags (:include link_flags.txt))
  (preprocess
   (pps vlt.ppx))

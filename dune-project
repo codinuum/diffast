@@ -127,6 +127,8 @@
  (depends
   (ocaml (>= 4.14))
   dune
+  (diffast-misc (= :version))
+  (diffast-core (= :version))
   (diffast-api (= :version))
   (diffast-etc (= :version))
   (vlt (>= 0.2.4))
@@ -154,9 +156,10 @@
   (ocaml (>= 4.14))
   dune
   cmdliner
-  mtime
+  (mtime (>= 2.0))
   fmt
   logs
+  (diffast-misc (= :version))
   (diffast-core (= :version))
   (diffast-api (= :version))
   (diffast-git (= :version))
@@ -345,8 +348,8 @@
   dune-site
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (diffast-cpp-parsing (= :version))
-  (diffast-cpp-spec (= :version))
+  (diffast-langs-cpp-parsing (= :version))
+  (diffast-langs-cpp-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -360,8 +363,8 @@
   dune-site
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (diffast-fortran-parsing (= :version))
-  (diffast-fortran-spec (= :version))
+  (diffast-langs-fortran-parsing (= :version))
+  (diffast-langs-fortran-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -375,8 +378,8 @@
   dune-site
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (diffast-java-parsing (= :version))
-  (diffast-java-spec (= :version))
+  (diffast-langs-java-parsing (= :version))
+  (diffast-langs-java-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -390,8 +393,8 @@
   dune-site
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (diffast-python-parsing (= :version))
-  (diffast-python-spec (= :version))
+  (diffast-langs-python-parsing (= :version))
+  (diffast-langs-python-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -405,8 +408,8 @@
   dune-site
   (diffast-misc (= :version))
   (diffast-core (= :version))
-  (diffast-verilog-parsing (= :version))
-  (diffast-verilog-spec (= :version))
+  (diffast-langs-verilog-parsing (= :version))
+  (diffast-langs-verilog-spec (= :version))
   (vlt (>= 0.2.4))
  )
 )
@@ -418,8 +421,9 @@
  (synopsis "C/C++ parser CLI")
  (depends
   (ocaml (>= 4.14))
-  dynlink
   threads
+  (diffast-misc (= :version))
+  (diffast-langs-common (= :version))
   (diffast-langs-cpp-parsing (= :version))
   (diffast-etc (= :version))
  )
@@ -430,8 +434,8 @@
  (synopsis "Fortran parser CLI")
  (depends
   (ocaml (>= 4.14))
-  dynlink
   threads
+  (diffast-misc (= :version))
   (diffast-langs-fortran-parsing (= :version))
   (diffast-etc (= :version))
  )
@@ -442,8 +446,8 @@
  (synopsis "Java parser CLI")
  (depends
   (ocaml (>= 4.14))
-  dynlink
   threads
+  (diffast-misc (= :version))
   (diffast-langs-java-parsing (= :version))
   (diffast-etc (= :version))
  )
@@ -454,8 +458,8 @@
  (synopsis "Python parser CLI")
  (depends
   (ocaml (>= 4.14))
-  dynlink
   threads
+  (diffast-misc (= :version))
   (diffast-langs-python-parsing (= :version))
   (diffast-etc (= :version))
  )
@@ -466,8 +470,8 @@
  (synopsis "Verilog parser CLI")
  (depends
   (ocaml (>= 4.14))
-  dynlink
   threads
+  (diffast-misc (= :version))
   (diffast-langs-verilog-parsing (= :version))
   (diffast-etc (= :version))
  )
