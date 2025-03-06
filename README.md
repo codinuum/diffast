@@ -52,12 +52,12 @@ You can also run both at once.
 
     $ ./cca.py diffast -c results --view samples/java/0/Test.java samples/java/1/Test.java
 
-## Installing parsers and Diff/AST
+## Installing Diff/AST via OPAM
 
 ### Requirements
 
 * [OCaml](http://ocaml.org/) (>=4.14)
-* [OPAM](https://opam.ocaml.org/)
+* [OPAM](https://opam.ocaml.org/) (>=2.1)
 
 ### Installation
 
@@ -65,19 +65,20 @@ The following will install `parsesrc` and `diffast`.
 
     $ opam install diffast
 
-## Building parsers and Diff/AST
+## Building Diff/AST
 
-You can also build parsers and Diff/AST in person.
+You can also build Diff/AST from the source.
 
 ### Requirements
 
 * [OCaml](http://ocaml.org/) (>=4.14)
-* [Dune](https://github.com/ocaml/dune)
-* [OPAM](https://opam.ocaml.org/) (for installing required packages)
+* [Dune](https://github.com/ocaml/dune) (>=3.17)
+* [OPAM](https://opam.ocaml.org/) (>=2.1) (for installing required packages)
 
 ### Compilation
 
 The following will create `./dist/bin/{parsesrc,diffast}`.
+
     $ opam install bytesrw camlp-streams camlzip cryptokit csv dune dune-site git-unix markup menhir sedlex uuidm vlt
     $ dune build --relocatable --prefix ./dist
 
