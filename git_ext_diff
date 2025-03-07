@@ -27,7 +27,7 @@ EXTS = set([
     'py',
     'v',
     'f', 'F', 'for', 'FOR', 'f77', 'F77',
-    'f90', 'F90', 'f95', 'F95', 'f03', 'F03', 'f08', 'F08'
+    'f90', 'F90', 'f95', 'F95', 'f03', 'F03', 'f08', 'F08',
     'c', 'h', 'cc', 'hh', 'cpp', 'hpp', 'C', 'H',
 ])
 
@@ -53,10 +53,11 @@ DIFF_CMD_FMT = 'diff -u {} {}'
 
 
 def is_src(path):
-    _, ext = os.path.splitext(path)
+    _, _ext = os.path.splitext(path)
+    ext = _ext[1:]
     b = False
     try:
-        b = ext[1:] in EXTS
+        b = ext in EXTS
     except Exception:
         pass
     return b
