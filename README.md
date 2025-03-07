@@ -80,7 +80,8 @@ You can also build Diff/AST from the source.
 The following will create `./dist/bin/{parsesrc,diffast}`.
 
     $ opam install bytesrw camlp-streams camlzip cryptokit csv dune dune-site git-unix markup menhir sedlex uuidm vlt
-    $ dune build --relocatable --prefix ./dist
+    $ dune build
+    $ dune install --relocatable --prefix ./dist
 
 ## Using with Git
 
