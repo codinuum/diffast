@@ -186,6 +186,7 @@
  (name diffast-langs-cpp-parsing)
  (synopsis "C++/C parser for Diff/AST")
  (description "C++/C parser for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   camlp-streams
@@ -200,6 +201,7 @@
  (name diffast-langs-fortran-parsing)
  (synopsis "Fortran parser for Diff/AST")
  (description "Fortran parser for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   camlp-streams
@@ -214,6 +216,7 @@
  (name diffast-langs-java-parsing)
  (synopsis "Java parser for Diff/AST")
  (description "Java parser for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   camlp-streams
@@ -228,6 +231,7 @@
  (name diffast-langs-python-parsing)
  (synopsis "Python parser for Diff/AST")
  (description "Python parser for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   camlp-streams
@@ -242,6 +246,7 @@
  (name diffast-langs-verilog-parsing)
  (synopsis "Verilog parser for Diff/AST")
  (description "Verilog parser for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   camlp-streams
@@ -268,6 +273,7 @@
  (name diffast-langs-cpp-spec)
  (synopsis "C/C++ parser spec for Diff/AST")
  (description "C/C++ parser specification for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -280,6 +286,7 @@
  (name diffast-langs-fortran-spec)
  (synopsis "Fortran parser spec for Diff/AST")
  (description "Fortran parser specification for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -292,6 +299,7 @@
  (name diffast-langs-java-spec)
  (synopsis "Java parser spec for Diff/AST")
  (description "Java parser specification for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -304,6 +312,7 @@
  (name diffast-langs-python-spec)
  (synopsis "Python parser spec for Diff/AST")
  (description "Python parser specification for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -316,6 +325,7 @@
  (name diffast-langs-verilog-spec)
  (synopsis "Verilog parser spec for Diff/AST")
  (description "Verilog parser specification for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -343,6 +353,7 @@
  (name diffast-langs-cpp)
  (synopsis "C++/C parser plugin for Diff/AST")
  (description "C++/C parser plugin for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -358,6 +369,7 @@
  (name diffast-langs-fortran)
  (synopsis "Fortran parser plugin for Diff/AST")
  (description "Fortran parser plugin for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -373,6 +385,7 @@
  (name diffast-langs-java)
  (synopsis "Java parser plugin for Diff/AST")
  (description "Java parser plugin for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -388,6 +401,7 @@
  (name diffast-langs-python)
  (synopsis "Python parser plugin for Diff/AST")
  (description "Python parser plugin for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -403,6 +417,7 @@
  (name diffast-langs-verilog)
  (synopsis "Verilog parser plugin for Diff/AST")
  (description "Verilog parser plugin for Diff/AST. Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   dune-site
@@ -419,6 +434,7 @@
 (package
  (name diffast-langs-cpp-parsing-cli)
  (synopsis "C/C++ parser CLI")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   threads
@@ -432,6 +448,7 @@
 (package
  (name diffast-langs-fortran-parsing-cli)
  (synopsis "Fortran parser CLI")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   threads
@@ -444,6 +461,7 @@
 (package
  (name diffast-langs-java-parsing-cli)
  (synopsis "Java parser CLI")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   threads
@@ -456,6 +474,7 @@
 (package
  (name diffast-langs-python-parsing-cli)
  (synopsis "Python parser CLI")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   threads
@@ -468,6 +487,7 @@
 (package
  (name diffast-langs-verilog-parsing-cli)
  (synopsis "Verilog parser CLI")
+ (allow_empty)
  (depends
   (ocaml (>= 4.14))
   threads
