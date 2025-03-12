@@ -1665,6 +1665,34 @@ end;
           end
         in
 
+        let digest_eq nd1 nd2 =
+          let b =
+            match nd1#data#_digest, nd2#data#_digest with
+            | Some d1, Some d2 -> d1 = d2
+            | _ -> false
+          in
+          [%debug_log "%a-%a -> %B" nups nd1 nups nd2 b];
+          b
+        in
+        let has_stably_mapped_descendant nd1 nd2 =
+          let gi2 = nd2#gindex in
+          let lgi2 = (tree2#initial_leftmost nd2)#gindex in
+          let b =
+            Misc.has_p_descendant
+              (fun x1 ->
+                try
+                  let x2 = nmapping#find x1 in
+                  let g2 = x2#gindex in
+                  lgi2 <= g2 && g2 < gi2 &&
+                  not (edits#mem_mov12 x1 x2)
+                with
+                  _ -> false
+              ) nd1
+          in
+          [%debug_log "%a-%a -> %B" nups nd1 nups nd2 b];
+          b
+        in
+
         let check_mov_weak nd1 nd2 = function
           | Editop.Move(mid, _, (_, _), (_, _)) as mov -> begin
               let b =
@@ -1672,6 +1700,10 @@ end;
                 let pnd1 = nd1#initial_parent in
                 let pnd2 = nd2#initial_parent in
                 (try nmapping#find pnd1 == pnd2 with _ -> false) &&
+                (
+                 digest_eq nd1 nd2 ||
+                 not (has_stably_mapped_descendant nd1 nd2)
+                ) &&
                 match edits#find12 pnd1 pnd2 with
                 | [] -> true
                 | [Editop.Relabel _] ->
@@ -1694,6 +1726,10 @@ end;
                 let pnd1 = nd1#initial_parent in
                 let pnd2 = nd2#initial_parent in
                 (try nmapping#find pnd1 == pnd2 with _ -> false) &&
+                (
+                 digest_eq nd1 nd2 ||
+                 not (has_stably_mapped_descendant nd1 nd2)
+                ) &&
                 (try
                   edits#iter_moves
                     (function
