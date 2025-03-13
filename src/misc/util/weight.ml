@@ -100,6 +100,21 @@ module IntInt = struct
   let to_string (i, j) = Printf.sprintf "(%d,%d)" i j
 end
 
+module IntIntInt = struct
+  type t = int * int * int
+  let zero = (0, 0, 0)
+  let plus (i1, j1, k1) (i2, j2, k2) = (i1 + i2, j1 + j2, k1 + k2)
+  let le (i1, j1, k1) (i2, j2, k2) =
+    i1 < i2 ||
+    (i1 = i2 && j1 <= j2) ||
+    (i1 = i2 && j1 = j2 && k1 <= k2)
+  let eq x y = le x y && le y x
+  let lt x y = le x y && not (eq x y)
+  let max = (max_int, max_int, max_int)
+  let min = (min_int, min_int, min_int)
+  let to_string (i, j, k) = Printf.sprintf "(%d,%d,%d)" i j k
+end
+
 module IntFloat = struct
   type t = int * float
   let zero = (0, 0.0)
