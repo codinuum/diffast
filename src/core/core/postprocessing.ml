@@ -145,7 +145,7 @@ module F (Label : Spec.LABEL_T) = struct
         [%debug_log "%a %s" nups nd
           (Xlist.to_string
              (fun (nd1, nd2, nth, sz) ->
-               sprintf "<%a,%a(%dth)(sz:%a)>" nups nd1 nups nd2 !nth Comparison.wps sz)
+               sprintf "<%a-%a(%dth,sz:%a)>" nups nd1 nups nd2 !nth Comparison.wps sz)
              "" vs)];
 
         let vs = select_compatible_pairs vs in
@@ -176,7 +176,7 @@ module F (Label : Spec.LABEL_T) = struct
             [%debug_log "%a %s" nups nd
               (Xlist.to_string
                  (fun (nd1, nd2, nth, sz) ->
-                   sprintf "<%a,%a(%dth)(sz:%a)>" nups nd1 nups nd2 !nth Comparison.wps sz)
+                   sprintf "<%a-%a(%dth,sz:%a)>" nups nd1 nups nd2 !nth Comparison.wps sz)
                  "" (List.rev vs))];
             [%debug_log "a1 = [%s]" (Xarray.to_string string_of_int " " a1)];
             [%debug_log "a2 = [%s]" (Xarray.to_string string_of_int " " a2)];
@@ -261,7 +261,9 @@ module F (Label : Spec.LABEL_T) = struct
                          pruned#set_kind nd1 nd2 Pruned.Migratory;
 
                          [%debug_log "kind changed: %a: %s -> %s (detect_permutation)"
-                           MID.ps !m (Edit.move_kind_to_string !kind) (Edit.move_kind_to_string Edit.Mpermutation)];
+                           MID.ps !m
+                            (Edit.move_kind_to_string !kind)
+                            (Edit.move_kind_to_string Edit.Mpermutation)];
 
                          kind := Edit.Mpermutation;
                          false
@@ -283,6 +285,13 @@ module F (Label : Spec.LABEL_T) = struct
 
                   [%debug_log "added permutation %a -> %a" nups nd1 nups nd2]
                 end
+              end
+              else begin
+                try
+                  let ed = edits#find_mov12 nd1 nd2 in
+                  edits#remove_edit ed
+                with
+                  Not_found -> ()
               end
             ) vs
         end
