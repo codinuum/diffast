@@ -219,7 +219,10 @@ let remove_relabels_and_mapping
         (fun n ->
           try
             let n' = nmapping#find n in
-            if List.memq n' !nodes2 then begin
+            if
+              not (n#data#eq n'#data) &&
+              List.memq n' !nodes2
+            then begin
 
               if by_non_renames then begin
                 [%debug_log "by_non_renames=%B n=%a n'=%a" by_non_renames nups n nups n'];
