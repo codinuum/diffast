@@ -1138,7 +1138,7 @@ and type_declaration_desc =
   | TDinterface of interface_declaration
   | TDempty
   | TDerror of string
-  | TDorphan of class_body_declaration
+  | TDorphan of type_declaration option * class_body_declaration
 
 type compilation_unit =
     { cu_package   : package_declaration option;
@@ -1735,6 +1735,14 @@ and proc_type_declaration f td =
   match td.td_desc with
   | TDclass cd -> proc_class_declaration f cd
   | TDinterface id -> proc_interface_declaration f id
+  | TDorphan(_, m) -> begin
+      match m.cbd_desc with
+      | CBDmethod(mh, b_op) -> begin
+          proc_method_header f mh;
+          proc_op proc_block f b_op
+      end
+      | _ -> ()
+  end
   | _ -> ()
 ]
 

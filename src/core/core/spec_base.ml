@@ -118,6 +118,7 @@ class type node_data_t_shared = object ('self)
 
   method orig_to_elem_data_for_eq    : string * (string * string) list * string
 
+  method relab : ?orig:(Obj.t option) -> Obj.t -> unit
 
 (* for delta *)
   method to_elem_data_for_delta      : string * (string * string) list * string

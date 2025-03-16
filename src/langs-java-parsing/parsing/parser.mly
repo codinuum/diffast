@@ -821,14 +821,31 @@ type_declaration:
 | m=method_declaration (* orphan method *)
     { 
       if env#keep_going_flag then begin
-        parse_warning $startpos $endpos "orphan method declaration";
-        mktd $startpos $endpos (TDorphan m)
+        let pos_to_str { Lexing.pos_lnum = l;
+                         Lexing.pos_bol = b;
+                         Lexing.pos_cnum = c;
+                         _
+                       }
+            = Printf.sprintf "%dL,%dC" l (c - b)
+        in
+        let warn x = parse_warning $startpos $endpos x in
+        warn "orphan method declaration";
+        let err_opt =
+          match env#last_td_end_opt with
+          | Some (p, s) -> begin
+              warn "last type declaration end: %s (%s)" s (pos_to_str p);
+              env#clear_last_td_end;
+              Some (mkerrtd p p s)
+          end
+          | None -> None
+        in
+        mktd $startpos $endpos (TDorphan(err_opt, m))
       end
       else
         parse_error $startpos $endpos "orphan method declaration"
     }
-| s=MARKER { mkerrtd $startpos $endpos s }
-| s=ERROR { mkerrtd $startpos $endpos s }
+| m=MARKER { mkerrtd $startpos $endpos m }
+| e=ERROR { mkerrtd $startpos $endpos e }
 ;
 
 %inline
@@ -1098,7 +1115,13 @@ type_name_list:
 ;
 
 class_body: 
-| LBRACE c=class_body_declarations0 RBRACE { end_scope(); mkcb $startpos $endpos c }
+| LBRACE c=class_body_declarations0 r=RBRACE
+    { 
+      ignore r;
+      end_scope();
+      env#set_last_td_end $endpos(r) "}";
+      mkcb $startpos $endpos c
+    }
 ;
 
 %inline

@@ -24,6 +24,28 @@ module Aux = Parser_aux
 
 let token_queue_to_string = Common.token_queue_to_string Token.to_orig
 
+[%%capture_path
+let token_queue_to_poss tq =
+  if tq#is_empty then
+    Lexing.dummy_pos, Lexing.dummy_pos
+  else begin
+    let st = ref Lexing.dummy_pos in
+    let ed = ref Lexing.dummy_pos in
+    tq#iter
+      (fun t ->
+        [%debug_log "%s" (Token.to_string t)];
+        let _, s, e = Token.decompose t in
+        if !st == Lexing.dummy_pos then begin
+          st := s;
+          ed := e
+        end
+        else
+          ed := e
+      );
+    !st, !ed
+  end
+]
+
 let outline_queue_to_string oq =
   let buf = Buffer.create 0 in
   oq#iter
@@ -87,6 +109,7 @@ module F (Stat : Aux.STATE_T) = struct
     method shadow_queue = shadow_queue
     method reset_shadow_queue = shadow_queue#clear
     method shadow_contents = token_queue_to_string shadow_queue
+    method shadow_poss = token_queue_to_poss shadow_queue
     method copy_shadow_queue = shadow_queue#copy
     method prepend_shadow_queue q =
       [%debug_log "shadow_queue=%s" self#shadow_contents];

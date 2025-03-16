@@ -156,6 +156,8 @@ class env = object (self)
 
   val mutable last_rawtoken = Obj.repr ()
 
+  val mutable last_td_end_opt = (None : (Lexing.position * string) option)
+
   val mutable global_frame = new frame FKother
 
   val mutable rely_on_naming_convention_flag = false
@@ -636,6 +638,10 @@ class env = object (self)
 
   method last_rawtoken = last_rawtoken
   method set_last_rawtoken o = last_rawtoken <- o
+
+  method last_td_end_opt = last_td_end_opt
+  method set_last_td_end p s = last_td_end_opt <- Some (p, s)
+  method clear_last_td_end = last_td_end_opt <- None
 
   method classtbl = classtbl
 

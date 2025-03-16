@@ -240,6 +240,23 @@ module Tree (L : Spec.LABEL_T) = struct
 
       constraint 'node = 'self Otree.node2
 
+      val mutable lab = lab
+      val mutable is_named = is_named
+      val mutable is_named_orig = is_named_orig
+      val mutable category = category
+      val mutable orig_lab_opt = orig_lab_opt
+
+      method relab ?(orig=None) (_lab' : Obj.t) =
+        let lab' = (Obj.obj _lab' : L.t) in
+        [%debug_log "%s -> %s" (L.to_string lab) (L.to_string lab')];
+        lab <- lab';
+        is_named <- L.is_named lab;
+        is_named_orig <- L.is_named_orig lab;
+        category <- L.get_category lab;
+        match orig with
+        | Some o -> orig_lab_opt <- Some (Obj.obj o : L.t)
+        | None -> ()
+
       val mutable prefix = ""
       method set_prefix s = prefix <- s
       method get_prefix = prefix
@@ -270,8 +287,6 @@ module Tree (L : Spec.LABEL_T) = struct
         match ordinal_tbl_opt with
         | None -> failwith "Sourcecode.node_data#add_to_ordinal_list"
         | Some tbl -> tbl#add_list l
-
-      val mutable orig_lab_opt = orig_lab_opt
 
       method _label = Obj.repr lab
 

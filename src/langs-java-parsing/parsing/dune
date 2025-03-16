@@ -12,6 +12,7 @@
 
 (menhir
  (modules parser)
+ ;(flags --trace --table --external-tokens Tokens_ --inspection)
  (flags --table --external-tokens Tokens_ --inspection)
 )
 

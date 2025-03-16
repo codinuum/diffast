@@ -501,19 +501,13 @@ class visitor options bid_gen static_vdtors tree = object (self)
       end
     end;
 
-    if L.is_primaryname lab then begin
-      let name = L.get_name lab in
-      (*[%debug_log "nd=%s" nd#data#to_string];*)
-      try
-        let binder_nd = stack#lookup name in
-        (*[%debug_log "binder_nd=%s" binder_nd#data#to_string];*)
-        let bid = Binding.get_bid binder_nd#data#binding in
-        tree#add_to_bid_tbl bid name;
-        Binding.incr_use binder_nd#data#binding;
-        [%debug_log "    USE: %s (bid=%a) %s" name BID.ps bid nd#to_string];
-        let loc_opt = Some (binder_nd#uid, binder_nd#data#src_loc) in
-        nd#data#set_binding (Binding.make_use ~loc_opt bid);
-
+    let setup_binding binder_nd nd name =
+      let bid = Binding.get_bid binder_nd#data#binding in
+      tree#add_to_bid_tbl bid name;
+      Binding.incr_use binder_nd#data#binding;
+      [%debug_log "    USE: %s (bid=%a) %s" name BID.ps bid nd#to_string];
+      let loc_opt = Some (binder_nd#uid, binder_nd#data#src_loc) in
+      nd#data#set_binding (Binding.make_use ~loc_opt bid);
         (*begin
           try
             let vdtor =
@@ -566,7 +560,33 @@ class visitor options bid_gen static_vdtors tree = object (self)
           with
             _ -> ()
         end
+    in
 
+    if L.is_primaryname lab then begin
+      let name = L.get_name lab in
+      (*[%debug_log "nd=%s" nd#data#to_string];*)
+      try
+        let binder_nd = stack#lookup name in
+        (*[%debug_log "binder_nd=%s" binder_nd#data#to_string];*)
+        setup_binding binder_nd nd name
+      with
+        Not_found -> ()
+    end;
+
+    if L.is_fieldaccess lab && nd#initial_nchildren = 0 then begin
+      let name = L.get_name lab in
+      [%debug_log "nd=%s" nd#data#to_string];
+      try
+        let binder_nd = stack#lookup name in
+        [%debug_log "binder_nd=%s" binder_nd#data#to_string];
+
+        setup_binding binder_nd nd name;
+
+        if Xset.mem static_vdtors binder_nd then begin
+          let lab' = L.Primary (L.Primary.Name name) in
+          let obj' = Obj.repr lab' in
+          nd#data#relab ~orig:(Some obj') obj'
+        end
       with
         Not_found -> ()
     end;
@@ -603,9 +623,13 @@ class translator options =
   object (self)
   inherit node_maker options
 
+  val orphan_uids = Xset.create 0
+
   val static_vdtors = Xset.create 0
 
   val mutable huge_array_list = []
+
+  method orphan_uids = orphan_uids
 
   method huge_array_list = huge_array_list
   method reg_huge_array orig nd = huge_array_list <- (orig, nd) :: huge_array_list
@@ -2986,82 +3010,84 @@ class translator options =
     let children = List.concat_map self#of_class_body_declaration body in
     self#_of_class_body ~in_method cname children cb.Ast.cb_loc
 
+  method sort_class_body_members cname children =
+    let fields, methods, ctors, classes, enums, ifaces, static_inits, inst_inits, others
+        = ref [], ref [], ref [], ref [], ref [], ref [], ref [], ref [], ref []
+    in
+    let classify nd =
+      match getlab nd with
+      | L.FieldDeclaration _  -> fields := nd :: !fields
+      | L.Method _            -> methods := nd :: !methods
+      | L.Constructor _       -> ctors := nd :: !ctors
+      | L.Class _             -> classes := nd :: !classes
+      | L.Enum _              -> enums := nd :: !enums
+      | L.Interface _         -> ifaces := nd :: !ifaces
+      | L.AnnotationType _    -> ifaces := nd :: !ifaces
+      | L.StaticInitializer   -> static_inits := nd :: !static_inits
+      | L.InstanceInitializer -> inst_inits := nd :: !inst_inits
+      | L.EmptyDeclaration when
+          options#strip_empty_flag &&
+          not options#recover_orig_ast_flag &&
+          options#sort_unordered_flag
+        -> ()
+      | _ -> others := nd :: !others
+    in
+    let _ = List.iter classify children in
+    let _ =
+      enums        := List.rev !enums;
+      ifaces       := List.rev !ifaces;
+      classes      := List.rev !classes;
+      fields       := List.rev !fields;
+      ctors        := List.rev !ctors;
+      static_inits := List.rev !static_inits;
+      inst_inits   := List.rev !inst_inits;
+      methods      := List.rev !methods;
+      others       := List.rev !others;
+    in
+    if options#sort_unordered_flag then begin
+      enums   := List.fast_sort compare_node !enums;
+      ifaces  := List.fast_sort compare_node !ifaces;
+      classes := List.fast_sort compare_node !classes;
+      fields  := List.fast_sort compare_node !fields;(*do not remove!!!NG!!!*)
+      ctors   := List.fast_sort compare_node_sig !ctors;
+      methods := List.fast_sort compare_node_sig !methods;
+    end;
+    let fields_l =
+      if !fields = [] then
+        []
+      else
+        let fields_ = self#mklnode (L.FieldDeclarations cname) !fields in
+        fields_#data#set_loc Loc.ghost;
+        [fields_]
+    in
+    let children' =
+      List.flatten
+        [ !enums;
+          !ifaces;
+          !classes;
+          fields_l;
+          !static_inits;
+          !inst_inits;
+          !ctors;
+          !methods;
+          !others
+        ]
+    in
+    begin %debug_block
+        [%debug_log "ClassBody(%s):" cname];
+      List.iteri
+        (fun i n ->
+          [%debug_log "%d: (%a)%s" i UID.ps n#uid (L.to_string (getlab n))]
+        ) children'
+    end;
+    children'
+
   method _of_class_body ?(in_method=false) cname children loc =
     let children' =
       if in_method then
         children
-      else begin
-        let fields, methods, ctors, classes, enums, ifaces, static_inits, inst_inits, others
-            = ref [], ref [], ref [], ref [], ref [], ref [], ref [], ref [], ref []
-        in
-        let classify nd =
-          match getlab nd with
-          | L.FieldDeclaration _  -> fields := nd :: !fields
-          | L.Method _            -> methods := nd :: !methods
-          | L.Constructor _       -> ctors := nd :: !ctors
-          | L.Class _             -> classes := nd :: !classes
-          | L.Enum _              -> enums := nd :: !enums
-          | L.Interface _         -> ifaces := nd :: !ifaces
-          | L.AnnotationType _    -> ifaces := nd :: !ifaces
-          | L.StaticInitializer   -> static_inits := nd :: !static_inits
-          | L.InstanceInitializer -> inst_inits := nd :: !inst_inits
-          | L.EmptyDeclaration when
-              options#strip_empty_flag &&
-              not options#recover_orig_ast_flag &&
-              options#sort_unordered_flag
-            -> ()
-          | _ -> others := nd :: !others
-        in
-        let _ = List.iter classify children in
-        let _ =
-          enums        := List.rev !enums;
-          ifaces       := List.rev !ifaces;
-          classes      := List.rev !classes;
-          fields       := List.rev !fields;
-          ctors        := List.rev !ctors;
-          static_inits := List.rev !static_inits;
-          inst_inits   := List.rev !inst_inits;
-          methods      := List.rev !methods;
-          others       := List.rev !others;
-        in
-        if options#sort_unordered_flag then begin
-          enums   := List.fast_sort compare_node !enums;
-          ifaces  := List.fast_sort compare_node !ifaces;
-          classes := List.fast_sort compare_node !classes;
-          fields  := List.fast_sort compare_node !fields;(*do not remove!!!NG!!!*)
-          ctors   := List.fast_sort compare_node_sig !ctors;
-          methods := List.fast_sort compare_node_sig !methods;
-        end;
-        let fields_l =
-          if !fields = [] then
-            []
-          else
-            let fields_ = self#mklnode (L.FieldDeclarations cname) !fields in
-            fields_#data#set_loc Loc.ghost;
-            [fields_]
-        in
-        let children' =
-          List.flatten
-            [ !enums;
-              !ifaces;
-              !classes;
-              fields_l;
-              !static_inits;
-              !inst_inits;
-              !ctors;
-              !methods;
-              !others
-            ]
-        in
-        begin %debug_block
-          [%debug_log "ClassBody(%s):" cname];
-          List.iteri
-            (fun i n ->
-              [%debug_log "%d: (%a)%s" i UID.ps n#uid (L.to_string (getlab n))]
-            ) children'
-        end;
-        children'
-      end
+      else
+        self#sort_class_body_members cname children
     in
     let nd = self#mklnode (L.ClassBody cname) children' in
     self#add_true_children nd (Array.of_list children);
@@ -3528,16 +3554,42 @@ class translator options =
     nd
 
   method of_type_declaration td =
+    let loc = td.Ast.td_loc in
     let nds =
       match td.Ast.td_desc with
-      | Ast.TDclass class_decl -> [self#of_class_declaration true class_decl]
-      | Ast.TDinterface iface_decl -> [self#of_interface_declaration true iface_decl]
-      | Ast.TDempty -> [self#mkleaf L.EmptyDeclaration]
-      | Ast.TDerror s -> [self#mkleaf (L.Error s)]
-      | Ast.TDorphan cbd -> self#of_class_body_declaration cbd
+      | Ast.TDclass class_decl -> begin
+          let nd = self#of_class_declaration true class_decl in
+          set_loc nd loc;
+          [nd]
+      end
+      | Ast.TDinterface iface_decl -> begin
+          let nd = self#of_interface_declaration true iface_decl in
+          set_loc nd loc;
+          [nd]
+      end
+      | Ast.TDempty -> begin
+          let nd = self#mkleaf L.EmptyDeclaration in
+          set_loc nd loc;
+          [nd]
+      end
+      | Ast.TDerror s -> begin
+          let nd = self#mkleaf (L.Error s) in
+          set_loc nd loc;
+          [nd]
+      end
+      | Ast.TDorphan(err_opt, cbd) -> begin
+          let cbdl = self#of_class_body_declaration cbd in
+          List.iter
+            (fun n ->
+              Xset.add orphan_uids n#uid;
+              set_loc n loc
+            ) cbdl;
+          (match err_opt with
+          | Some err -> self#of_type_declaration err
+          | None -> []
+          ) @ cbdl
+      end
     in
-    let loc = td.Ast.td_loc in
-    List.iter (fun nd -> set_loc nd loc) nds;
     nds
 
   method of_package_decl pd =
@@ -3597,11 +3649,141 @@ let of_compilation_unit options cu =
   let tdecl_nodes =
     match type_decls with
     | [] -> []
-    | _ ->
+    | _ -> begin
         let td_nodes = List.concat_map trans#of_type_declaration type_decls in
+
+        let td_nodes =
+          let orphan_uids = trans#orphan_uids in
+          let is_orphan n =
+            let b = Xset.mem orphan_uids n#uid in
+            [%debug_log "%a --> %B" UID.ps n#uid b];
+            b
+          in
+          let n_orphan_uids = Xset.length orphan_uids in
+          if
+            n_orphan_uids > 0 &&
+            List.exists is_orphan td_nodes
+          then begin
+            [%debug_log "%d orphan nodes found" n_orphan_uids];
+            let nl = ref [] in
+            let flag = ref false in
+            let last_td_opt = ref None in
+            let is_td n =
+              let b = L.is_typedeclaration (getlab n) in
+              [%debug_log "%a --> %B" UID.ps n#uid b];
+              b
+            in
+            let is_err n =
+              let b =
+                match getlab n with
+                | L.Error "}" -> true
+                | _ -> false
+              in
+              [%debug_log "%a --> %B" UID.ps n#uid b];
+              b
+            in
+            let get_body td =
+              try
+                let last_idx = (Array.length td#children) - 1 in
+                [%debug_log "last_idx=%d" last_idx];
+                let body = td#children.(last_idx) in
+                body
+              with
+                _ -> invalid_arg "get_body"
+            in
+            let get_name td = L.get_name (getlab td) in
+            let extend_loc n x =
+              let loc = Loc.merge n#data#src_loc x#data#src_loc in
+              [%debug_log "%s -> %s"
+                 (Loc.to_string ~long:false n#data#src_loc)
+                 (Loc.to_string ~long:false loc)];
+              n#data#set_loc loc
+            in
+            let add_orphan n =
+              match !last_td_opt with
+              | Some td -> begin
+                  [%debug_log "td=%s" td#to_string];
+                  try
+                    let body = get_body td in
+                    [%debug_log "body=%s" body#to_string];
+                    let tbl = trans#true_children_tbl in
+                    begin
+                      try
+                        let true_children = Hashtbl.find tbl body in
+                        Hashtbl.replace tbl body (Array.append true_children [|n|])
+                      with
+                        Not_found -> body#add_child_rightmost n
+                    end;
+                    [%debug_log "added %a to %a" UID.ps n#uid UID.ps body#uid]
+                  with
+                    _ -> failwith "add_orphan"
+              end
+              | None -> failwith "add_orphan"
+            in
+            let add_node n =
+              [%debug_log "%a" UID.ps n#uid];
+              nl := n :: !nl
+            in
+            List.iter
+              (fun n ->
+                [%debug_log "%s" n#to_string];
+                [%debug_log "flag=%B" !flag];
+                if !flag then begin
+                  if is_orphan n then begin
+                    try
+                      add_orphan n
+                    with
+                      _ -> add_node n
+                  end
+                  else if is_err n then begin
+                    flag := false;
+                    match !last_td_opt with
+                    | Some td -> begin
+                        try
+                          let body = get_body td in
+                          let true_children =
+                            Hashtbl.find trans#true_children_tbl body
+                          in
+                          let cl =
+                            trans#sort_class_body_members
+                              (get_name td) (Array.to_list true_children)
+                          in
+                          let ca = Array.of_list cl in
+                          body#set_children ca;
+                          extend_loc body n;
+                          extend_loc td n
+                        with
+                          _ -> ()
+                    end
+                    | None -> ()
+                  end
+                  else begin
+                    flag := false;
+                    add_node n
+                  end
+                end
+                else begin
+                  if is_err n then begin
+                    flag := true;
+                    add_orphan n
+                  end
+                  else begin
+                    if is_td n then
+                      last_td_opt := Some n;
+                    add_node n
+                  end
+                end
+              ) td_nodes;
+            List.rev !nl
+          end
+          else
+            td_nodes
+        in
+
         let nd = mklnode options L.TypeDeclarations td_nodes in
         set_nodes_loc nd td_nodes;
         [nd]
+    end
   in
   let modecl_nodes =
     match modecl with
@@ -3638,6 +3820,7 @@ let of_compilation_unit options cu =
   tree
 ]
 
+[%%capture_path
 let of_ast options ast =
   [%debug_log "nintegers=%d nfloats=%d nstrings=%d" ast#nintegers ast#nfloats ast#nstrings];
   (*if ast#nintegers > 32 then
@@ -3653,3 +3836,4 @@ let of_ast options ast =
   tree#set_total_LOC ast#lines_read;
   tree#set_ignored_regions (ast#comment_regions @ ast#ignored_regions);
   tree
+]

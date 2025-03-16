@@ -846,7 +846,8 @@ class parser_c = object (self)
               | _ -> ()
             end;
 
-            let stp, edp = poss_of_menv _menv in
+            (*let stp, edp = poss_of_menv _menv in*)
+            let stp, edp = scanner#shadow_poss in
             let loc = Scan.loc_of_poss stp edp in
             let e = scanner#shadow_outline in
             let err = scanner#shadow_contents in

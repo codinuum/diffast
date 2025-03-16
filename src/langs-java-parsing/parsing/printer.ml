@@ -1396,13 +1396,20 @@ and pr_class_declaration cd =
   | CDrecord(rh, body) -> pr_record_declaration_head "record" rh; pr_record_body body; close_box()
   | CDaspect(ah, body) -> pr_class_declaration_head "aspect" ah; pr_aspect_body body; close_box()
 
-let pr_type_declaration td =
+let rec pr_type_declaration td =
   match td.td_desc with
   | TDclass cd -> pr_class_declaration cd
   | TDinterface id -> pr_interface_declaration id
   | TDempty -> pr_semicolon()
   | TDerror s -> pr_string "<ERROR:"; pr_string s; pr_string ">"
-  | TDorphan cbd -> pr_class_body_declaration cbd
+  | TDorphan(err_opt, cbd) -> begin
+      begin
+        match err_opt with
+        | Some err -> pr_type_declaration err
+        | None -> ()
+      end;
+      pr_class_body_declaration cbd
+  end
 
 let pr_type_declarations = pr_list pr_newline pr_type_declaration
 
