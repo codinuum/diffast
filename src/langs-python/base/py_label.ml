@@ -1550,12 +1550,10 @@ let get_name ?(strip=false) lab =
   | NamedSuite n
   | NamedParameters n
   | NamedArguments n
-  | ParamDef n
-  | TypedParamDef n
   | Decorator n
   | Decorators n
-  | Primary (Primary.Name n)
-  | Primary (Primary.AttrRef n)
+  | ParamDef n | TypedParamDef n
+  | Primary (Primary.Name n | Primary.AttrRef n)
     -> n
   | Statement stmt -> Statement.get_name stmt
   | Comment c -> c

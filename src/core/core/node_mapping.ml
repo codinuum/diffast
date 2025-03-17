@@ -180,9 +180,12 @@ module Json = struct
       ""
 
   let get_digest tree nd =
-    if nd#data#is_named_orig && nd#initial_nchildren = 0 then
-      nd#data#get_orig_name
-    else
+    try
+      if nd#initial_nchildren = 0 then
+        nd#data#get_orig_name
+      else
+        raise Not_found
+    with Not_found ->
       let d =
         match nd#data#_digest with
         | Some d -> d
