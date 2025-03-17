@@ -3248,8 +3248,8 @@ let relabel_allowed (lab1, lab2) =
     | Type (Type.Class _), Primary (Primary.FieldAccess _)
     | Primary (Primary.FieldAccess _), Type (Type.Class _)
 
-    | Type (Type.Class _), Primary (Primary.Name _)
-    | Primary (Primary.Name _), Type (Type.Class _)
+    | Type (Type.Class _), Primary (Primary.Name _ | Primary.AmbiguousName _)
+    | Primary (Primary.Name _ | Primary.AmbiguousName _), Type (Type.Class _)
 
     | Primary _, Expression _
     | Expression _, Primary _
