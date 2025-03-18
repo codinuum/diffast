@@ -342,7 +342,7 @@ class c = object (self)
   (* Python *)
   val mutable python_with_stmt_disabled_flag = false
   val mutable python_ignore_docstring_flag = false
-  val mutable python_ignore_comment_flag = false
+  val mutable python_ignore_comment_flag = true
 
   (* Fortran *)
   val mutable fortran_max_line_length = -1

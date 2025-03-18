@@ -169,6 +169,9 @@ let speclist =
                         "\t\tdisable binding trace";
    "-aggressive", Arg.Unit (fun () -> options#clear_conservative_flag),
                   "\t\t\taggressively find moves";
+   "-ignore-moves-of-unordered", Arg.Unit (fun () -> options#set_ignore_move_of_unordered_flag),
+                                 "\tignore moves of unordered constructs";
+
 (*
 "-moderate-nchildren-thresh", Arg.Int options#set_moderate_nchildren_threshold,
 sprintf "N\tmoderate num of children threshold (default: %d)" options#moderate_nchildren_threshold;
@@ -186,6 +189,23 @@ sprintf "R\tmapped neighbours difference threshold (default: %f)" options#mapped
 
 (* mode *)
    "-parseonly",  Arg.Set parseonly_flag, "\tparse only";
+
+(* Java *)
+   "-java:JLS", Arg.Int (fun lv -> options#set_java_lang_spec lv), "\tset JLS level";
+
+(* Python *)
+   "-python:disable-with-stmt", Arg.Unit (fun () -> options#set_python_with_stmt_disabled_flag),
+                                "\tdisable with_statement feature";
+   "-python:handle-comment", Arg.Unit (fun () -> options#clear_python_ignore_comment_flag),
+                             "\thandle comment";
+
+(* Fortran *)
+   "-fortran:max-line-length", Arg.Int options#set_fortran_max_line_length,
+                               "N\tset max line length to N";
+   "-fortran:parse-d-lines",   Arg.Unit (fun () -> options#set_fortran_parse_d_lines_flag),
+                               "\tparse d-lines as code";
+   "-fortran:ignore-include",  Arg.Unit (fun () -> options#set_fortran_ignore_include_flag),
+                               "\tignore include lines";
 
  ]
 

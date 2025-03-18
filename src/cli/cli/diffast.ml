@@ -411,6 +411,8 @@ let speclist =
 (* Python *)
    "-python:disable-with-stmt", Arg.Unit (fun () -> options#set_python_with_stmt_disabled_flag),
                                 "\tdisable with_statement feature";
+   "-python:handle-comment", Arg.Unit (fun () -> options#clear_python_ignore_comment_flag),
+                             "\thandle comment";
 
 (* Fortran *)
    "-fortran:max-line-length", Arg.Int options#set_fortran_max_line_length,
