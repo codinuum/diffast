@@ -621,71 +621,80 @@ module F (Stat : Aux.STATE_T) = struct
           scan ulb
       end
       | '#' -> begin
-          let s = lexeme ulb in
-          [%debug_log "s=%s" (String.escaped s)];
-          begin
-            let ind = Buffer.contents ind_buf in
-            let ind_len = scanner_env#indent_length ind in
-            [%debug_log "ind_len=%d" ind_len];
-            let ok =
-              not scanner_env#in_paren &&
-              (
-               match next_ind_opt with
-               | None -> true
-               | Some "" -> true
-               | Some next_ind ->
-                   let next_ind_len = scanner_env#indent_length next_ind in
-                   [%debug_log "next_ind_len=%d" next_ind_len];
-                   scanner_env#is_valid_indent next_ind_len &&
-                   next_ind_len <= ind_len
-              ) &&
-              (
-               ind_len = last_ind_len ||
-               if ind_len < last_ind_len then begin
-                 [%debug_log "%d < %d" ind_len last_ind_len];
-                 let last_tok = (Obj.obj env#last_token) in
-                 let last_rawtok = Token.to_rawtoken last_tok in
-                 last_rawtok != COLON
-               end
-               else
-                 true
-              )
-            in
-            [%debug_log "ok=%B" ok];
-            if ok then begin
-              scanner_env#set_last_indent ind;
-              scanner_env#set_last_indent_len ind_len;
-              handle_indent scanner_env ind_len lexbuf;
+          if !in_comment_flag then begin
+            let s = lexeme ulb in
+            [%debug_log "s=%s" (String.escaped s)];
+            Buffer.add_string comment_buf s;
+            scan ulb
+          end
+          else begin
+            let s = lexeme ulb in
+            [%debug_log "s=%s" (String.escaped s)];
+            begin
+              let ind = Buffer.contents ind_buf in
+              let ind_len = scanner_env#indent_length ind in
+              [%debug_log "ind_len=%d" ind_len];
+              let ok =
+                not scanner_env#in_paren &&
+                (
+                 match next_ind_opt with
+                 | None -> true
+                 | Some "" -> true
+                 | Some next_ind ->
+                     let next_ind_len = scanner_env#indent_length next_ind in
+                     [%debug_log "next_ind_len=%d" next_ind_len];
+                     scanner_env#is_valid_indent next_ind_len &&
+                     next_ind_len <= ind_len
+                ) &&
+                (
+                 ind_len = last_ind_len ||
+                 if ind_len < last_ind_len then begin
+                   [%debug_log "%d < %d" ind_len last_ind_len];
+                   let last_tok = (Obj.obj env#last_token) in
+                   let last_rawtok = Token.to_rawtoken last_tok in
+                   last_rawtok != COLON
+                 end
+                 else
+                   true
+                )
+              in
+              [%debug_log "ok=%B" ok];
+              if ok then begin
+                scanner_env#set_last_indent ind;
+                scanner_env#set_last_indent_len ind_len;
+                handle_indent scanner_env ind_len lexbuf;
+              end;
+              Buffer.clear ind_buf
             end;
-            Buffer.clear ind_buf
-          end;
-          if !blank_start_pos != Lexing.dummy_pos && !blank_end_pos != Lexing.dummy_pos then begin
-            let loc0 = loc_of_poss !blank_start_pos !blank_end_pos in
-            [%debug_log "blank: %s" (Astloc.to_string loc0)];
-            env#blank_regions#add loc0;
-            blank_start_pos := Lexing.dummy_pos;
-            blank_end_pos := Lexing.dummy_pos
-          end;
-          Buffer.add_string comment_buf s;
-          comment_start_pos := lexing_pos_start ulb;
-          in_comment_flag := true;
-          scan ulb
+            if !blank_start_pos != Lexing.dummy_pos && !blank_end_pos != Lexing.dummy_pos then begin
+              let loc0 = loc_of_poss !blank_start_pos !blank_end_pos in
+              [%debug_log "blank: %s" (Astloc.to_string loc0)];
+              env#blank_regions#add loc0;
+              blank_start_pos := Lexing.dummy_pos;
+              blank_end_pos := Lexing.dummy_pos
+            end;
+            Buffer.add_string comment_buf s;
+            comment_start_pos := lexing_pos_start ulb;
+            in_comment_flag := true;
+            scan ulb
+          end
       end
       | Chars "\012 \009" -> begin
           let s = lexeme ulb in
           [%debug_log "s=%s" (String.escaped s)];
-          if !in_comment_flag then
+          if !in_comment_flag then begin
             Buffer.add_string comment_buf s
-          else
-            Buffer.add_string ind_buf s;
-
-          let pos = lexing_pos_start ulb in
-          if !blank_start_pos == Lexing.dummy_pos then begin
-            blank_start_pos := pos;
-            blank_end_pos := pos
           end
-          else if !blank_end_pos != Lexing.dummy_pos then
-            blank_end_pos := Astloc.incr_lexpos !blank_end_pos;
+          else begin
+            Buffer.add_string ind_buf s;
+            let pos = lexing_pos_start ulb in
+            if !blank_start_pos == Lexing.dummy_pos then begin
+              blank_start_pos := pos;
+              blank_end_pos := pos
+            end
+            else if !blank_end_pos != Lexing.dummy_pos then
+              blank_end_pos := Astloc.incr_lexpos !blank_end_pos;
+          end;
           scan ulb
       end
       | any -> begin
