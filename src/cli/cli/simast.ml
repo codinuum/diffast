@@ -49,6 +49,14 @@ let _ =
   options#set_ignore_non_orig_relabel_flag;
   options#set_ignore_move_of_unordered_flag
 
+let set_weak_flags() =
+  options#set_weak_eq_flag;
+  options#set_strip_empty_flag;
+  options#set_ignore_non_orig_relabel_flag;
+  options#set_ignore_move_of_unordered_flag;
+  options#clear_recover_orig_ast_flag;
+  options#set_sort_unordered_flag
+
 let set_dump_ast_flags() =
   parseonly_flag := true;
   options#set_dump_ast_flag;
@@ -167,6 +175,7 @@ let speclist =
                              "\tsuppress moves of unnamed nodes";
    "-no-binding-trace", Arg.Unit (fun () -> options#set_no_binding_trace_flag),
                         "\t\tdisable binding trace";
+   "-weak", Arg.Unit set_weak_flags, "\t\t\tweaken node equation and node permutation detection";
    "-aggressive", Arg.Unit (fun () -> options#clear_conservative_flag),
                   "\t\t\taggressively find moves";
    "-ignore-moves-of-unordered", Arg.Unit (fun () -> options#set_ignore_move_of_unordered_flag),
