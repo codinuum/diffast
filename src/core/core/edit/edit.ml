@@ -1957,10 +1957,26 @@ let rectify_renames_u
 
   let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)
 
+  let subtree_eq n1 n2 =
+    let b = n1#data#_digest <> None && n1#data#subtree_equals n2#data in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
+  in
+
   let check_tbl1 nd =
+    [%debug_log "%a" nups nd];
     if not (Xset.mem good1 nd) then
       let bid = get_bid nd in
-      if Hashtbl.mem rename_tbl1 bid then begin
+      [%debug_log "bid=%a" BID.ps bid];
+      if
+        Hashtbl.mem rename_tbl1 bid &&
+        not
+          (
+           is_def nd &&
+           non_rename non_rename_bid_tbl1 bid &&
+           subtree_eq nd (nmapping#find nd)
+          )
+      then begin
         let bid_ = Hashtbl.find rename_tbl1 bid in
         [%debug_log "%a -> %a" BID.ps bid BID.ps bid_];
         let key = bid, bid_ in
@@ -1974,9 +1990,19 @@ let rectify_renames_u
       end
   in
   let check_tbl2 nd =
+    [%debug_log "%a" nups nd];
     if not (Xset.mem good2 nd) then
       let bid = get_bid nd in
-      if Hashtbl.mem rename_tbl2 bid then begin
+      [%debug_log "bid=%a" BID.ps bid];
+      if
+        Hashtbl.mem rename_tbl2 bid &&
+        not
+          (
+           is_def nd &&
+           non_rename non_rename_bid_tbl2 bid &&
+           subtree_eq (nmapping#inv_find nd) nd
+          )
+      then begin
         let _bid = Hashtbl.find rename_tbl2 bid in
         [%debug_log "%a -> %a" BID.ps _bid BID.ps bid];
         let key = _bid, bid in
