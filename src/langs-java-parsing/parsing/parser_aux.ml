@@ -162,6 +162,7 @@ class env = object (self)
 
   val mutable rely_on_naming_convention_flag = false
   val mutable partial_name_resolution_flag = false
+  val mutable partial_typename_resolution_flag = false
   val mutable no_implicit_name_resolution_flag = false
 
   val mutable lex_brace_level = 0
@@ -330,6 +331,9 @@ class env = object (self)
 
   method partial_name_resolution_flag = partial_name_resolution_flag
   method _set_partial_name_resolution_flag b = partial_name_resolution_flag <- b
+
+  method partial_typename_resolution_flag = partial_typename_resolution_flag
+  method _set_partial_typename_resolution_flag b = partial_typename_resolution_flag <- b
 
   method no_implicit_name_resolution_flag = no_implicit_name_resolution_flag
   method _set_no_implicit_name_resolution_flag b = no_implicit_name_resolution_flag <- b
@@ -1114,7 +1118,7 @@ class env = object (self)
         | NAambiguous (R_deferred(id, frames, cand)) -> begin
             let _ = cand in
             [%debug_log "id=%s cand=%s" id cand];
-            if self#partial_name_resolution_flag then
+            if self#partial_typename_resolution_flag then
               raise Not_found;
             try
               Stack.iter
@@ -2051,7 +2055,7 @@ module F (Stat : STATE_T) = struct
           Not_found -> false, ""
       in
       [%debug_log "q_tyname=\"%s\"" q_tyname];
-      if not env#partial_name_resolution_flag && q_is_tyname then begin
+      if not env#partial_typename_resolution_flag && q_is_tyname then begin
         set_name_attribute (NAtype (R_resolved q_tyname)) q;
         let na = NAambiguous (env#resolve ~force_defer:true n) in
         [%debug_log "na=%s" (P.name_attribute_to_string na)];

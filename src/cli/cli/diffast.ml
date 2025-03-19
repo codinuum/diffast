@@ -55,7 +55,7 @@ let keyword = ref ""
 (* setters *)
 
 let set_weak_flags() =
-  options#set_partial_name_resolution_flag;
+  options#set_partial_typename_resolution_flag;
   options#set_weak_eq_flag;
   options#set_strip_empty_flag;
   options#set_ignore_non_orig_relabel_flag;

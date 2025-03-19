@@ -186,7 +186,12 @@ class c = object (self)
   method partial_name_resolution_flag = partial_name_resolution_flag
   method set_partial_name_resolution_flag = partial_name_resolution_flag <- true
   method clear_partial_name_resolution_flag = partial_name_resolution_flag <- false
- 
+
+  val mutable partial_typename_resolution_flag = false
+  method partial_typename_resolution_flag = partial_typename_resolution_flag
+  method set_partial_typename_resolution_flag = partial_typename_resolution_flag <- true
+  method clear_partial_typename_resolution_flag = partial_typename_resolution_flag <- false
+
   val mutable no_implicit_name_resolution_flag = false
   method no_implicit_name_resolution_flag = no_implicit_name_resolution_flag
   method set_no_implicit_name_resolution_flag = no_implicit_name_resolution_flag <- true

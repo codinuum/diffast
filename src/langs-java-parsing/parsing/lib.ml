@@ -34,6 +34,7 @@ class parser_c = object (self)
   val mutable keep_going_flag = true
   val mutable rely_on_naming_convention_flag = false
   val mutable partial_name_resolution_flag = false
+  val mutable partial_typename_resolution_flag = false
   val mutable no_implicit_name_resolution_flag = false
 
   val mutable parser_main = fun _ -> Obj.magic ()
@@ -91,6 +92,11 @@ class parser_c = object (self)
     [%debug_log "%B" b];
     partial_name_resolution_flag <- b;
     env#_set_partial_name_resolution_flag b
+
+  method _set_partial_typename_resolution_flag b =
+    [%debug_log "%B" b];
+    partial_typename_resolution_flag <- b;
+    env#_set_partial_typename_resolution_flag b
 
   method _set_no_implicit_name_resolution_flag b =
     [%debug_log "%B" b];

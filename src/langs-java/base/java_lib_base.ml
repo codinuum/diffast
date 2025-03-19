@@ -53,6 +53,7 @@ class tree_builder options =
       _parser#set_java_lang_spec options#java_lang_spec;
       _parser#_set_rely_on_naming_convention_flag options#rely_on_naming_convention_flag;
       _parser#_set_partial_name_resolution_flag options#partial_name_resolution_flag;
+      _parser#_set_partial_typename_resolution_flag options#partial_typename_resolution_flag;
       _parser#_set_no_implicit_name_resolution_flag options#no_implicit_name_resolution_flag
 
   end
