@@ -2459,9 +2459,52 @@ end;
                   add_subtree_match ~mes:"2ND " nd1 nd2
               end
               | _ -> begin
+                  let nds1r = ref nds1 in
+                  let nds2r = ref nds2 in
 
-                  let nds1_, filtered_nds1 = part pruned1 nds1 in
-                  let nds2_, filtered_nds2 = part pruned2 nds2 in
+                  begin
+                    let btbl1 = Hashtbl.create 0 in
+                    let btbl2 = Hashtbl.create 0 in
+                    List.iter
+                      (fun (nds, btbl) ->
+                        List.iter
+                          (fun n ->
+                            try
+                              let bn = Comparison.get_bn n in
+                              if bn#data#is_named then
+                                let bname = bn#data#get_name in
+                                try
+                                  let nl = Hashtbl.find btbl bname in
+                                  Hashtbl.replace btbl bname (n::nl)
+                                with
+                                  Not_found -> Hashtbl.add btbl bname [n]
+                            with
+                              _ -> ()
+                          ) nds
+                      ) [nds1, btbl1; nds2, btbl2];
+                    Hashtbl.iter
+                      (fun bname nl1 ->
+                        [%debug_log "\"%s\" -> [%a]" bname nsps nl1];
+                        try
+                          let nl2 = Hashtbl.find btbl2 bname in
+                          [%debug_log "[%a]" nsps nl2];
+                          match nl1, nl2 with
+                          | [n1], [n2] -> begin
+                              [%debug_log "!!!!!"];
+                              add_subtree_match ~mes:"3RD " n1 n2;
+                              nds1r := List.filter (fun x -> x != n1) !nds1r;
+                              nds2r := List.filter (fun x -> x != n2) !nds2r
+                          end
+                          | _ -> ()
+                        with
+                          _ -> ()
+                      ) btbl1
+                  end;
+
+                  [%debug_log "[%a] <--> [%a]" nsps !nds1r nsps !nds2r];
+
+                  let nds1_, filtered_nds1 = part pruned1 !nds1r in
+                  let nds2_, filtered_nds2 = part pruned2 !nds2r in
                   let n_filtered_nds1 = List.length filtered_nds1 in
                   let n_filtered_nds2 = List.length filtered_nds2 in
                   assert (n_filtered_nds1 = n_filtered_nds2);
@@ -2510,7 +2553,7 @@ end;
                           matched_sibling_ratio2 > matched_sibling_ratio_thresh
                         then begin
                           [%debug_log "!!!!!"];
-                          add_subtree_match ~add_parent_match_only:true ~mes:"3RD " nd1 nd2;
+                          add_subtree_match ~add_parent_match_only:true ~mes:"4TH " nd1 nd2;
                           count := !count + n_filtered_nds1;
                           nds1_, nds2_
                         end
