@@ -1371,9 +1371,9 @@ let is_named = function
 
 let is_named_orig = function
   | FileInput _
-  | Decorator _
   | Name _
   (*| DottedName _*)
+  | Decorator _
   | Primary (Primary.Name _)
     -> true
   | Primary (Primary.Literal (Literal.String s|Literal.CatString s)) when s <> "" -> true

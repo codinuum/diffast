@@ -195,13 +195,14 @@ class visitor bid_gen tree = object (self)
         ) (try get_nl nd#initial_children.(0) with _ -> [])
     end;
 
-    if L.is_primaryname lab then begin
+    if L.is_name lab then begin
       let name = L.get_name lab in
       try
         let binder_nd = stack#lookup name in
         let bid = Binding.get_bid binder_nd#data#binding in
+        let loc_opt = Some (binder_nd#uid, binder_nd#data#src_loc) in
+        nd#data#set_binding (Binding.make_use ~loc_opt bid);
         [%debug_log "    USE: %s (bid=%a) %s" name BID.ps bid nd#to_string];
-        nd#data#set_binding (Binding.make_use bid)
       with
         Not_found -> ()
     end
