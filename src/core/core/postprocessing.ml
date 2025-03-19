@@ -889,6 +889,7 @@ module F (Label : Spec.LABEL_T) = struct
                     [%debug_log "|parent_mem_pair_list|=%d" (List.length !parent_mem_pair_list)];
                     List.iter
                       (fun (pn1, _) ->
+                        [%debug_log "pn1=%a" nups pn1];
                         if pn1 == def1 then
                           raise Found
                       ) !parent_mem_pair_list
@@ -900,7 +901,7 @@ module F (Label : Spec.LABEL_T) = struct
                       then
                         ok1 := true
                 end;
-                begin
+                if !ok1 then begin
                   try
                     let def2 = get_def_node cenv#tree2 n2 in
                     [%debug_log "def2=%a" nps def2];
@@ -910,6 +911,7 @@ module F (Label : Spec.LABEL_T) = struct
                     end;
                     List.iter
                       (fun (_, pn2) ->
+                        [%debug_log "pn2=%a" nups pn2];
                         if pn2 == def2 then
                           raise Found
                       ) !parent_mem_pair_list
@@ -920,6 +922,22 @@ module F (Label : Spec.LABEL_T) = struct
                         n2#data#is_statement || n2#data#is_op
                       then
                         ok2 := true
+                end;
+                if
+                  (not !ok1 || not !ok2) &&
+                  n1#data#is_named_orig &&
+                  n2#data#is_named_orig
+                then begin
+                  if !parent_mem_pair_list = [] then begin
+                    parent_mem_pair_list := try Hashtbl.find mem_tbl pm with _ -> []
+                  end;
+                  match !parent_mem_pair_list with
+                  | [pn1, pn2] -> begin
+                      [%debug_log "pn1=%a pn2=%a" nups pn1 nups pn2];
+                      ok1 := pn1#data#is_named && n1#initial_parent == pn1;
+                      ok2 := pn2#data#is_named && n2#initial_parent == pn2
+                  end
+                  | _ -> ()
                 end;
                 [%debug_log "ok1=%B ok1=%B" !ok1 !ok2];
                 if not !ok1 || not !ok2 then begin

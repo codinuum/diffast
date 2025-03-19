@@ -4229,34 +4229,39 @@ class ['node_t, 'tree_t] c
         end
         else
 
+        let add_map n1 n2 =
+          [%debug_log "%a-%a" nups n1 nups n2];
+          begin
+            try
+              let n1' = nmapping#find n1 in
+              if n1' != n2 then begin
+                if nmapping#remove n1 n1' then
+                  removed_pairs := (n1, n1') :: !removed_pairs
+              end
+            with
+              Not_found -> ()
+          end;
+          begin
+            try
+              let n2' = nmapping#inv_find n2 in
+              if n2' != n1 then begin
+                if nmapping#remove n2' n2 then
+                  removed_pairs := (n2', n2) :: !removed_pairs
+              end
+            with
+              Not_found -> ()
+          end;
+          let _ = nmapping#add_settled ~stable:false (* EXPERIMENTAL *) n1 n2 in
+          if not (List.mem (n1, n2) !added_pairs) then
+            added_pairs := (n1, n2) :: !added_pairs
+        in
+
         let overwrite rt1 rt2 mem_pairs =
           [%debug_log "%a-%a: %d mem pairs" nups rt1 nups rt2 (List.length mem_pairs)];
           incr count;
           List.iter
             (fun (n1, n2) ->
-              begin
-                try
-                  let n1' = nmapping#find n1 in
-                  if n1' != n2 then begin
-                    if nmapping#remove n1 n1' then
-                      removed_pairs := (n1, n1') :: !removed_pairs
-                  end
-                with
-                  Not_found -> ()
-              end;
-              begin
-                try
-                  let n2' = nmapping#inv_find n2 in
-                  if n2' != n1 then begin
-                    if nmapping#remove n2' n2 then
-                      removed_pairs := (n2', n2) :: !removed_pairs
-                  end
-                with
-                  Not_found -> ()
-              end;
-              ignore (nmapping#add_settled ~stable:false (* EXPERIMENTAL *) n1 n2);
-              added_pairs := (n1, n2) :: !added_pairs
-
+              add_map n1 n2
             ) mem_pairs;
 
           nmapping#add_settled_roots rt1 rt2
@@ -4284,6 +4289,24 @@ class ['node_t, 'tree_t] c
           Hashtbl.replace conflicting_pairs_tbl (n1, n2) (ns1, ns2, mps, f)
         in
 
+        let atbl1 = Nodetbl.create 0 in
+        let atbl2 = Nodetbl.create 0 in
+        let mtbl = Nodetbl.create 0 in
+        let atbl_add atbl is_mapped n nl =
+          try
+            let an = Sourcecode.find_nearest_mapped_ancestor_node is_mapped n in
+            Nodetbl.add mtbl n nl;
+            try
+              let nl = Nodetbl.find atbl an in
+              Nodetbl.replace atbl an (n::nl)
+            with
+              Not_found -> Nodetbl.add atbl an [n]
+          with
+            _ -> ()
+        in
+        List.iter (fun (n1, nl1) ->  atbl_add atbl1 nmapping#mem_dom n1 nl1) mapped1;
+        List.iter (fun (n2, nl2) ->  atbl_add atbl2 nmapping#mem_cod n2 nl2) mapped2;
+
         List.iter
           (fun (nd1, nds1) ->
 
@@ -4301,20 +4324,16 @@ class ['node_t, 'tree_t] c
                 if is_settled then
                   () (* overwrite uid1 uid2 (List.combine nds1 nds2) *)
 
-                else
+                else begin
                   let c = ref 0 in
                   let cands = ref [] in
 
                   List.iter2
                     (fun n1 n2 ->
-(*
-  [%debug_log " checking %a-%a" ups u1 ups u2];
- *)
+                      (*[%debug_log " checking %a-%a" ups u1 ups u2];*)
                       try
                         let n1' = nmapping#find n1 in
-(*
-  [%debug_log " found: %a -> %a" ups u1 ups u1'];
- *)
+                        (*[%debug_log " found: %a -> %a" ups u1 ups u1'];*)
                         if n1' == n2 then
                           incr c
                         else
@@ -4325,7 +4344,7 @@ class ['node_t, 'tree_t] c
 
                   match !cands with
                   | [] -> ()
-                  | _ ->
+                  | _ -> begin
                       let match_ratio = (float !c) /. (float sz) in
 
                       [%debug_log "subtree pair %a-%a: %d nodes mapped (ratio=%f)"
@@ -4398,11 +4417,38 @@ class ['node_t, 'tree_t] c
                         end
 
                       end
-
+                  end
+                end
               ) mapped2
 
           ) mapped1;
 
+        Nodetbl.iter
+          (fun an1 nl1 ->
+            [%debug_log "%a -> [%a]" nups an1 nsps nl1];
+            match nl1 with
+            | [n1] -> begin
+                try
+                  let an1' = nmapping#find an1 in
+                  let nl2 = Nodetbl.find atbl2 an1' in
+                  [%debug_log "%a -> %a -> [%a]" nups an1 nups an1' nsps nl2];
+                  match nl2 with
+                  | [n2] -> begin
+                      add_map n1 n2;
+                      try
+                        let mnl1 = Nodetbl.find mtbl n1 in
+                        let mnl2 = Nodetbl.find mtbl n2 in
+                        if List.length mnl1 = List.length mnl2 then
+                          List.iter2 (fun mn1 mn2 -> add_map mn1 mn2) mnl1 mnl2
+                      with
+                        _ -> ()
+                  end
+                  | _ -> ()
+                with
+                  _ -> ()
+            end
+            | _ -> ()
+          ) atbl1;
 
         let to_be_removed = Xset.create 0 in
 
