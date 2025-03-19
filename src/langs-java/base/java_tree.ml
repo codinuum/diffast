@@ -1877,7 +1877,7 @@ class translator options =
         in
         name_to_node mklab name
     end
-    | Some _ when options#partial_name_resolution_flag -> begin
+    (*| Some _ when options#partial_name_resolution_flag -> begin
         let mklab =
           if Ast.is_ambiguous_name name then
             (fun x -> L.Primary.AmbiguousName x)
@@ -1885,8 +1885,26 @@ class translator options =
             (fun x -> L.Primary.Name x)
         in
         name_to_node mklab name
-    end
+    end*)
     | Some q -> begin
+        let mkplab =
+          if Ast.is_ambiguous_name q then
+            fun x -> L.Primary.AmbiguousName x
+          else
+            fun x -> L.Primary.Name x
+        in
+        let mknd ?(children=[]) =
+          name_to_node ~children mkplab
+        in
+        let rec doit n =
+          try
+            let n0, _ = Ast.decompose_name n in
+            mknd ~children:[doit n0] n
+          with
+            _ -> mknd n
+        in
+        doit name
+(*
         if Ast.is_ambiguous_name q then begin
           if
             options#rely_on_naming_convention_flag &&
@@ -1915,6 +1933,7 @@ class translator options =
         end
         else
           name_to_node (fun x -> L.Primary.Name x) name
+*)
     end
 
   method of_primary p =

@@ -55,6 +55,7 @@ let keyword = ref ""
 (* setters *)
 
 let set_weak_flags() =
+  options#set_partial_name_resolution_flag;
   options#set_weak_eq_flag;
   options#set_strip_empty_flag;
   options#set_ignore_non_orig_relabel_flag;
@@ -215,7 +216,7 @@ let speclist =
                                       "\tresolve names partially";
    "-parser:no-implicit-name-resolution",
      Arg.Unit (fun () -> options#set_no_implicit_name_resolution_flag),
-     "\tdisable name resolution";
+     "\tdisable directory-based name resolution";
 
 (* output *)
    "-dump:ast", Arg.Unit set_dump_ast_flags, "\t\tdump AST";

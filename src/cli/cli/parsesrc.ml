@@ -128,6 +128,14 @@ let speclist =
    "-parser:c", Arg.Unit (fun () -> options#designate_parser "c"), "\t\t\tforce to use C parser";
    "-parser:cpp", Arg.Unit (fun () -> options#designate_parser "cpp"), "\t\t\tforce to use C++ parser";
    "-parser:disable", Arg.String options#disable_parser, "PARSER_ID\tdisable parser";
+   "-parser:rely-on-naming-convention", Arg.Unit
+                                        (fun () -> options#set_rely_on_naming_convention_flag),
+                                        "\trely on naming convention";
+   "-parser:partial-name-resolution", Arg.Unit (fun () -> options#set_partial_name_resolution_flag),
+                                      "\tresolve names partially";
+   "-parser:no-implicit-name-resolution",
+     Arg.Unit (fun () -> options#set_no_implicit_name_resolution_flag),
+     "\tdisable directory-based name resolution";
 
 (* output *)
    "-dump:ast", Arg.Unit set_dump_ast_flags, "\tdump AST";

@@ -1106,13 +1106,16 @@ class env = object (self)
             [%debug_log "TYPE(%s)" ln];
             NAtype (R_resolved ln)
         end
-        | NAambiguous (R_resolved s) ->
+        | NAambiguous (R_resolved s) -> begin
             let _ = s in
-            [%debug_log "NAambiguous (R_resolved %s)" s]; raise Not_found
-
+            [%debug_log "NAambiguous (R_resolved %s)" s];
+            raise Not_found
+        end
         | NAambiguous (R_deferred(id, frames, cand)) -> begin
             let _ = cand in
             [%debug_log "id=%s cand=%s" id cand];
+            if self#partial_name_resolution_flag then
+              raise Not_found;
             try
               Stack.iter
                 (fun frame ->
@@ -2047,8 +2050,8 @@ module F (Stat : STATE_T) = struct
         with
           Not_found -> false, ""
       in
-      if q_is_tyname then begin
-        [%debug_log "q_tyname=\"%s\"" q_tyname];
+      [%debug_log "q_tyname=\"%s\"" q_tyname];
+      if not env#partial_name_resolution_flag && q_is_tyname then begin
         set_name_attribute (NAtype (R_resolved q_tyname)) q;
         let na = NAambiguous (env#resolve ~force_defer:true n) in
         [%debug_log "na=%s" (P.name_attribute_to_string na)];
