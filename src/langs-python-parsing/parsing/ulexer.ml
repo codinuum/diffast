@@ -751,6 +751,8 @@ module F (Stat : Aux.STATE_T) = struct
     match %sedlex lexbuf with
     | indent -> begin
         let st, ed = lexing_pos_start lexbuf, lexing_pos_end lexbuf in
+        let _ = st in
+        let _ = ed in
         [%debug_log "[INDENT] \"%s\": region: %d-%d"
           (Xstring.encode (lexeme lexbuf)) st.Lexing.pos_cnum ed.Lexing.pos_cnum];
         (*env#blank_regions#add (loc_of_poss st ed);*)
