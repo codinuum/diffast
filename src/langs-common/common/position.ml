@@ -31,7 +31,7 @@ let[@inline always] lexing_pos_end ulexbuf =
     try
       Astloc.decr_n_lexpos 1 pos_
     with
-      Invalid_argument _ -> lexing_pos_start ulexbuf
+      Invalid_argument _ -> pos_
   in
   pos
 
