@@ -1377,7 +1377,7 @@ let is_named = function
   | ParamDef _ | TypedParamDef _
   | Primary (Primary.Name _ | Primary.AttrRef _)
     -> true
-  | Primary (Primary.Literal (Literal.String s|Literal.CatString s)) when s <> "" -> true
+  (*| Primary (Primary.Literal (Literal.String s|Literal.CatString s)) when s <> "" -> true*)
   | Statement stmt -> Statement.is_named stmt
   | Comment _ -> true
   | _ -> false
@@ -1389,7 +1389,7 @@ let is_named_orig = function
   | Decorator _
   | Primary (Primary.Name _)
     -> true
-  | Primary (Primary.Literal (Literal.String s|Literal.CatString s)) when s <> "" -> true
+  (*| Primary (Primary.Literal (Literal.String s|Literal.CatString s)) when s <> "" -> true*)
   | Statement stmt -> Statement.is_named_orig stmt
   | Comment _ -> true
   | _ -> false
