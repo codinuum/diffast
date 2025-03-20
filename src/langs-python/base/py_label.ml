@@ -455,6 +455,10 @@ module Statement =
       | _ -> raise Not_found
 
     let is_named_orig = function
+      | FuncDef _
+      | AsyncFuncDef _
+      | ClassDef _
+          -> true
       | _ -> false
 
     let anonymize = function
