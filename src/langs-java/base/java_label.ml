@@ -3083,6 +3083,7 @@ let is_collapse_target options lab =
     | FieldDeclarations _
     | InferredFormalParameters
     | ArrayInitializer
+    | SLconstant _
 (*    | CatchParameter _*)
 (*    | CatchClause _*)
 
@@ -4320,6 +4321,7 @@ let has_non_trivial_tid lab =
   try
     match lab with
     | Statement stmt when (hash_of_tid (Statement.get_tid stmt) <> "") -> true
+    | SLconstant _ -> true
     | _ -> false
   with
     Not_found -> false

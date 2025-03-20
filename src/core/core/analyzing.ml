@@ -2328,7 +2328,8 @@ end;
               pre_map_add nd1 nd2;
               if
                 nd1#data#is_boundary ||
-                nd1#data#has_non_trivial_value && nd1#initial_nchildren = 0
+                nd1#data#has_non_trivial_value && nd1#initial_nchildren = 0 ||
+                nd1#data#has_non_trivial_tid && nd1#initial_nchildren > 0
               then begin
                 prune1 nd1;
                 prune2 nd2;
