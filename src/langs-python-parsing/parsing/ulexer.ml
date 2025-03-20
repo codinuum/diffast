@@ -753,7 +753,7 @@ module F (Stat : Aux.STATE_T) = struct
         let st, ed = lexing_pos_start lexbuf, lexing_pos_end lexbuf in
         [%debug_log "[INDENT] \"%s\": region: %d-%d"
           (Xstring.encode (lexeme lexbuf)) st.Lexing.pos_cnum ed.Lexing.pos_cnum];
-        env#blank_regions#add (loc_of_poss st ed);
+        (*env#blank_regions#add (loc_of_poss st ed);*)
         lexeme lexbuf
     end
     | _ -> failwith "Ulexer.indent"

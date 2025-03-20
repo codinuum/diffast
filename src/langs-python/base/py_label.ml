@@ -67,7 +67,7 @@ module Literal =
   struct
     type t =
       | Integer of string
-      |	LongInteger of string
+      | LongInteger of string
       | FloatNumber of string
       | ImagNumber of string
       | String of string
@@ -132,17 +132,17 @@ module Literal =
       | Ast.Lstring pystrs -> begin
           let s =
             String.concat ""
-	      (List.map
-	         (function
-		   | Ast.PSshort(_, s) -> String.sub s 1 ((String.length s) - 2)
-		   | Ast.PSlong(_, s)  -> String.sub s 3 ((String.length s) - 6)
-	         ) pystrs)
+              (List.map
+                 (function
+                   | Ast.PSshort(_, s) -> String.sub s 1 ((String.length s) - 2)
+                   | Ast.PSlong(_, s)  -> String.sub s 3 ((String.length s) - 6)
+                 ) pystrs)
           in
           let s_ =
             if true||(String.length s) > string_len_threshold then
-	      Digest.to_hex (Digest.string s)
+              Digest.to_hex (Digest.string s)
             else
-	      s
+              s
           in
           CatString s_
       end
@@ -217,7 +217,7 @@ module AssignmentOperator =
       | FDivEq -> mkstr 12
 
     let of_aop = function
-	Ast.AaddEq -> AddEq
+        Ast.AaddEq -> AddEq
       | Ast.AsubEq -> SubEq
       | Ast.AmulEq -> MulEq
       | Ast.AdivEq -> DivEq
@@ -233,20 +233,20 @@ module AssignmentOperator =
 
     let to_tag aop =
       let name =
-	match aop with
-	| Eq       -> "Assign"
-	| AddEq    -> "AddAssign"
-	| SubEq    -> "SubtAssign"
-	| MulEq    -> "MultAssign"
-	| DivEq    -> "DivAssign"
-	| ModEq    -> "ModAssign"
-	| AndEq    -> "AndAssign"
-	| OrEq     -> "OrAssign"
-	| XorEq    -> "XorAssign"
-	| ShiftLEq -> "ShiftLAssign"
-	| ShiftREq -> "ShiftRAssign"
-	| PowEq    -> "PowAssign"
-	| FDivEq   -> "FDivAssign"
+        match aop with
+        | Eq       -> "Assign"
+        | AddEq    -> "AddAssign"
+        | SubEq    -> "SubtAssign"
+        | MulEq    -> "MultAssign"
+        | DivEq    -> "DivAssign"
+        | ModEq    -> "ModAssign"
+        | AndEq    -> "AndAssign"
+        | OrEq     -> "OrAssign"
+        | XorEq    -> "XorAssign"
+        | ShiftLEq -> "ShiftLAssign"
+        | ShiftREq -> "ShiftRAssign"
+        | PowEq    -> "PowAssign"
+        | FDivEq   -> "FDivAssign"
       in
       name, []
 
@@ -275,18 +275,18 @@ module UnaryOperator =
       | Not        -> mkstr 3
 
     let of_uop = function
-	Ast.Upositive   -> Positive
+        Ast.Upositive   -> Positive
       | Ast.Unegative   -> Negative
       | Ast.Ucomplement -> Complement
       | Ast.Unot        -> Not
 
     let to_tag uo =
       let name =
-	match uo with
-	| Positive   -> "Positive"
-	| Negative   -> "Negative"
-	| Complement -> "Complement"
-	| Not        -> "Not"
+        match uo with
+        | Positive   -> "Positive"
+        | Negative   -> "Negative"
+        | Complement -> "Complement"
+        | Not        -> "Not"
       in
       name, []
 
@@ -381,30 +381,30 @@ module BinaryOperator =
 
     let to_tag bo =
       let name =
-	match bo with
-	| Mul    -> "Mult"
-	| Div    -> "Div"
-	| FDiv   -> "FDiv"
-	| Mod    -> "Mod"
-	| Add    -> "Add"
-	| Sub    -> "Subt"
-	| ShiftL -> "ShiftL"
-	| ShiftR -> "ShiftR"
-	| Eq     -> "Eq"
-	| Neq    -> "NotEq"
-	| Lt     -> "Le"
-	| Gt     -> "Gt"
-	| Le     -> "Le"
-	| Ge     -> "Ge"
-	| BitAnd -> "BitAnd"
-	| BitOr  -> "BitOr"
-	| BitXor -> "BitXor"
-	| And    -> "And"
-	| Or     -> "Or"
-	| Is     -> "Is"
-	| IsNot  -> "IsNot"
-	| In     -> "InOp"
-	| NotIn  -> "NotIn"
+        match bo with
+        | Mul    -> "Mult"
+        | Div    -> "Div"
+        | FDiv   -> "FDiv"
+        | Mod    -> "Mod"
+        | Add    -> "Add"
+        | Sub    -> "Subt"
+        | ShiftL -> "ShiftL"
+        | ShiftR -> "ShiftR"
+        | Eq     -> "Eq"
+        | Neq    -> "NotEq"
+        | Lt     -> "Le"
+        | Gt     -> "Gt"
+        | Le     -> "Le"
+        | Ge     -> "Ge"
+        | BitAnd -> "BitAnd"
+        | BitOr  -> "BitOr"
+        | BitXor -> "BitXor"
+        | And    -> "And"
+        | Or     -> "Or"
+        | Is     -> "Is"
+        | IsNot  -> "IsNot"
+        | In     -> "InOp"
+        | NotIn  -> "NotIn"
       in
       name, []
 
@@ -414,7 +414,7 @@ module Statement =
   struct
     type t =
       | Simple
-      | If
+      | If of tie_id
       | While
       | For
       | Try
@@ -428,7 +428,7 @@ module Statement =
 
     let to_string = function
       | Simple            -> "Simple"
-      | If                -> "If"
+      | If tid            -> sprintf "If(%s)" (tid_to_string tid)
       | While             -> "While"
       | For               -> "For"
       | Try               -> "Try"
@@ -466,7 +466,7 @@ module Statement =
     let to_short_string ?(ignore_identifiers_flag=false) =
     let combo = combo ~ignore_identifiers_flag in function
       | Simple -> mkstr 0
-      | If     -> mkstr 1
+      | If tid -> combo 1 [tid_to_string tid]
       | While  -> mkstr 2
       | For    -> mkstr 3
       | Try    -> mkstr 4
@@ -480,15 +480,15 @@ module Statement =
 
     let to_tag stmt =
       let name, attrs =
-	match stmt with
-	| Simple        -> "SimpleStmt", []
-	| If            -> "IfStmt", []
-	| While         -> "WhileStmt", []
-	| For           -> "ForStmt", []
-	| Try           -> "TryStmt", []
-	| With          -> "WithStmt", []
-	| FuncDef name  -> "FuncDef", ["name",name]
-	| ClassDef name -> "ClassDef", ["name",name]
+        match stmt with
+        | Simple        -> "SimpleStmt", []
+        | If tid        -> "IfStmt", mktidattr tid
+        | While         -> "WhileStmt", []
+        | For           -> "ForStmt", []
+        | Try           -> "TryStmt", []
+        | With          -> "WithStmt", []
+        | FuncDef name  -> "FuncDef", ["name",name]
+        | ClassDef name -> "ClassDef", ["name",name]
         | Async             -> "Async", []
         | AsyncFuncDef name -> "AsyncFuncDef", ["name",name]
         | ERROR -> "ERROR", []
@@ -568,22 +568,22 @@ module SimpleStatement =
 
     let to_tag sstmt =
       let name, attrs =
-	match sstmt with
-	| Expr       -> "ExprStmt", []
-	| Assign aop -> AssignmentOperator.to_tag aop
-	| Print      -> "PrintStmt", []
-	| Del        -> "DelStmt", []
-	| Pass       -> "PassStmt", []
-	| Break      -> "BreakStmt", []
-	| Continue   -> "ContinueStmt", []
-	| Return     -> "ReturnStmt", []
-	| Raise      -> "RaiseStmt", []
-	| Yield      -> "YieldStmt", []
-	| Import     -> "ImportStmt", []
-	| FromImport -> "FromImportStmt", []
-	| Global     -> "GlobalStmt", []
-	| Exec       -> "ExecStmt", []
-	| Assert     -> "AssertStmt", []
+        match sstmt with
+        | Expr       -> "ExprStmt", []
+        | Assign aop -> AssignmentOperator.to_tag aop
+        | Print      -> "PrintStmt", []
+        | Del        -> "DelStmt", []
+        | Pass       -> "PassStmt", []
+        | Break      -> "BreakStmt", []
+        | Continue   -> "ContinueStmt", []
+        | Return     -> "ReturnStmt", []
+        | Raise      -> "RaiseStmt", []
+        | Yield      -> "YieldStmt", []
+        | Import     -> "ImportStmt", []
+        | FromImport -> "FromImportStmt", []
+        | Global     -> "GlobalStmt", []
+        | Exec       -> "ExecStmt", []
+        | Assert     -> "AssertStmt", []
         | RaiseFrom  -> "RaiseFromStmt", []
         | Nonlocal   -> "NonlocalStmt", []
         | ERROR      -> "ERROR", []
@@ -713,7 +713,7 @@ type t = (* Label *)
   | Statement of Statement.t
   | SimpleStatement of SimpleStatement.t
 
-  | Elif
+  | Elif of tie_id
   | Else
   | Targets
   | Target
@@ -772,7 +772,7 @@ let literal_to_string = function
   | Ast.Lstring pystrs   ->
       "Lstring[" ^
       (Xlist.to_string
-	 (function
+         (function
            | Ast.PSlong(_, s) -> "PSlong:" ^ s
            | Ast.PSshort(_, s) -> "PSshort:" ^ s
          ) ";" pystrs) ^
@@ -935,7 +935,7 @@ and dictorsetmaker_to_string dictorsetmaker =
     | Ast.DSMset es -> Xlist.to_string expr_to_string "," es
 
     | Ast.DSMsetC(e, compfor) ->
-	(expr_to_string e)^" "^(compfor_to_string compfor)
+        (expr_to_string e)^" "^(compfor_to_string compfor)
   in
   "{"^s^"}"
 
@@ -966,9 +966,18 @@ and argument_to_string = function
   | Aargs(_, expr) -> "*"^(expr_to_string expr)
   | Akwargs(_, expr) -> "**"^(expr_to_string expr)
 
+
+let tid_of_expr expr =
+  mktid
+    (Digest.to_hex (Digest.string (expr_to_string expr)))
+    ""
+
 let _of_statement = function
   | Ast.Ssimple _                        -> Statement.Simple
-  | Ast.Sif _                            -> Statement.If
+  | Ast.Sif(e, _, _, _) -> begin
+      let tid = tid_of_expr e in
+      Statement.If tid
+  end
   | Ast.Swhile _                         -> Statement.While
   | Ast.Sfor _                           -> Statement.For
   | Ast.Stry _                           -> Statement.Try
@@ -1100,7 +1109,7 @@ let to_string = function
   | Lambda                -> "Lambda"
   | Test                  -> "Test"
   | Power                 -> "Power"
-  | Elif                  -> "Elif"
+  | Elif tid              -> sprintf "Elif(%s)" (tid_to_string tid)
   | Else                  -> "Else"
   | Targets               -> "Targets"
   | Target                -> "Target"
@@ -1201,12 +1210,12 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | Test   -> mkstr 10
   | Power  -> mkstr 11
 
-  | Elif    -> mkstr 12
-  | Else    -> mkstr 13
-  | Targets -> mkstr 14
-  | Target  -> mkstr 15
-  | Except  -> mkstr 16
-  | Suite   -> mkstr 17
+  | Elif tid -> combo 12 [tid_to_string tid]
+  | Else     -> mkstr 13
+  | Targets  -> mkstr 14
+  | Target   -> mkstr 15
+  | Except   -> mkstr 16
+  | Suite    -> mkstr 17
 
   | NamedSuite n      -> combo 18 [n]
   | Parameters        -> mkstr 19
@@ -1273,7 +1282,7 @@ let to_tag ?(strip=false) l =
     | Lambda                -> "Lambda", []
     | Test                  -> "Test", []
     | Power                 -> "Power", []
-    | Elif                  -> "Elif", []
+    | Elif tid              -> "Elif", mktidattr tid
     | Else                  -> "Else", []
     | Targets               -> "Targets", []
     | Target                -> "Target", []
@@ -1392,6 +1401,9 @@ let relabel_allowed = function (* FIXME: should be tuned! *)
   | Primary _, SimpleStatement _ | SimpleStatement _, Primary _
   | UnaryOperator _, Primary _ | Primary _, UnaryOperator _
   | BinaryOperator _, Primary _ | Primary _, BinaryOperator _
+  | Statement (Statement.If _), Elif _ | Elif _, (Statement Statement.If _)
+  | Statement (Statement.If _), Else | Else, Statement (Statement.If _)
+  | Elif _, Else | Else, Elif _
     -> true
   | l1, l2 -> anonymize2 l1 = anonymize2 l2
 
@@ -1430,7 +1442,7 @@ let is_collapse_target options lab =
       | ParamDef _ | TypedParamDef _
       | Argument | CompArgument | AssignArgument | Star | StarStar
       | LHS | Annotation | RHS
-	-> true
+        -> true
       | _ -> false
   in
 (*  [%debug_log "%s -> %B" (to_string lab) res]; *)
@@ -1658,7 +1670,7 @@ let of_elem_data =
     "NonlocalStmt",       (fun _ -> mksstmt(SimpleStatement.Nonlocal));
 
     "SimpleStmt",         (fun _ -> mkstmt(Statement.Simple));
-    "IfStmt",             (fun _ -> mkstmt(Statement.If));
+    "IfStmt",             (fun a -> mkstmt(Statement.If(find_tid a)));
     "WhileStmt",          (fun _ -> mkstmt(Statement.While));
     "ForStmt",            (fun _ -> mkstmt(Statement.For));
     "TryStmt",            (fun _ -> mkstmt(Statement.Try));
@@ -1702,7 +1714,7 @@ let of_elem_data =
     "Lambda",             (fun _ -> Lambda);
     "Test",               (fun _ -> Test);
     "Power",              (fun _ -> Power);
-    "Elif",               (fun _ -> Elif);
+    "Elif",               (fun a -> Elif(find_tid a));
     "Else",               (fun _ -> Else);
     "Targets",            (fun _ -> Targets);
     "Target",             (fun _ -> Target);

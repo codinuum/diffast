@@ -146,7 +146,7 @@ let rec pr_node ?(fail_on_error=true) ?(level=0) node =
   | L.Statement stmt -> begin
       match stmt with
       | L.Statement.Simple -> pr_a pr_semicolon pr_node_ children; pr_newline()
-      | L.Statement.If -> begin
+      | L.Statement.If _ -> begin
           pr_expr_suite2 "if" 0 1;
           pr_nth_children ~head:pr_newline_indent_ ~sep:pr_newline_indent_ 2;
           pr_nth_children ~head:pr_newline_indent_ 3
@@ -286,7 +286,7 @@ let rec pr_node ?(fail_on_error=true) ?(level=0) node =
   | L.DottedName s          -> pr_string s
   | L.Name n                -> pr_name n
 
-  | L.Elif                  -> pr_expr_suite2 "elif" 0 1
+  | L.Elif _                -> pr_expr_suite2 "elif" 0 1
   | L.Else                  -> pr_expr_suite1 "else" 0
   | L.Finally               -> pr_expr_suite1 "finally" 0
 

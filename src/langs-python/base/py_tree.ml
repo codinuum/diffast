@@ -370,7 +370,8 @@ class translator options comment_tbl =
     nd
 
   method of_elif (loc, expr, suite) =
-    let nd = self#of_expr_suite L.Elif (expr, suite) in
+    let tid = L.tid_of_expr expr in
+    let nd = self#of_expr_suite (L.Elif tid) (expr, suite) in
     self#set_loc nd loc;
     nd
 
