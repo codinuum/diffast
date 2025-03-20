@@ -2656,12 +2656,14 @@ method_invocation:
           else begin
             if
               is_type_name q ||
-              (*Ast.is_simple q &&*)
               not (is_static_member q) &&
               (
-               env#in_static_method ||
-               (env#rely_on_naming_convention_flag && Ast.is_rightmost_id_capitalized q) ||
-               (not env#rely_on_naming_convention_flag && (not env#surrounding_class_has_super))
+               Ast.is_simple q &&
+               (
+                env#in_static_method ||
+                not env#rely_on_naming_convention_flag && not env#surrounding_class_has_super
+               ) ||
+               env#rely_on_naming_convention_flag && Ast.is_rightmost_id_capitalized q
               )
             then begin
               try
