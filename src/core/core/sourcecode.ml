@@ -175,6 +175,20 @@ let get_logical_nth_child nd nth =
     ) nd#initial_children;
   Array.of_list (List.rev !l)
 
+[%%capture_path
+let get_orig_name ndat =
+  [%debug_log "%s" ndat#to_string];
+  let name = try ndat#get_name with _ -> "" in
+  let sname = try ndat#get_stripped_name with _ -> "" in
+  if name <> sname then
+    sname
+  else
+    try
+      ndat#get_orig_name
+    with
+      _ -> name
+]
+
 module Tree (L : Spec.LABEL_T) = struct
 
   let of_elem_data name attrs =
@@ -606,7 +620,11 @@ module Tree (L : Spec.LABEL_T) = struct
               | None, Some o2 -> L.is_compatible ~weak:true (Obj.obj self#_label) (Obj.obj o2)
               | _ -> false)
             ||
-              self#is_compatible_with ~weak:true x)
+              self#is_compatible_with ~weak:true x
+            ||
+              self#is_named_orig && x#is_named_orig &&
+              get_orig_name self = get_orig_name x
+            )
           else
             (fun x ->
               self#orig_lab_opt = x#orig_lab_opt && self#_label = x#_label
