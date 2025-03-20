@@ -1853,11 +1853,16 @@ class translator options =
           (ty_nd :: (List.map self#of_variable_initializer array_initializer))
 
   method of_name loc0 name =
-    let name_to_node ?(children=[]) mkplab n =
-      let unresolved = L.conv_name ~resolve:false n in
+    let name_to_node ?(children=[]) ?(unqualified=false) mkplab n =
+      let unresolved =
+        L.conv_name ~resolve:false ~unqualified n
+      in
       let resolved =
         if options#partial_name_resolution_flag then
-          unresolved
+          if unqualified then
+            L.conv_name ~resolve:false ~unqualified:false n
+          else
+            unresolved
         else
           L.conv_name n
       in

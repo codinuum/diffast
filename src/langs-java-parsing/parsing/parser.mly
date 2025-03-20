@@ -2657,6 +2657,7 @@ method_invocation:
             if
               is_type_name q ||
               (*Ast.is_simple q &&*)
+              not (is_static_member q) &&
               (
                env#in_static_method ||
                (env#rely_on_naming_convention_flag && Ast.is_rightmost_id_capitalized q) ||

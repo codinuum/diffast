@@ -1827,6 +1827,35 @@ module F (Stat : STATE_T) = struct
     [%debug_log "%s --> %B" (P.name_to_simple_string n) b];
     b
 
+  let is_static_member n =
+    let ss = P.name_to_simple_string n in
+    [%debug_log "\"%s\"" ss];
+    let afilt = function
+      | IAstatic _ -> true
+      | _ -> false
+    in
+    let b =
+      if is_qualified n then
+        try
+          let _ = env#lookup_qname ~afilt ss in
+          true
+        with
+          Not_found -> false
+      else
+        try
+          let attrs = env#lookup_identifier ss in
+          let rec iter = function
+            | [] -> false
+            | IAstatic _::_ -> true
+            | _ -> false
+          in
+          iter attrs
+        with
+          Not_found -> false
+    in
+    [%debug_log "%s --> %B" (P.name_to_string n) b];
+    b
+
   let is_expr_name n =
     let ss = P.name_to_simple_string n in
     [%debug_log "\"%s\"" ss];

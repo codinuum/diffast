@@ -160,9 +160,18 @@ let vdids_to_string = Xlist.to_string vdid_to_string ";"
 (*!20240205!*)let vdid_to_name (n, _) = n
 let vdids_to_name = Xlist.to_string vdid_to_name ";"
 
-let rec conv_name ?(resolve=true) n =
+let rec conv_name ?(resolve=true) ?(unqualified=false) n =
   match n.Ast.n_desc with
   | Ast.Nsimple(attr, ident) -> begin
+      if resolve then
+        try
+          Ast.get_resolved_name !attr
+        with
+          Not_found -> ident
+      else
+        ident
+  end
+  | Ast.Nqualified(attr, _, _, ident) when unqualified -> begin
       if resolve then
         try
           Ast.get_resolved_name !attr
