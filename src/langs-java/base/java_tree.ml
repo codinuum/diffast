@@ -1104,9 +1104,9 @@ class translator options =
     nd
 
   method of_parameters mname aloc params =
-    match params with
+    (*match params with
     | [] -> []
-    | _ ->
+    | _ ->*)
         (*let ordinal_tbl_opt = Some (new ordinal_tbl [List.length params]) in*)
         let nd =
           self#mknode (*~ordinal_tbl_opt*)
