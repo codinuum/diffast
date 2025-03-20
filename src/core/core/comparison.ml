@@ -197,8 +197,9 @@ let boundary_key_to_string (bn1_opt, bn2_opt) =
   Printf.sprintf "(%s,%s)" (bn_opt_to_str bn1_opt) (bn_opt_to_str bn2_opt)
 
 [%%capture_path
-class ['node_t] multiple_node_matches (label_to_string : Obj.t -> string) = object
+class ['node_t] multiple_node_matches (label_to_string : Obj.t -> string) = object (self)
   val tbl = (Hashtbl.create 0: (Obj.t, 'node_t list * 'node_t list) Hashtbl.t)
+  val uniq_matches = (Xset.create 0 : ('node_t * 'node_t) Xset.t)
 
   method label_to_string _lab = label_to_string _lab
 
@@ -212,6 +213,15 @@ class ['node_t] multiple_node_matches (label_to_string : Obj.t -> string) = obje
 
   method find _lab =
     Hashtbl.find tbl _lab
+
+  method add_uniq_match n1 n2 =
+    Xset.add uniq_matches (n1, n2);
+    [%debug_log "added %a-%a" nups n1 nups n2]
+
+  method is_uniq_match n1 n2 =
+    let b = Xset.mem uniq_matches (n1, n2) in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
 
   method replace _lab (nds1, nds2) =
     [%debug_log "%s [%a]-[%a]" (label_to_string _lab) nsps nds1 nsps nds2];
@@ -4730,6 +4740,7 @@ class ['node_t, 'tree_t] c
                 check nd1 nd2;
                 ignore (nmapping#add_unsettled nd1 nd2);
                 added_pairs := (nd1, nd2) :: !added_pairs;
+                multiple_node_matches#add_uniq_match nd1 nd2
                 (* multiple_node_matches#remove _lab *)
               end
           end

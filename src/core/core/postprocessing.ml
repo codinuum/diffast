@@ -6927,7 +6927,9 @@ end;
                   (if node_eq nd1 nd2 then 1 else 0),
                   1, !kind, nd1, nd2, [mov]
             in
-            Hashtbl.replace sz_tbl !mid (sz, esz, tsz, k, r1, r2, ml)
+            match ml with
+            | [_] when cenv#multiple_node_matches#is_uniq_match r1 r2 -> ()
+            | _ -> Hashtbl.replace sz_tbl !mid (sz, esz, tsz, k, r1, r2, ml)
         end
         | _ -> assert false
       );
