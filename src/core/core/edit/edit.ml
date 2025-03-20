@@ -1962,6 +1962,12 @@ let rectify_renames_u
     [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
     b
   in
+  let node_eq n1 n2 =
+    let b = n1#data#_digest = None && n2#data#_digest = None && n1#data#eq n2#data in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
+  in
+  let subtree_or_node_eq n1 n2 = subtree_eq n1 n2 || node_eq n1 n2 in
 
   let check_tbl1 nd =
     [%debug_log "%a" nups nd];
@@ -1973,8 +1979,8 @@ let rectify_renames_u
         not
           (
            is_def nd &&
-           non_rename non_rename_bid_tbl1 bid &&
-           subtree_eq nd (nmapping#find nd)
+           (*non_rename non_rename_bid_tbl1 bid &&*)
+           subtree_or_node_eq nd (nmapping#find nd)
           )
       then begin
         let bid_ = Hashtbl.find rename_tbl1 bid in
@@ -1999,8 +2005,8 @@ let rectify_renames_u
         not
           (
            is_def nd &&
-           non_rename non_rename_bid_tbl2 bid &&
-           subtree_eq (nmapping#inv_find nd) nd
+           (*non_rename non_rename_bid_tbl2 bid &&*)
+           subtree_or_node_eq (nmapping#inv_find nd) nd
           )
       then begin
         let _bid = Hashtbl.find rename_tbl2 bid in
