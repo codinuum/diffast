@@ -126,9 +126,9 @@ let top_stat_to_string { t_tap_level=tlv;
   Printf.sprintf "{T:%d}" tlv
 
 let context_to_string = function
-  | C_toplevel tstat -> Printf.sprintf "%s" (top_stat_to_string tstat)
-  | C_class cstat -> Printf.sprintf "C%s" (class_stat_to_string cstat)
-  | C_method mstat -> Printf.sprintf "M%s" (meth_stat_to_string mstat)
+  | C_toplevel tstat -> Printf.sprintf "T:%s" (top_stat_to_string tstat)
+  | C_class cstat -> Printf.sprintf "C:%s" (class_stat_to_string cstat)
+  | C_method mstat -> Printf.sprintf "M:%s" (meth_stat_to_string mstat)
   | C_module -> Printf.sprintf "MOD"
 
 let stack_memq stack x =

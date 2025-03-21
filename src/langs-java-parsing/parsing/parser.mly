@@ -1661,7 +1661,7 @@ constructor_declaration:
     { 
       end_typeparameter_scope ts_opt;
       let cloc, sn, params_loc, params = c in
-      let loc = 
+      let loc =
         match m_opt with
         | None -> begin
             match ts_opt with
@@ -1677,9 +1677,9 @@ constructor_declaration:
 constructor_declarator_head:
 | s=simple_name lp=LPAREN 
     { 
-      register_identifier_as_constructor s; 
-      begin_scope(); 
-      s, lp 
+      register_identifier_as_constructor s;
+      begin_scope ~kind:(FKmethod(s, ref false)) ();
+      s, lp
     }
 ;
 
@@ -1688,15 +1688,15 @@ constructor_declarator:
     { 
       let n, lparen_loc = c in
       let params_loc = Loc.merge lparen_loc rp in
-      get_loc $startpos $endpos, n, params_loc, f 
+      get_loc $startpos $endpos, n, params_loc, f
     }
 ;
 
 constructor_body:
 | LBRACE e_opt=ioption(explicit_constructor_invocation) b=loption(block_statements) RBRACE 
     { 
-      end_scope(); 
-      mkcnb $startpos $endpos e_opt b 
+      end_scope();
+      mkcnb $startpos $endpos e_opt b
     }
 ;
 
@@ -1800,7 +1800,7 @@ annotation_type_member_declarations0:
 
 annotation_type_member_declaration:
 | c=constant_declaration { mkatmd $startpos $endpos (ATMDconstant c) }
-| m_opt=modifiers_opt j=unann_type i=identifier LPAREN RPAREN a=ann_dims0 d=default_value_opt SEMICOLON 
+| m_opt=modifiers_opt j=unann_type i=identifier LPAREN RPAREN a=ann_dims0 d=default_value_opt SEMICOLON
     { 
       let loc = 
         match m_opt with

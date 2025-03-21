@@ -531,6 +531,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
       ed
     in
 
+    let prepend x = queue#prepend x in
+
     let check_contextual_keywords ?(at_stmt=false) t =
       let tok, _, _ = Token.decompose t in
       match tok with
@@ -906,6 +908,26 @@ module F (Stat : Parser_aux.STATE_T) = struct
           end
           | _ -> t
       end
+
+      | BOOLEAN loc | BYTE loc | SHORT loc | INT loc | LONG loc | CHAR loc
+      | FLOAT loc | DOUBLE loc(* | IDENTIFIER(loc, _)*) when begin
+          [%debug_log "@"];
+          env#keep_going_flag &&
+          env#in_class
+      end -> begin
+        let t', tok' = peek_nth 1 in
+        match tok' with
+        | RBRACKET -> begin
+            let _, st', _ = Token.decompose t' in
+            [%debug_log "lack of opening bracket"];
+            Common.warning_loc loc "lack of opening bracket";
+            let t'' = Token.create LBRACKET st' st' in
+            prepend t'';
+            t
+        end
+        | _ -> t
+      end
+
       | IDENTIFIER(loc, s) when env#keep_going_flag -> begin
           match Obj.obj env#last_rawtoken with
           | LBRACE | SEMICOLON -> begin
