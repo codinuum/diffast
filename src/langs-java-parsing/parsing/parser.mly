@@ -545,6 +545,7 @@ compilation_unit:
 %inline
 ordinary_compilation_unit:
 | { mkcu None [] [] }
+| p=package_declaration { mkcu (Some p) [] [] }
 | dl=declarations
     { 
       let il, tl = partition_declarations dl in
