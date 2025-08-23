@@ -38,13 +38,15 @@ let delta_file_name = "delta"
 let delta_ns = "http://codinuum.com/diffts/delta/"
 let delta_prefix = "xdd"
 
-let mktag n = sprintf "%s%s" delta_ns n
+let mktag n = sprintf "%s:%s" delta_prefix n
+let mktag_ n = sprintf "%s%s" delta_ns n
 
 let bundle_tag = mktag "bundle"
 
 let loc_attr = mktag "location"
 
 let root_tag = mktag "delta"
+let root_tag_ = mktag_ "delta"
 
 let old_tag  = mktag "old"
 let new_tag  = mktag "new"
@@ -58,11 +60,25 @@ let achg_tag = mktag "change_attr"
 let adel_tag = mktag "delete_attr"
 let ains_tag = mktag "insert_attr"
 
+let del_tag_  = mktag_ "delete"
+let ins_tag_  = mktag_ "insert"
+let mov_tag_  = mktag_ "move"
+let chg_tag_  = mktag_ "change"
+let achg_tag_ = mktag_ "change_attr"
+let adel_tag_ = mktag_ "delete_attr"
+let ains_tag_ = mktag_ "insert_attr"
+
 let add_file_tag    = mktag "add_file"
 let remove_file_tag = mktag "remove_file"
 let rename_file_tag = mktag "rename_file"
 let move_file_tag   = mktag "move_file"
 let change_file_tag = mktag "change_file"
+
+let add_file_tag_    = mktag_ "add_file"
+let remove_file_tag_ = mktag_ "remove_file"
+let rename_file_tag_ = mktag_ "rename_file"
+let move_file_tag_   = mktag_ "move_file"
+let change_file_tag_ = mktag_ "change_file"
 
 let digest1_attr   = mktag "digest"
 let digest2_attr   = mktag "digest_"
@@ -107,7 +123,52 @@ let shift_attr     = mktag "shift"
 let shift1_attr    = mktag "shift"
 let shift2_attr    = mktag "shift_"
 
+let digest1_attr_   = mktag_ "digest"
+let digest2_attr_   = mktag_ "digest_"
+(*let mid_attr_       = mktag_ "mid"*)
+let path_attr_      = mktag_ "path"
+let path_from_attr_ = mktag_ "path_from"
+let path_to_attr_   = mktag_ "path_to"
+let path1_attr_     = mktag_ "path"
+let path1from_attr_ = mktag_ "path_from"
+let path1to_attr_   = mktag_ "path_to"
+let path2_attr_     = mktag_ "path_"
+let path2from_attr_ = mktag_ "path_from_"
+let path2to_attr_   = mktag_ "path_to_"
+let mid_attr_       = mktag_ "mid"
+let bdry_attr_      = mktag_ "boundary"
+let bdry_from_attr_ = mktag_ "boundary_from"
+let bdry_to_attr_   = mktag_ "boundary_to"
+let bdry1_attr_     = mktag_ "boundary"
+let bdry1from_attr_ = mktag_ "boundary_from"
+let bdry1to_attr_   = mktag_ "boundary_to"
+let bdry2_attr_     = mktag_ "boundary_"
+let bdry2from_attr_ = mktag_ "boundary_from_"
+let bdry2to_attr_   = mktag_ "boundary_to_"
+let attr_attr_      = mktag_ "attr"
+let ov_attr_        = mktag_ "old_value"
+let nv_attr_        = mktag_ "new_value"
+let v_attr_         = mktag_ "value"
+let rvs_attr_       = mktag_ "reversible"
+let normd_attr_     = mktag_ "normalized"
+let lang_attr_      = mktag_ "lang"
+let stid_attr_      = mktag_ "stid"
+let adj_attr_       = mktag_ "adj"
+let adj1_attr_      = mktag_ "adj"
+let adj2_attr_      = mktag_ "adj_"
+let depth_attr_     = mktag_ "depth"
+let depth1_attr_    = mktag_ "depth"
+let depth2_attr_    = mktag_ "depth_"
+let parent_attr_    = mktag_ "parent"
+let parent1_attr_   = mktag_ "parent"
+let parent2_attr_   = mktag_ "parent_"
+let shift_attr_     = mktag_ "shift"
+let shift1_attr_    = mktag_ "shift"
+let shift2_attr_    = mktag_ "shift_"
+
 let potential_dup_attr = mktag "potential_dup"
+
+let potential_dup_attr_ = mktag_ "potential_dup"
 
 (* for partial application of move *)
 type move_control = Mfull | MdeleteOnly | MinsertOnly
@@ -124,13 +185,14 @@ let move_control_of_string = function
   | _ -> Mfull
 
 let move_control_attr = mktag "mctl"
+let move_control_attr_ = mktag_ "mctl"
 
 let is_file_edit_tag n =
-  n = add_file_tag ||
-  n = remove_file_tag ||
-  n = rename_file_tag ||
-  n = move_file_tag ||
-  n = change_file_tag
+  n = add_file_tag_ ||
+  n = remove_file_tag_ ||
+  n = rename_file_tag_ ||
+  n = move_file_tag_ ||
+  n = change_file_tag_
 
 
 type subtree_id = int
@@ -396,7 +458,7 @@ let setup_ns_mgr ns_mgr =
 let parse_file (*options*)_ ns_mgr file =
   try
     let root = XML.parse_file ~ns:ns_mgr file in
-    if root#tag = root_tag then begin
+    if root#tag = root_tag_ then begin
       let reversible =
         try
           bool_of_string (root#get_attr rvs_attr)
@@ -413,8 +475,8 @@ let parse_file (*options*)_ ns_mgr file =
       root, reversible, normalized_delta
     end
     else begin
-      [%debug_log "invalid element: root#tag=%s" root#tag];
-      invalid_delta root "invalid element"
+      [%debug_log "invalid root#tag: %s" root#tag];
+      invalid_delta root ("invalid root#tag: " ^ root#tag)
     end
   with
   | Failure s -> raise (Failure s)
@@ -456,7 +518,7 @@ let parse_bundle_file (*options*)_ ns_mgr file =
 let interpret_dir_delta options dnode =
   let verbose_msg fmt = Xprint.verbose options#verbose_flag fmt in
 
-  if dnode#tag = root_tag then begin
+  if dnode#tag = root_tag_ then begin
 
     let get_path ?(path_attr=path_attr) x =
       try

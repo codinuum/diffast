@@ -25,7 +25,7 @@ open Delta_interpret
 
 let get_mctl_attr xnode =
   try
-    move_control_of_string (xnode#get_attr move_control_attr)
+    move_control_of_string (xnode#get_attr move_control_attr_)
   with
     XML.Attr_not_found _ -> Mfull
 
@@ -37,7 +37,7 @@ let get_attr_boundary xnode a =
 
 let get_dup_attr xnode =
   try
-    bool_of_string (xnode#get_attr potential_dup_attr)
+    bool_of_string (xnode#get_attr potential_dup_attr_)
   with
     XML.Attr_not_found _ -> false
 
@@ -154,65 +154,65 @@ module IrreversibleFormat = struct
     and scan_edit xnode =
       let tag = xnode#tag in
 
-      if tag = del_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let paths = get_attr_boundary xnode bdry_attr in
+      if tag = del_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let paths = get_attr_boundary xnode bdry_attr_ in
         Ddelete(path, paths)
 
-      else if tag = ins_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let paths = get_attr_boundary xnode bdry_attr in
-        let stid = stid_of_str (xnode#get_attr stid_attr) in
+      else if tag = ins_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let paths = get_attr_boundary xnode bdry_attr_ in
+        let stid = stid_of_str (xnode#get_attr stid_attr_) in
         let tree = get_tree xnode in
-        let key_opt = _get_attr_opt key_of_string xnode parent_attr in
-        let adj_opt = get_iattr_opt xnode adj_attr in
-        let depth_opt = get_iattr_opt xnode depth_attr in
-        let shift_opt = get_iattr_opt xnode shift_attr in
+        let key_opt = _get_attr_opt key_of_string xnode parent_attr_ in
+        let adj_opt = get_iattr_opt xnode adj_attr_ in
+        let depth_opt = get_iattr_opt xnode depth_attr_ in
+        let shift_opt = get_iattr_opt xnode shift_attr_ in
         let dup = get_dup_attr xnode in
         Dinsert(stid, tree, path, paths, key_opt, adj_opt, depth_opt, shift_opt, dup)
 
-      else if tag = mov_tag then
-        let mid = MID.of_string (xnode#get_attr mid_attr) in
-        let path_from = path_of_string (xnode#get_attr path_from_attr) in
-        let paths_from = get_attr_boundary xnode bdry_from_attr in
-        let path_to = path_of_string (xnode#get_attr path_to_attr) in
-        let paths_to = get_attr_boundary xnode bdry_to_attr in
-        let key_opt = _get_attr_opt key_of_string xnode parent_attr in
-        let adj_opt = get_iattr_opt xnode adj_attr in
-        let depth_opt = get_iattr_opt xnode depth_attr in
-        let shift_opt = get_iattr_opt xnode shift_attr in
+      else if tag = mov_tag_ then
+        let mid = MID.of_string (xnode#get_attr mid_attr_) in
+        let path_from = path_of_string (xnode#get_attr path_from_attr_) in
+        let paths_from = get_attr_boundary xnode bdry_from_attr_ in
+        let path_to = path_of_string (xnode#get_attr path_to_attr_) in
+        let paths_to = get_attr_boundary xnode bdry_to_attr_ in
+        let key_opt = _get_attr_opt key_of_string xnode parent_attr_ in
+        let adj_opt = get_iattr_opt xnode adj_attr_ in
+        let depth_opt = get_iattr_opt xnode depth_attr_ in
+        let shift_opt = get_iattr_opt xnode shift_attr_ in
         let mctl = get_mctl_attr xnode in
         let dup = get_dup_attr xnode in
         Dmove(mctl, mid,
               path_from, paths_from, path_to, paths_to,
               key_opt, adj_opt, depth_opt, shift_opt, dup)
 
-      else if tag = chg_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let paths = get_attr_boundary xnode bdry_attr in
+      else if tag = chg_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let paths = get_attr_boundary xnode bdry_attr_ in
         let children = xnode#children in
         let mctl = get_mctl_attr xnode in
         match children with
         | [x] -> Dchange(mctl, path, paths, tree_factory#from_xnode x)
         | _ -> invalid_delta xnode "invalid change element"
 
-      else if tag = achg_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let attr = xnode#get_attr attr_attr in
-        let nv = xnode#get_attr nv_attr in
+      else if tag = achg_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
+        let nv = xnode#get_attr nv_attr_ in
         let mctl = get_mctl_attr xnode in
         Dchange_attr(mctl, path, attr, nv)
 
-      else if tag = adel_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let attr = xnode#get_attr attr_attr in
+      else if tag = adel_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
         let mctl = get_mctl_attr xnode in
         Ddelete_attr(mctl, path, attr)
 
-      else if tag = ains_tag then
-        let path = path_of_string (xnode#get_attr path_attr) in
-        let attr = xnode#get_attr attr_attr in
-        let v = xnode#get_attr v_attr in
+      else if tag = ains_tag_ then
+        let path = path_of_string (xnode#get_attr path_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
+        let v = xnode#get_attr v_attr_ in
         let mctl = get_mctl_attr xnode in
         Dinsert_attr(mctl, path, attr, v)
 
@@ -226,7 +226,8 @@ module IrreversibleFormat = struct
     in
 
     let scan_delta xnode =
-      if xnode#tag <> root_tag then invalid_delta xnode "invalid root element";
+      if xnode#tag <> root_tag_ then
+        invalid_delta xnode ("invalid root tag: " ^ xnode#tag);
       let edits = scan_edits xnode#children in
       edits
     in
@@ -493,7 +494,7 @@ module IrreversibleFormat = struct
     with
     | Invalid_delta err ->
         Xprint.error
-          "[%s %dL,%dC] invalid delta: %s" err.file err.line err.col err.reason
+          "[%s:%dL,%dC] invalid delta: %s" err.file err.line err.col err.reason
 ]
 
 end (* of module Delta.IrreversibleFormat *)
@@ -684,71 +685,71 @@ module ReversibleFormat = struct
 
     and scan_edit xnode =
       let tag = xnode#tag in
-      if tag = del_tag then
-        let stid = stid_of_str (xnode#get_attr stid_attr) in
+      if tag = del_tag_ then
+        let stid = stid_of_str (xnode#get_attr stid_attr_) in
         let tree = get_tree xnode in
-        let path = path_of_string (xnode#get_attr path1_attr) in
-        let paths = get_attr_boundary xnode bdry1_attr in
-        let path' = path_of_string (xnode#get_attr path2_attr) in
+        let path = path_of_string (xnode#get_attr path1_attr_) in
+        let paths = get_attr_boundary xnode bdry1_attr_ in
+        let path' = path_of_string (xnode#get_attr path2_attr_) in
         let paths' =
-          match get_attr_boundary xnode bdry2_attr with
+          match get_attr_boundary xnode bdry2_attr_ with
           | [] -> paths
           | ps' -> ps'
         in
-        let key_opt' = _get_attr_opt key_of_string xnode parent_attr in
-        let adj_opt' = get_iattr_opt xnode adj_attr in
-        let depth_opt' = get_iattr_opt xnode depth_attr in
-        let shift_opt' = get_iattr_opt xnode shift_attr in
+        let key_opt' = _get_attr_opt key_of_string xnode parent_attr_ in
+        let adj_opt' = get_iattr_opt xnode adj_attr_ in
+        let depth_opt' = get_iattr_opt xnode depth_attr_ in
+        let shift_opt' = get_iattr_opt xnode shift_attr_ in
         Ddelete(stid, tree, path, paths,
                 path', paths', key_opt', adj_opt', depth_opt', shift_opt')
 
-      else if tag = ins_tag then
-        let stid = stid_of_str (xnode#get_attr stid_attr) in
+      else if tag = ins_tag_ then
+        let stid = stid_of_str (xnode#get_attr stid_attr_) in
         let tree = get_tree xnode in
-        let path = path_of_string (xnode#get_attr path1_attr) in
-        let paths = get_attr_boundary xnode bdry1_attr in
-        let key_opt = _get_attr_opt key_of_string xnode parent_attr in
-        let adj_opt = get_iattr_opt xnode adj_attr in
-        let depth_opt = get_iattr_opt xnode depth_attr in
-        let shift_opt = get_iattr_opt xnode shift_attr in
-        let path' = path_of_string (xnode#get_attr path2_attr) in
+        let path = path_of_string (xnode#get_attr path1_attr_) in
+        let paths = get_attr_boundary xnode bdry1_attr_ in
+        let key_opt = _get_attr_opt key_of_string xnode parent_attr_ in
+        let adj_opt = get_iattr_opt xnode adj_attr_ in
+        let depth_opt = get_iattr_opt xnode depth_attr_ in
+        let shift_opt = get_iattr_opt xnode shift_attr_ in
+        let path' = path_of_string (xnode#get_attr path2_attr_) in
         let paths' =
-          match get_attr_boundary xnode bdry2_attr with
+          match get_attr_boundary xnode bdry2_attr_ with
           | [] -> paths
           | ps' -> ps'
         in
         Dinsert(stid, tree, path, paths, key_opt, adj_opt, depth_opt, shift_opt,
                 path', paths')
 
-      else if tag = mov_tag then
-        let mid = MID.of_string (xnode#get_attr mid_attr) in
-        let path1from = path_of_string (xnode#get_attr path1from_attr) in
-        let paths1from = get_attr_boundary xnode bdry1from_attr in
-        let path1to = path_of_string (xnode#get_attr path1to_attr) in
-        let paths1to = get_attr_boundary xnode bdry1to_attr in
-        let key_opt1 = _get_attr_opt key_of_string xnode parent1_attr in
-        let adj_opt1 = get_iattr_opt xnode adj1_attr in
-        let depth_opt1 = get_iattr_opt xnode depth1_attr in
-        let shift_opt1 = get_iattr_opt xnode shift1_attr in
-        let path2from = path_of_string (xnode#get_attr path2from_attr) in
-        let paths2from = get_attr_boundary xnode bdry2from_attr in
-        let path2to = path_of_string (xnode#get_attr path2to_attr) in
-        let paths2to = get_attr_boundary xnode bdry2to_attr in
-        let key_opt2 = _get_attr_opt key_of_string xnode parent2_attr in
-        let adj_opt2 = get_iattr_opt xnode adj2_attr in
-        let depth_opt2 = get_iattr_opt xnode depth2_attr in
-        let shift_opt2 = get_iattr_opt xnode shift2_attr in
+      else if tag = mov_tag_ then
+        let mid = MID.of_string (xnode#get_attr mid_attr_) in
+        let path1from = path_of_string (xnode#get_attr path1from_attr_) in
+        let paths1from = get_attr_boundary xnode bdry1from_attr_ in
+        let path1to = path_of_string (xnode#get_attr path1to_attr_) in
+        let paths1to = get_attr_boundary xnode bdry1to_attr_ in
+        let key_opt1 = _get_attr_opt key_of_string xnode parent1_attr_ in
+        let adj_opt1 = get_iattr_opt xnode adj1_attr_ in
+        let depth_opt1 = get_iattr_opt xnode depth1_attr_ in
+        let shift_opt1 = get_iattr_opt xnode shift1_attr_ in
+        let path2from = path_of_string (xnode#get_attr path2from_attr_) in
+        let paths2from = get_attr_boundary xnode bdry2from_attr_ in
+        let path2to = path_of_string (xnode#get_attr path2to_attr_) in
+        let paths2to = get_attr_boundary xnode bdry2to_attr_ in
+        let key_opt2 = _get_attr_opt key_of_string xnode parent2_attr_ in
+        let adj_opt2 = get_iattr_opt xnode adj2_attr_ in
+        let depth_opt2 = get_iattr_opt xnode depth2_attr_ in
+        let shift_opt2 = get_iattr_opt xnode shift2_attr_ in
         Dmove(mid,
               path1from, paths1from, path1to, paths1to,
               key_opt1, adj_opt1, depth_opt1, shift_opt1,
               path2from, paths2from, path2to, paths2to,
               key_opt2, adj_opt2, depth_opt2, shift_opt2)
 
-      else if tag = chg_tag then
-        let path1 = path_of_string (xnode#get_attr path1_attr) in
-        let paths1 = get_attr_boundary xnode bdry1_attr in
-        let path2 = path_of_string (xnode#get_attr path2_attr) in
-        let paths2 = get_attr_boundary xnode bdry2_attr in
+      else if tag = chg_tag_ then
+        let path1 = path_of_string (xnode#get_attr path1_attr_) in
+        let paths1 = get_attr_boundary xnode bdry1_attr_ in
+        let path2 = path_of_string (xnode#get_attr path2_attr_) in
+        let paths2 = get_attr_boundary xnode bdry2_attr_ in
         let children = xnode#children in
         match children with
         | [o; n] ->
@@ -757,26 +758,26 @@ module ReversibleFormat = struct
         | _ ->
             invalid_delta xnode "invalid change element"
 
-      else if tag = achg_tag then
-        let path1 = path_of_string (xnode#get_attr path1_attr) in
-        let path2 = path_of_string (xnode#get_attr path2_attr) in
-        let attr = xnode#get_attr attr_attr in
-        let ov = xnode#get_attr ov_attr in
-        let nv = xnode#get_attr nv_attr in
+      else if tag = achg_tag_ then
+        let path1 = path_of_string (xnode#get_attr path1_attr_) in
+        let path2 = path_of_string (xnode#get_attr path2_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
+        let ov = xnode#get_attr ov_attr_ in
+        let nv = xnode#get_attr nv_attr_ in
         Dchange_attr(path1, path2, attr, ov, nv)
 
-      else if tag = adel_tag then
-        let path1 = path_of_string (xnode#get_attr path1_attr) in
-        let path2 = path_of_string (xnode#get_attr path2_attr) in
-        let attr = xnode#get_attr attr_attr in
-        let v = xnode#get_attr v_attr in
+      else if tag = adel_tag_ then
+        let path1 = path_of_string (xnode#get_attr path1_attr_) in
+        let path2 = path_of_string (xnode#get_attr path2_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
+        let v = xnode#get_attr v_attr_ in
         Ddelete_attr(path1, path2, attr, v)
 
-      else if tag = ains_tag then
-        let path1 = path_of_string (xnode#get_attr path1_attr) in
-        let path2 = path_of_string (xnode#get_attr path2_attr) in
-        let attr = xnode#get_attr attr_attr in
-        let v = xnode#get_attr v_attr in
+      else if tag = ains_tag_ then
+        let path1 = path_of_string (xnode#get_attr path1_attr_) in
+        let path2 = path_of_string (xnode#get_attr path2_attr_) in
+        let attr = xnode#get_attr attr_attr_ in
+        let v = xnode#get_attr v_attr_ in
         Dinsert_attr(path1, path2, attr, v)
 
       else if is_file_edit_tag tag then raise Skip
@@ -789,7 +790,8 @@ module ReversibleFormat = struct
     in
 
     let scan_delta xnode =
-      if xnode#tag <> root_tag then invalid_delta xnode "invalid root element";
+      if xnode#tag <> root_tag_ then
+        invalid_delta xnode ("invalid root tag: " ^ xnode#tag);
       let edits = scan_edits xnode#children in
       edits
     in

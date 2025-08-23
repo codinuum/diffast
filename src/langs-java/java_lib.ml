@@ -28,6 +28,7 @@ module Analyzing = Diffast_core.Analyzing.F (Label)
 module Change    = Java_change.F (Label)
 module PP        = Diffast_core.Postprocessing.F (Label)
 module DF        = Diffast_core.Delta_format.Format
+module DBase     = Diffast_core.Delta_base
 
 let sprintf = Printf.sprintf
 

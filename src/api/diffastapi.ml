@@ -838,7 +838,12 @@ class c options = object (self)
     let ext = file#get_extension in
     let lang = Lang.search options ext in
     let tree_patcher = lang#make_tree_patcher options in
-    tree_patcher#patch ~fail_on_error ~reverse file delta ch
+    try
+      tree_patcher#patch ~fail_on_error ~reverse file delta ch
+    with
+      Delta_base.Invalid_delta err ->
+        Xprint.error
+          "[%s %dL,%dC] invalid delta: %s" err.file err.line err.col err.reason
 
   method patch_dir ?(fail_on_error=true) (dir : Storage.file) bundle =
     let _ = dir in

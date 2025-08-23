@@ -90,28 +90,6 @@ let get_rel_path hpath path =
       raise exn
 ]
 
-(*
-let get_attr_boundary xnode a =
-  try
-    boundary_of_string (xnode#get_attr a)
-  with
-    Attribute_not_found _ -> []
-
-let _get_attr_opt conv xnode a =
-  try
-    Some (conv (xnode#get_attr a))
-  with
-    Attribute_not_found _ -> None
-
-let get_attr_opt xnode a = _get_attr_opt Fun.id xnode a
-
-let get_iattr_opt = _get_attr_opt int_of_string
-
-let get_key_attr_opt xnode a = _get_attr_opt key_of_string xnode a
-
-let is_edit xnode = is_edit_tag xnode#tag
-*)
-
 let str_opt_to_string = function
   | Some s -> s
   | None -> ""
