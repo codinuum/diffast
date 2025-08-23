@@ -50,10 +50,13 @@ let subst rules =
   Str.global_substitute pat conv
 
 
-let encode_string = subst rules
+let encode_string s =
+  let x = String.escaped s in
+  subst rules x
 
-let decode_string = subst inv_rules
-
+let decode_string s =
+  let x = subst inv_rules s in
+  Scanf.unescaped x
 
 
 (*let unsafe_chars = "'\t\n"^Netencoding.Html.unsafe_chars_html4*)
