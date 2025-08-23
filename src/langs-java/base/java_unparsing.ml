@@ -1132,9 +1132,12 @@ and pr_primary ?(fail_on_error=true) ?(prec=0) p children =
   match p with
   | L.Primary.Name n when nchildren = 0 -> pr_name (norm_fqn n)
 
-  | L.Primary.Name n -> pr_nth_child ~prec:(get_prec_of_sym ".") 0; pr_dot(); pr_name (norm_fqn n)(* !!! *)
+  | L.Primary.Name n ->
+      pr_nth_child ~prec:(get_prec_of_sym ".") 0;
+      pr_dot();
+      pr_name (get_last_id n)(*(norm_fqn n)*)(* !!! *)
 
-  | L.Primary.This   -> pr_string "this"
+  | L.Primary.This -> pr_string "this"
 
   | L.Primary.Literal lit -> begin
       let s =
@@ -1283,7 +1286,10 @@ and pr_primary ?(fail_on_error=true) ?(prec=0) p children =
 
   | L.Primary.AmbiguousName n when nchildren = 0 -> (*pr_name (norm_fqn n)*)pr_id (get_last_id n)
 
-  | L.Primary.AmbiguousName n -> pr_nth_child ~prec:(get_prec_of_sym ".") 0; pr_dot(); pr_id (get_last_id n)(* !!! *)
+  | L.Primary.AmbiguousName n ->
+      pr_nth_child ~prec:(get_prec_of_sym ".") 0;
+      pr_dot();
+      pr_id (get_last_id n)(* !!! *)
 
 and pr_expression ?(fail_on_error=true) ?(prec=0) e children =
   let prec' = get_prec_of_expression e in
