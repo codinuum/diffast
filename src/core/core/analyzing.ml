@@ -963,10 +963,10 @@ module F (Label : Spec.LABEL_T) = struct
     let dmapfact  = Filename.concat cache_path Stat.map_file_name^".nt" in
     let dsrc      = Filename.concat cache_path Stat.sources_file_name in
     let dparser   = Filename.concat cache_path Stat.parser_file_name in
-    let dchange   = Filename.concat cache_path Stat.changes_file_name in
+    (*let dchange   = Filename.concat cache_path Stat.changes_file_name in*)
     let ddot1     = Filename.concat cache_path Stat.dot_file_name1 in
     let ddot2     = Filename.concat cache_path Stat.dot_file_name2 in
-    let delta     = Filename.concat cache_path Delta_base.delta_file_name^".xml" in
+    (*let delta     = Filename.concat cache_path Delta_base.delta_file_name^".xml" in*)
 
     let is_modified = not edits#is_empty in
 
@@ -1078,7 +1078,7 @@ module F (Label : Spec.LABEL_T) = struct
       if options#verbose_flag then
         edits#show_diff_stat ~short:true tree1 tree2 nmapping;
 
-      let edits_copy = edits#copy in
+      (*let edits_copy = edits#copy in
       edits_copy#ungroup tree1 tree2;
       edits_copy#cleanup_ghost tree1 tree2;
 
@@ -1086,7 +1086,7 @@ module F (Label : Spec.LABEL_T) = struct
 
       if options#dump_delta_flag then begin
         edits#dump_delta tree1 tree2 nmapping edits_copy delta
-      end;
+      end;*)
 
       (*if options#dump_ccs_flag then begin (* dump common code structure *)
 
