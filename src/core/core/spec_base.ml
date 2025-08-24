@@ -155,6 +155,7 @@ class type [ 'node ] tree_t_shared = object ('self)
   method in_subtree_mutually       : 'node -> 'node -> bool
   method initial_subtree_to_rep    : 'node -> string
   method initial_to_rep            : string
+  method initial_subtree_digest    : 'node -> Xhash.t
   method set_source_path           : string -> unit
   method source_path               : string
   method set_ignored_regions       : (int * int) list -> unit

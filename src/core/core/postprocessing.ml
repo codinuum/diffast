@@ -2094,16 +2094,15 @@ end;
         end;
 
         let get_digest tree n =
-          let d = n#data#_digest in
+          let d_opt = n#data#_digest in
           let res =
-            if d = None then
+            if d_opt = None then
               if n#initial_nchildren > 0 then
-                let subtree = tree#make_subtree_from_node n in
-                Some subtree#digest
+                Some (tree#initial_subtree_digest n)
               else
                 None
             else
-              d
+              d_opt
           in
           res
         in
@@ -2245,6 +2244,26 @@ end;
                 let d1 = get_digest tree1 nd1 in
                 let d2 = get_digest tree2 nd2 in
                 if d1 = d2 && d1 <> None then begin
+                  begin %debug_block
+                      begin
+                        match d1 with
+                        | Some d -> begin
+                            [%debug_log "d1=(Some %s)" d];
+                            [%debug_log "nd1: %s" nd1#to_string];
+                            [%debug_log "nd1 (initial): %s" nd1#initial_to_string];
+                        end
+                        | None -> ()
+                      end;
+                      begin
+                        match d2 with
+                        | Some d -> begin
+                            [%debug_log "d2=(Some %s)" d];
+                            [%debug_log "nd2: %s" nd2#to_string];
+                            [%debug_log "nd2 (initial): %s" nd2#initial_to_string];
+                        end
+                        | None -> ()
+                      end;
+                  end;
                   let l1 = ref [] in
                   let l2 = ref [] in
                   tree1#fast_scan_whole_initial_subtree nd1 (fun n -> l1 := n :: !l1);

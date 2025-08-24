@@ -1071,6 +1071,9 @@ module Tree (L : Spec.LABEL_T) = struct
 
     method initial_to_rep = self#initial_subtree_to_rep root
 
+    method initial_subtree_digest nd =
+      Xhash.digest_of_string self#hash (self#initial_subtree_to_rep nd)
+
     method subtree_to_simple_string gid =
       let nd = self#search_node_by_gindex gid in
       let children = Array.to_list nd#initial_children in

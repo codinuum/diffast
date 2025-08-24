@@ -648,6 +648,7 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
     method set_hidden_children c = hidden_children <- c
 
     method prune_all_children =
+      [%debug_log "%a" UID.ps self#uid];
       Array.iter (fun c -> c#set_pos (-1)) self#children;
       self#set_children [||]
 
@@ -737,6 +738,7 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
 *)
     method expand =
       if is_collapsed && not collapse_locked then begin
+        [%debug_log "%a: expanding..." UID.ps self#uid];
         self#data#reset_digest;
         self#set_children hidden_children;
         self#set_hidden_children [||];
@@ -746,6 +748,7 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
 
     method collapse w d =
       if not is_collapsed && collapsible (* && self#children <> [||] *) then begin
+        [%debug_log "%a: collapsing..." UID.ps self#uid];
         self#data#set_digest d;
         self#data#set_weight w;
         self#set_hidden_children self#children;
@@ -1635,6 +1638,7 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
 
     inherit [ 'node ] otree root as super
 
+    method hash = hash
     method is_whole = is_whole
 
     val mutable is_empty = false
@@ -2961,6 +2965,7 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
           nd#clear_in_path;
           if nd#is_collapsed then begin
             nd#set_hidden_children (Array.copy nd#initial_children);
+            [%debug_log "nd=%a" UID.ps nd#uid];
             nd#set_children [||]; (* redundant? *)
           end
           else begin
@@ -3008,11 +3013,13 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
             if nd#is_collapsed then begin
               let new_children = mkchildren nd#hidden_children in
               nd#set_hidden_children new_children;
+              [%debug_log "nd=%a" UID.ps nd#uid];
               nd#set_children [||]; (* redundant? *)
             end
             else begin
               let new_children = mkchildren nd#children in
               nd#set_children new_children;
+              [%debug_log "nd=%a" UID.ps nd#uid];
               nd#set_hidden_children [||]; (* redundant? *)
             end;
 
