@@ -46,11 +46,11 @@ RUN set -x && \
     opam upgrade -y && \
     eval $(opam env) && \
     dune build && \
-    dune install --relocatable --prefix dist && \
+    dune install --relocatable --prefix /opt/cca && \
     dune clean
 
 RUN set -x && \
-    ln -s /root/diffast/dist/bin /opt/cca/bin
+    rm -rf /root/diffast
 
 RUN set -x && \
     apt-get autoremove -y && \
