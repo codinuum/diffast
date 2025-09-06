@@ -596,7 +596,13 @@ module F (Stat : Parser_aux.STATE_T) = struct
           | IDENTIFIER _ | EXCLAM | TILDE | NEW _ | SWITCH _
           | TRUE | FALSE | NULL
           | INTEGER_LITERAL _ | FLOATING_POINT_LITERAL _ | CHARACTER_LITERAL _ | STRING_LITERAL _ -> t
-          | LPAREN _ | PLUS | MINUS | PLUS_PLUS | MINUS_MINUS when env#stmt_head_flag -> t
+          | PLUS | MINUS | PLUS_PLUS | MINUS_MINUS when env#stmt_head_flag -> t
+          | LPAREN _ when begin
+              let _, tok3 = peek_nth 2 in
+              match tok3 with
+              | RPAREN _ -> false
+              | _ -> true
+          end -> t
           | _ -> conv()
       end
       | PERMITS (*loc*)_ -> begin
