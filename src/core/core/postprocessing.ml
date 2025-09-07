@@ -233,6 +233,7 @@ module F (Label : Spec.LABEL_T) = struct
 
           List.iter
             (fun (nd1, nd2, nth, _) ->
+              [%debug_log "%a-%a %d-th" nups nd1 nups nd2 !nth];
               if List.mem !nth moved then begin
                 let ok =
                   not (base_edits#mem_mov12 nd1 nd2) &&

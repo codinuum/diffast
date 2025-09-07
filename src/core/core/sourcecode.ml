@@ -847,6 +847,7 @@ module Tree (L : Spec.LABEL_T) = struct
         self#initial_size initial_only;*)
       [%debug_log "initial_only=%B" initial_only];
       let modified = ref false in
+      let deleted_node_list = ref [] in
       Hashtbl.iter
         (fun nd c ->
 
@@ -868,6 +869,12 @@ module Tree (L : Spec.LABEL_T) = struct
                 nc];
             end
           end;
+
+          Array.iter
+            (fun x ->
+              if not (Array.mem x c) then
+                deleted_node_list := x :: !deleted_node_list
+              ) nd#initial_children;
 
           nd#set_initial_children c;
           if not initial_only then
@@ -897,8 +904,11 @@ module Tree (L : Spec.LABEL_T) = struct
         self#setup_gindex_table;
         self#setup_initial_leftmost_table;
         self#setup_apath
-      end(*;
-      Printf.printf "! [after] initial_size=%d\n" self#initial_size*)
+      end;
+      (*Printf.printf "! [after] initial_size=%d\n" self#initial_size;*)
+      [%debug_log "deleted nodes: [%s]"
+         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" !deleted_node_list)];
+      !deleted_node_list
 
     val mutable source_path = "unknown"
     method set_source_path p = source_path <- p

@@ -292,7 +292,7 @@ class virtual base_c options = object (self)
         let tree = self#__parse_file ~proj_root ~version file in
 
         if options#recover_orig_ast_flag then
-          tree#recover_true_children ~initial_only:true ();
+          ignore (tree#recover_true_children ~initial_only:true ());
 
         if options#dump_dot_flag then begin
           let fname_dot = file#basename^".dot" in

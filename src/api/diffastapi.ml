@@ -142,7 +142,7 @@ class c options = object (self)
         let tree = self#__parse_file ~proj_root ~version file in
 
         if options#recover_orig_ast_flag then
-          tree#recover_true_children ~initial_only:true ();
+          ignore (tree#recover_true_children ~initial_only:true ());
 
         if options#dots_flag then begin
           tree#save_dot "AST" [] (Filename.concat cache_path (file#basename^".dot"))

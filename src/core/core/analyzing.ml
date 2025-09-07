@@ -1552,8 +1552,24 @@ end;
       [%debug_log "nmapping BEFORE EDIT SEQ GENERATION: %s" nmapping#to_string];
 
       if options#recover_orig_ast_flag then begin
-        tree1#recover_true_children ~initial_only:true ();
-        tree2#recover_true_children ~initial_only:true ()
+        let dnl1 = tree1#recover_true_children ~initial_only:true () in
+        let dnl2 = tree2#recover_true_children ~initial_only:true () in
+        List.iter
+          (fun dn1 ->
+            try
+              let dn1' = nmapping#find dn1 in
+              ignore (nmapping#remove dn1 dn1');
+              cenv#multiple_node_matches#remove dn1#data#_label
+            with _ -> ()
+          ) dnl1;
+        List.iter
+          (fun dn2 ->
+            try
+              let dn2' = nmapping#inv_find dn2 in
+              ignore (nmapping#remove dn2' dn2);
+              cenv#multiple_node_matches#remove dn2#data#_label
+            with _ -> ()
+          ) dnl2
       end;
 
 
@@ -2013,8 +2029,9 @@ end;
       if digest1 = digest2 then begin
         [%debug_log "genarating trivial mapping..."];
         if options#recover_orig_ast_flag then begin
-          tree1#recover_true_children ~initial_only:true ();
-          tree2#recover_true_children ~initial_only:true ()
+          let _ = tree1#recover_true_children ~initial_only:true () in
+          let _ = tree2#recover_true_children ~initial_only:true () in
+          ()
         end;
         let nmapping = new Node_mapping.c cenv in
         tree1#fast_scan_whole_initial

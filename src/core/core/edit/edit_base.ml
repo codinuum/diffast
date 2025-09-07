@@ -2500,8 +2500,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     (* initializing trees *)
     if options#recover_orig_ast_flag then begin
-      tree1#recover_true_children ~initial_only:false ();
-      tree2#recover_true_children ~initial_only:false ()
+      let _ = tree1#recover_true_children ~initial_only:false () in
+      let _ = tree2#recover_true_children ~initial_only:false () in
+      ()
     end;
     tree1#init;
     tree2#init;

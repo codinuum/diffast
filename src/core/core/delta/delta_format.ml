@@ -256,7 +256,7 @@ module IrreversibleFormat = struct
       [%debug_log "T:\n%s\n" tree#to_string];
 
       if not normalized_delta then begin
-        tree#recover_true_children ~initial_only:false ();
+        ignore (tree#recover_true_children ~initial_only:false ());
         [%debug_log "T:\n%s\n" tree#to_string]
       end;
 
@@ -827,7 +827,7 @@ module ReversibleFormat = struct
       let tree = tree_factory#from_file file in
 
       if not normalized_delta then
-        tree#recover_true_children ~initial_only:true ();
+        ignore (tree#recover_true_children ~initial_only:true ());
 
       let interpreter = new interpreter tree in
 

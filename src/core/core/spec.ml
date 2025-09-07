@@ -128,7 +128,7 @@ class type tree_t = object ('self)
   method find_true_parent         : UID.t -> node_t
 
   method set_true_children_tbl    : (node_t, node_t array) Hashtbl.t -> unit
-  method recover_true_children    : initial_only:bool -> unit -> unit
+  method recover_true_children    : initial_only:bool -> unit -> node_t list
   method has_true_children        : node_t -> bool
 
   method set_source_info          : Storage.file -> unit
