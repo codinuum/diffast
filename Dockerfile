@@ -45,8 +45,8 @@ RUN set -x && \
     opam update && \
     opam upgrade -y && \
     eval $(opam env) && \
-    dune build && \
-    dune install --relocatable --prefix /opt/cca && \
+    dune build --profile release && \
+    dune install --relocatable --prefix cca --destdir /opt && \
     dune clean
 
 RUN set -x && \
