@@ -3068,6 +3068,7 @@ let is_collapse_target options lab =
     | InterfaceBody _
     | AnnotationTypeBody _
     | SwitchBlock
+    | SwitchBlockStatementGroup
     | LocalVariableDeclaration(true, _)
     | VariableDeclarator _
     | Method _
