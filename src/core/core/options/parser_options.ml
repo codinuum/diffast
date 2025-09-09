@@ -27,7 +27,7 @@ module Base_options = Diffast_misc.Base_options
 module Fs_options = Diffast_misc.Fs_options
 
 
-let default_java_lang_spec = 11
+let default_java_lang_spec = 17
 
 let get_dist_dir () =
   Filename.dirname (Filename.dirname (Xfile.abspath Sys.executable_name))

@@ -30,7 +30,7 @@ let get_lc = Langs_common.Position.get_lc
 class parser_c = object (self)
   inherit [Tokens_.token, Ast.c] PB.sb_c (new Aux.env)
 
-  val mutable java_lang_spec = 11
+  val mutable java_lang_spec = Common.default_java_lang_spec_level
   val mutable keep_going_flag = true
   val mutable rely_on_naming_convention_flag = false
   val mutable partial_name_resolution_flag = false

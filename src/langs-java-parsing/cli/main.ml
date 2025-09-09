@@ -32,7 +32,7 @@ let compile_mode = ref false
 let filename = ref ""
 let arg_count = ref 0
 let dump_flag = ref false
-let java_lang_spec = ref 11
+let java_lang_spec_level = ref Common.default_java_lang_spec_level
 let keep_going_flag = ref false
 let rely_on_naming_convention_flag = ref false
 let partial_name_resolution_flag = ref false
@@ -41,7 +41,7 @@ let _ =
   Arg.parse
     [
      "-dump", Arg.Unit (fun () -> dump_flag := true), "dump result";
-     "-JLS", Arg.Int (fun lv -> java_lang_spec := lv), "\tset source JLS";
+     "-JLS", Arg.Int (fun lv -> java_lang_spec_level := lv), "\tset source JLS";
      "-k", Arg.Unit (fun () -> keep_going_flag := true), "\tcontinue parsing despite errors";
      "-n", Arg.Unit (fun () -> rely_on_naming_convention_flag := true), "\trely on naming convention";
      "-p", Arg.Unit (fun () -> partial_name_resolution_flag := true), "\tresolve names partially";
@@ -61,7 +61,7 @@ let _ =
   if !arg_count = 1 then compile_mode := true;
   try
     let _parser = new Lib.parser_c in
-    _parser#set_java_lang_spec !java_lang_spec;
+    _parser#set_java_lang_spec !java_lang_spec_level;
     _parser#_set_keep_going_flag !keep_going_flag;
     _parser#_set_rely_on_naming_convention_flag !rely_on_naming_convention_flag;
     _parser#_set_partial_name_resolution_flag !partial_name_resolution_flag;
