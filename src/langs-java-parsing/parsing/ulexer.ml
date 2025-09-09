@@ -602,7 +602,12 @@ module F (Stat : Parser_aux.STATE_T) = struct
               match tok3 with
               | RPAREN _ -> false
               | _ -> true
-          end -> t
+          end -> begin
+            match Obj.obj env#last_rawtoken with
+            | DOT | MINUS_GT -> conv()
+            | _ when not env#stmt_head_flag -> conv()
+            | _ -> t
+          end
           | _ -> conv()
       end
       | PERMITS (*loc*)_ -> begin
