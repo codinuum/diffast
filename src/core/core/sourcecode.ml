@@ -320,7 +320,15 @@ module Tree (L : Spec.LABEL_T) = struct
 
       method private update =
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
-        let short_str = L.to_short_string ~ignore_identifiers_flag lab in
+        let short_str =
+          let lab_ =
+            if self#is_named && not self#is_named_orig then
+              L.anonymize lab
+            else
+              lab
+          in
+          L.to_short_string ~ignore_identifiers_flag lab_
+        in
         rep <- short_str;
         short_string <- short_str;
         (*match _digest with
@@ -730,7 +738,7 @@ module Tree (L : Spec.LABEL_T) = struct
         _ ->
           let xc = SB.OutChannel.to_xchannel ch in
           let out s pos len = ignore (xc#output_ s pos len) in
-          let flush () = xc#close in
+          let flush () = xc#flush in
           Format.set_formatter_output_functions out flush
     end;
     unparse node;
