@@ -359,7 +359,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
       pr_selected ~fail_on_error ~head:(fun () -> pb#open_vbox 0) ~tail:pb#close_box L.is_modifiers specs;
       pr_string "record "; pr_id i;
       pr_selected ~fail_on_error L.is_typeparameters specs;
-      pr_lparen(); pr_selected ~fail_on_error L.is_parameter specs; pr_rparen();
+      pr_lparen(); pr_selected ~fail_on_error ~sep:pr_comma L.is_parameter specs; pr_rparen();
       pr_selected ~fail_on_error L.is_implements specs;
       pb#close_box();
       pr_selected ~fail_on_error ~blk_style L.is_classbody children;
