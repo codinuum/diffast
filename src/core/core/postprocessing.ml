@@ -11017,7 +11017,6 @@ end;
                     | [n1], [n2] -> begin
 
                         ignore (nmapping#add_unsettled n1 n2);
-                        add_move n1 n2;
                         let del = edits#find_del n1 in
                         let ins = edits#find_ins n2 in
                         edits#remove_edit del;
@@ -11025,6 +11024,8 @@ end;
 
                         let cur1 = ref n1 in
                         let cur2 = ref n2 in
+
+                        let midl = ref [(n1, n2)] in
                         begin
                           try
                             while true do
@@ -11037,6 +11038,7 @@ end;
                                 pn1#data#_anonymized_label = pn2#data#_anonymized_label
                               then begin
                                 ignore (nmapping#add_unsettled pn1 pn2);
+                                midl := (pn1, pn2) :: !midl;
                                 edits#add_edit (Edit.make_relabel pn1 pn2);
                                 let del = edits#find_del pn1 in
                                 let ins = edits#find_ins pn2 in
@@ -11051,7 +11053,16 @@ end;
                           with
                             _ -> ()
                         end;
-                        add_move !cur1 !cur2
+                        add_move !cur1 !cur2;
+                        match !midl with
+                        | [] -> assert false
+                        | [(n1, n2)] -> add_move n1 n2
+                        | _::pl -> begin
+                            List.iter
+                              (fun (x1, x2) ->
+                                add_move x1 x2
+                              ) pl
+                        end
                     end
                     | _ -> ()
                   with
