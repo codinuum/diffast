@@ -181,7 +181,7 @@ module Json = struct
 
   let get_digest tree nd =
     try
-      if nd#initial_nchildren = 0 then
+      if nd#initial_nchildren = 0 && not nd#data#has_value then
         nd#data#get_orig_name
       else
         raise Not_found
