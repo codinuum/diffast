@@ -16,6 +16,7 @@
 (* common/astml.ml *)
 
 module Xstring = Diffast_misc.Xstring
+module XML = Diffast_misc.XML
 module Loc = Diffast_misc.Loc
 
 (*let sprintf = Printf.sprintf*)
@@ -232,6 +233,7 @@ module Attr = struct
   let find_nth attrs   = int_of_string (find_attr attrs "nth")
 
   let find_value_u attrs = Scanf.unescaped (find_attr attrs "value")
+  let find_value_x attrs = XML.decode_string (find_attr attrs "value")
 
   let find_path attrs  = find_attr attrs path_attr_name
   let find_ident ?(default="") attrs = find_attr ~default attrs ident_attr_name

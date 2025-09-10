@@ -1365,12 +1365,21 @@ class translator options =
               Xprint.verbose options#verbose_flag "huge array found at %s (size=%d)"
                 (Ast.Loc.to_string vi.Ast.vi_loc) sz;
               let buf = Buffer.create 0 in
-              let _oc = new Xchannel.out_channel (Xchannel.Destination.of_buffer buf) in
+              let _oc =
+                let comp = Xchannel.C.gzip in
+                new Xchannel.out_channel ~comp (Xchannel.D.of_buffer buf)
+              in
               let oc = Spec_base.OutChannel.of_xchannel _oc in
               let _ = n#unparse_ch oc in
-              let u = Buffer.contents buf in
               let _ = Spec_base.OutChannel.close oc in
-              let nd_ = self#mkleaf (L.HugeArray(sz, u)) in
+              let u = Buffer.contents buf in
+              let encoded =
+                try
+                  Base64.encode_exn u
+                with
+                  e -> [%warn_log "failed to base64 encode"]; raise e
+              in
+              let nd_ = self#mkleaf (L.HugeArray(sz, encoded)) in
               self#reg_huge_array nd nd_;
               nd_
             end
@@ -2086,12 +2095,21 @@ class translator options =
               Xprint.verbose options#verbose_flag "huge expression found at %s (size=%d)"
                 (Ast.Loc.to_string e.Ast.e_loc) sz;
               let buf = Buffer.create 0 in
-              let _oc = new Xchannel.out_channel (Xchannel.Destination.of_buffer buf) in
+              let _oc =
+                let comp = Xchannel.C.gzip in
+                new Xchannel.out_channel ~comp (Xchannel.D.of_buffer buf)
+              in
               let oc = Spec_base.OutChannel.of_xchannel _oc in
               let _ = t#unparse_ch oc in
-              let u = Buffer.contents buf in
               let _ = Spec_base.OutChannel.close oc in
-              self#mkleaf (L.HugeExpr(sz, u))
+              let u = Buffer.contents buf in
+              let encoded =
+                try
+                  Base64.encode_exn u
+                with
+                  e -> [%warn_log "failed to base64 encode"]; raise e
+              in
+              self#mkleaf (L.HugeExpr(sz, encoded))
             end
             else if is_add nd then begin
               [%debug_log "@"];
