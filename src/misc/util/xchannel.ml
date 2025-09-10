@@ -215,16 +215,13 @@ module Source = struct
   type t =
     | File of string
     | Channel of in_channel
-    | Bytes of bytes
 
   let of_file f     = File f
   let of_channel ch = Channel ch
-  let of_bytes bs = Bytes bs
 
   let to_string = function
     | File s    -> sprintf "<file:%s>" s
     | Channel _ -> "<in_channel>"
-    | Bytes _ -> "<bytes>"
 end
 
 module S = Source
@@ -307,10 +304,6 @@ end
 
 class gzip_input_channel ch = object
   inherit gzip_input (Bytesrw.Bytes.Reader.of_in_channel ch)
-end
-
-class gzip_input_bytes bs = object
-  inherit gzip_input (Bytesrw.Bytes.Reader.of_bytes bs)
 end
 
 let base64_buf_length = 32
@@ -423,7 +416,6 @@ class in_channel ?(comp=C.none) source
                   new input_channel_ch (open_in file)
             end
             | S.Channel ch -> new input_channel_ch ch
-            | S.Bytes bs -> new input_channel_str (Bytes.to_string bs)
           end
           else if comp = C.gzip then begin
             match source with
@@ -435,10 +427,6 @@ class in_channel ?(comp=C.none) source
             end
             | S.Channel ch ->
                 let c = new gzip_input_channel ch in
-                extchs <- c :: extchs;
-                c
-            | S.Bytes bs ->
-                let c = new gzip_input_bytes bs in
                 extchs <- c :: extchs;
                 c
           end

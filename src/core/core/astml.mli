@@ -95,7 +95,6 @@ module Attr : sig
   val find_sig : (string * string) list -> string
   val find_nth : (string * string) list -> int
   val find_value_u : (string * string) list -> string
-  val find_value_x : (string * string) list -> string
   val find_path : (string * string) list -> string
   val find_ident : ?default:string -> (string * string) list -> string
   val find_name_opt : (string * 'a) list -> 'a option

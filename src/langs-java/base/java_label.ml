@@ -2819,8 +2819,8 @@ let to_tag ?(strip=false) l =
 
     | Error s -> "Error", ["contents",xmlenc s]
 
-    | HugeArray(sz, c) -> "HugeArray", ["size",string_of_int sz;"code",c]
-    | HugeExpr(sz, c) -> "HugeExpr", ["size",string_of_int sz;"code",c]
+    | HugeArray(sz, c) -> "HugeArray", ["size",string_of_int sz;"code",xmlenc c]
+    | HugeExpr(sz, c) -> "HugeExpr", ["size",string_of_int sz;"code",xmlenc c]
 
     | EmptyDeclaration -> "EmptyDeclaration", []
 
@@ -4382,7 +4382,12 @@ let is_error = function
 open Astml.Attr
 
 let find_name x = Scanf.unescaped (find_name x)
-let find_code x = find_attr x "code"
+let find_code x =
+  let s = (find_attr x "code") in
+  try
+    Scanf.unescaped s
+  with
+    e -> print_string s; raise e
 
 let find_kind a =
   try
@@ -4458,9 +4463,9 @@ let of_elem_data =
     "FloatingPointLiteral", (fun a -> mklit a (Literal.FloatingPoint(find_value a)));
     "True",                 (fun a -> mklit a Literal.True);
     "False",                (fun a -> mklit a Literal.False);
-    "CharacterLiteral",     (fun a -> mklit a (Literal.Character(find_value_u a)));
-    "StringLiteral",        (fun a -> mklit a (Literal.String(find_value_x a)));
-    "TextBlockLiteral",     (fun a -> mklit a (Literal.TextBlock(find_value_x a)));
+    "CharacterLiteral",     (fun a -> mklit a (Literal.Character(Scanf.unescaped(find_value a))));
+    "StringLiteral",        (fun a -> mklit a (Literal.String(Scanf.unescaped(find_value a))));
+    "TextBlockLiteral",     (fun a -> mklit a (Literal.TextBlock(Scanf.unescaped(find_value a))));
     "NullLiteral",          (fun a -> mklit a Literal.Null);
 
     "Assign",        (fun a -> mkaop a AssignmentOperator.Eq);

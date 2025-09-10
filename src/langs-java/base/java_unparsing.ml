@@ -21,7 +21,6 @@
  *)
 
 module Xlist = Diffast_misc.Xlist
-module Xchannel = Diffast_misc.Xchannel
 module L = Java_label
 
 module Fmtr = struct
@@ -697,16 +696,8 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
       pb#pr_a pr_comma (pr_node ~fail_on_error) children; pr_space();
       pr_string "}"
 
-  | L.HugeArray(_, c)
-  | L.HugeExpr(_, c) -> begin
-      try
-        let decoded = Base64.decode_exn c in
-        let ich = new Xchannel.gzip_input_bytes (String.to_bytes decoded) in
-        let s = Xchannel.string_of_input_channel ich in
-        pr_string s
-      with
-        e -> [%warn_log "failed to decode"]; raise e
-  end
+  | L.HugeArray(_, c) -> pr_string c
+  | L.HugeExpr(_, c) -> pr_string c
 
   | L.Throws _ when nchildren = 0 -> ()
   | L.Throws _ ->
@@ -888,14 +879,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           end*)
 
       | L.Statement.ElseIf _ ->
-          if
-            try
-              L.is_if (getlab node#parent)
-            with _ ->
-              try
-                L.is_if (getlab node#initial_parent)
-              with _ -> false
-          then
+          if try L.is_if (getlab node#parent) with _ -> false then
             pr_string "else if ("
           else
             pr_string "if (";
