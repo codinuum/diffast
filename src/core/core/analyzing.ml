@@ -2231,7 +2231,7 @@ end;
 
           tree1#fast_scan_whole_initial
             (fun nd ->
-              match nd#data#digest with
+              match nd#data#xdigest with
               | None when begin
                   nd#data#has_non_trivial_value && nd#initial_nchildren = 0 &&
                   cenv#under_permutation_hub1 nd
@@ -2248,7 +2248,7 @@ end;
             );
           tree2#fast_scan_whole_initial
             (fun nd ->
-              match nd#data#digest with
+              match nd#data#xdigest with
               | None when begin
                   nd#data#has_non_trivial_value && nd#initial_nchildren = 0 &&
                   cenv#under_permutation_hub2 nd

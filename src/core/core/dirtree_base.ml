@@ -67,6 +67,8 @@ class node_data (tree : Storage.tree) (entry : Storage.entry_t) =
     val mutable _digest = default_digest
     method _digest = _digest
 
+    method xdigest = self#_digest
+
     val mutable digest = None
     method digest = digest
     method set_digest d =
@@ -129,6 +131,8 @@ class node_data (tree : Storage.tree) (entry : Storage.entry_t) =
 	| None, Some c -> String.concat "" ["<";c;">"]
 	| Some d, Some c -> String.concat "" ["<";d;":";c;">"]
 	)
+
+    method to_xrep = self#to_rep
 
     method to_elem_data = self#to_string, [], ""
 

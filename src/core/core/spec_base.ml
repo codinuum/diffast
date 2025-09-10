@@ -65,6 +65,7 @@ class type node_data_t_shared = object ('self)
   method set_source_fid   : string -> unit
 
   method _digest      : Xhash.t option
+  method xdigest      : Xhash.t option
   method digest       : Xhash.t option
   method set_digest   : Xhash.t -> unit
   method _set_digest  : Xhash.t -> unit
@@ -85,6 +86,7 @@ class type node_data_t_shared = object ('self)
   method src_loc : Loc.t
 
   method to_rep    : string
+  method to_xrep   : string
   method to_string : string
 
   method feature : Obj.t * Xhash.t option

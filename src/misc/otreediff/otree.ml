@@ -61,6 +61,7 @@ class virtual data =
   object (_ : 'data)
     method virtual equals       : 'data -> bool
     method virtual to_rep       : string
+    method virtual to_xrep      : string
     method virtual to_string    : string
     method virtual to_elem_data : string * (string * string) list * string
   end
@@ -107,6 +108,7 @@ class virtual data2 = (* for collapsing/expanding *)
     method virtual eq           : 'data2 -> bool (* data only equation *)
     method virtual digest       : Xhash.t option
     method virtual _digest      : Xhash.t option
+    method virtual xdigest      : Xhash.t option
     method virtual set_digest   : Xhash.t -> unit
     method virtual reset_digest : unit
 
@@ -319,10 +321,10 @@ class [ 'a ] node (d : 'a) =
 
 
     method to_rep =
-      let chldrn_to_string = 
+      let chldrn_to_string =
         Xarray.to_string (fun c -> string_of_int c#index) ";"
       in
-      let chldrn_str = 
+      let chldrn_str =
         let s = chldrn_to_string self#children in
         if s = "" then
           ""
@@ -333,10 +335,30 @@ class [ 'a ] node (d : 'a) =
         sprintf "<%d:%s ps=%d prnt=%d%s>"
           self#index self#data#to_rep self#pos
           self#parent#index chldrn_str
-      with 
+      with
         Parent_not_found _ ->
           sprintf "<%d:%s%s>"
             self#index self#data#to_rep chldrn_str
+
+    method to_xrep =
+      let chldrn_to_string =
+        Xarray.to_string (fun c -> string_of_int c#index) ";"
+      in
+      let chldrn_str =
+        let s = chldrn_to_string self#children in
+        if s = "" then
+          ""
+        else
+          sprintf " chldrn=[%s]" s
+      in
+      try
+        sprintf "<%d:%s ps=%d prnt=%d%s>"
+          self#index self#data#to_xrep self#pos
+          self#parent#index chldrn_str
+      with
+        Parent_not_found _ ->
+          sprintf "<%d:%s%s>"
+            self#index self#data#to_xrep chldrn_str
 
 
       
@@ -1537,6 +1559,15 @@ class [ 'node ] otree (root : 'node) =
       with 
         Empty -> "<empty>"
 
+    method to_xrep =
+      try
+        let buf = Buffer.create 0 in
+        self#scan_all
+          (fun nd -> Buffer.add_string buf ((nd#to_xrep)^"\n"));
+        Buffer.contents buf
+      with
+        Empty -> "<empty>"
+
     method to_string =
       let buf = Buffer.create 0 in
       try
@@ -1712,7 +1743,15 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
       if not is_whole then
         self#root#unhide_parent;
       d
-      
+
+    method xdigest =
+      if not is_whole then
+        self#root#hide_parent;
+      let d = Xhash.digest_of_string hash self#to_xrep in
+      if not is_whole then
+        self#root#unhide_parent;
+      d
+
     method is_flat =
       not (self#root#is_collapsed) &&
       Array.for_all (fun nd -> nd#is_leaf) self#root#children
