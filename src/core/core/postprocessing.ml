@@ -6195,7 +6195,6 @@ end;
 
     method equals mdat = mid = mdat#mid
     method to_rep = MID.to_raw mid
-    method to_xrep = MID.to_raw mid
     method to_string = sprintf "%a(%f)" MID.ps mid weight
     method to_elem_data = "", [], ""
   end

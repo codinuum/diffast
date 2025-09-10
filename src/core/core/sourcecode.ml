@@ -247,7 +247,6 @@ module Tree (L : Spec.LABEL_T) = struct
     let is_named      = L.is_named lab in
     let is_named_orig = L.is_named_orig lab in
     let category      = L.get_category lab in
-    let xrep_flag     = is_named && not is_named_orig in
 
     object (self : 'self)
 
@@ -310,37 +309,27 @@ module Tree (L : Spec.LABEL_T) = struct
       val mutable rep = ""
       method to_rep = rep
 
-      val mutable xrep = None
-      method to_xrep =
-        match xrep with
-        | None ->
-            if xrep_flag then
-              let x = L.to_short_string lab in
-              xrep <- Some x;
-              x
-            else
-              rep
-        | Some x -> x
-
       val mutable short_string = ""
       method to_short_string = short_string
 
       val mutable _digest = None
       method _digest = _digest
 
-      val mutable xdigest = None
-      method xdigest = xdigest
-
       val mutable digest = None
       method digest = digest
 
       method private update =
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
-        let short_str = L.to_short_string ~ignore_identifiers_flag lab in
-        if xrep_flag then
-          rep <- L.to_short_string ~ignore_identifiers_flag (L.anonymize lab)
-        else
-          rep <- short_str;
+        let short_str =
+          let lab_ =
+            (*if self#is_named && not self#is_named_orig then
+              L.anonymize lab
+            else*)
+              lab
+          in
+          L.to_short_string ~ignore_identifiers_flag lab_
+        in
+        rep <- short_str;
         short_string <- short_str;
         (*match _digest with
         | Some d -> rep <- String.concat "" [rep;"<";d;">"]
@@ -511,13 +500,8 @@ module Tree (L : Spec.LABEL_T) = struct
       method _set_digest d =
         _digest <- Some d;
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
-        let r =
-          if xrep_flag then
-            L.to_short_string ~ignore_identifiers_flag (L.anonymize lab)
-          else
-            L.to_short_string ~ignore_identifiers_flag lab
-        in
-        rep <- String.concat "" [r;"<";d;">"]
+        rep <- String.concat ""
+            [L.to_short_string ~ignore_identifiers_flag lab;"<";d;">"]
 
       method set_digest d =
         digest <- Some d;
