@@ -879,7 +879,11 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           end*)
 
       | L.Statement.ElseIf _ ->
-          pr_string "else if ("; pr_nth_child 0; pr_rparen();
+          if try L.is_if (getlab node#parent) with _ -> false then
+            pr_string "else if ("
+          else
+            pr_string "if (";
+          pr_nth_child 0; pr_rparen();
           begin
             try
               if L.is_block (getlab (children.(1))) then
