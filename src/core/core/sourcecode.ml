@@ -322,9 +322,9 @@ module Tree (L : Spec.LABEL_T) = struct
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
         let short_str =
           let lab_ =
-            if self#is_named && not self#is_named_orig then
+            (*if self#is_named && not self#is_named_orig then
               L.anonymize lab
-            else
+            else*)
               lab
           in
           L.to_short_string ~ignore_identifiers_flag lab_
