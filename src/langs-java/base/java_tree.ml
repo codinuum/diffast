@@ -1103,14 +1103,18 @@ class translator options =
     set_loc nd param.Ast.fp_loc;
     nd
 
-  method of_parameters mname aloc params =
+  method of_parameters ?(rty_str="") mname aloc params =
     (*match params with
     | [] -> []
     | _ ->*)
         (*let ordinal_tbl_opt = Some (new ordinal_tbl [List.length params]) in*)
+        let msig =
+          sprintf "(%s)%s"
+            (Xlist.to_string (self#param_to_tystr ~resolve:false) "" params) rty_str
+        in
         let nd =
           self#mknode (*~ordinal_tbl_opt*)
-            (L.Parameters mname) (List.map self#of_parameter params)
+            (L.Parameters (*mname*)msig) (List.map self#of_parameter params)
         in
         set_loc nd aloc;
         [nd]
@@ -1297,7 +1301,8 @@ class translator options =
     let mod_nodes = self#of_modifiers_opt ~interface_method (L.Kmethod ident) mods in
     let tp_nodes = self#of_type_parameters_opt ident tparams in
     let rty = self#of_javatype [] header.Ast.mh_return_type in
-    let p_nodes = self#of_parameters ident header.Ast.mh_parameters_loc params in
+    let rty_str = P.type_to_short_string ~resolve:false [] header.Ast.mh_return_type in
+    let p_nodes = self#of_parameters ~rty_str ident header.Ast.mh_parameters_loc params in
     let dim_nodes = List.map self#of_annot_dim dims in
     let th_nodes = self#of_throws_opt ident throws in
     let ordinal_tbl_opt =
