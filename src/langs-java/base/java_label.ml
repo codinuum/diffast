@@ -637,8 +637,8 @@ module Literal = struct
       | True              -> "True", []
       | False             -> "False", []
       | Character str     -> "CharacterLiteral", ["value",xmlenc str]
-      | String str        -> "StringLiteral", ["value",xmlenc str]
-      | TextBlock str     -> "TextBlockLiteral", ["value",xmlenc str]
+      | String str        -> "StringLiteral", ["value",base64enc str]
+      | TextBlock str     -> "TextBlockLiteral", ["value",base64enc str]
       | Null              -> "NullLiteral", []
     in
     name, attrs
@@ -2415,7 +2415,7 @@ let anonymize2 = function
       | SimpleMethodInvocation name -> undeco name = undeco name
       | _ -> false
   end ->
-      Primary (Primary.anonymize2 p)*) (* should be checked later *)
+      Primary (Primary.anonymize2 p)*) (* should be checked laterjava *)
 
   | Qualifier _                                                -> Primary (Primary.Name "")
   | VariableDeclarator _                                       -> Primary (Primary.Name "")
@@ -4476,8 +4476,8 @@ let of_elem_data =
     "True",                 (fun a -> mklit a Literal.True);
     "False",                (fun a -> mklit a Literal.False);
     "CharacterLiteral",     (fun a -> mklit a (Literal.Character(find_value_u a)));
-    "StringLiteral",        (fun a -> mklit a (Literal.String(find_value_x a)));
-    "TextBlockLiteral",     (fun a -> mklit a (Literal.TextBlock(find_value_x a)));
+    "StringLiteral",        (fun a -> mklit a (Literal.String(find_value_b64 a)));
+    "TextBlockLiteral",     (fun a -> mklit a (Literal.TextBlock(find_value_b64 a)));
     "NullLiteral",          (fun a -> mklit a Literal.Null);
 
     "Assign",        (fun a -> mkaop a AssignmentOperator.Eq);
