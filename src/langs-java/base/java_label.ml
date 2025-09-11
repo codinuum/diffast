@@ -637,8 +637,8 @@ module Literal = struct
       | True              -> "True", []
       | False             -> "False", []
       | Character str     -> "CharacterLiteral", ["value",xmlenc str]
-      | String str        -> "StringLiteral", ["value",base64enc str]
-      | TextBlock str     -> "TextBlockLiteral", ["value",base64enc str]
+      | String str        -> "StringLiteral", ["value",Astml.Attr.b64enc str]
+      | TextBlock str     -> "TextBlockLiteral", ["value",Astml.Attr.b64enc str]
       | Null              -> "NullLiteral", []
     in
     name, attrs

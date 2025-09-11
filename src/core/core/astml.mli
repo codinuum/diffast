@@ -96,6 +96,7 @@ module Attr : sig
   val find_nth : (string * string) list -> int
   val find_value_u : (string * string) list -> string
   val find_value_x : (string * string) list -> string
+  val b64enc : string -> string
   val find_value_b64 : (string * string) list -> string
   val find_path : (string * string) list -> string
   val find_ident : ?default:string -> (string * string) list -> string

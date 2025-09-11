@@ -223,18 +223,19 @@ module Attr = struct
     with _ -> ("", "")
 
 
-  let base64enc s =
+  let b64enc s = begin
     try
       Base64.encode_exn s
     with
       e -> [%warn_log "failed to base64 encode: ^%s$" s]; raise e
+  end
 
-  let base64dec s =
+  let b64dec s = begin
     try
       Base64.decode_exn s
     with
       e -> [%warn_log "failed to base64 decode: %s" s]; raise e
-
+  end
 
   let find_bool attrs n = bool_of_string (find_attr attrs n)
   let find_int attrs n = int_of_string (find_attr attrs n)
@@ -247,7 +248,7 @@ module Attr = struct
 
   let find_value_u attrs = Scanf.unescaped (find_attr attrs "value")
   let find_value_x attrs = XML.decode_string (find_attr attrs "value")
-  let find_value_b64 attrs = base64dec (find_attr attrs "value")
+  let find_value_b64 attrs = b64dec (find_attr attrs "value")
 
   let find_path attrs  = find_attr attrs path_attr_name
   let find_ident ?(default="") attrs = find_attr ~default attrs ident_attr_name
