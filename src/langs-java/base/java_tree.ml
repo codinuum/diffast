@@ -313,7 +313,7 @@ let set_control_flow body =
         handle_block children nchildren
     end
     | L.SwitchBlockStatementGroup -> begin
-        let children = Sourcecode.get_logical_nth_child nd 1 in
+        let children = try Sourcecode.get_logical_nth_child nd 1 with Not_found -> [||] in
         let nchildren = Array.length children in
         handle_block children nchildren
     end
