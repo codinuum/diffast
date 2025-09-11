@@ -1756,7 +1756,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             else
               _rel_list := (nd1, nd2) :: !_rel_list
         end
-      | Move(mid, _, (info1, excludes1), (info2, excludes2)) -> begin
+      | Move(mid, _, (info1, excludes1), (info2, excludes2)) as mov -> begin
+          let _ = mov in
+          [%debug_log "%s" (to_string mov)];
           let _ = mid in
           let nd1 = Info.get_node info1 in
           let nd2 = Info.get_node info2 in
@@ -1767,7 +1769,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           Xset.add subtree_roots nd2;
           let el1 = ref [] in
           let el2 = ref [] in
-          let add r n = if not (is_ghost_node n) then r := n :: !r in
+          let add r n =
+            let ghost_flag = is_ghost_node n in
+            [%debug_log "%a%s" nups n (if ghost_flag then " -> ghost" else "")];
+            if true || not ghost_flag then
+              r := n :: !r
+          in
           tree1#scan_initial_cluster (nd1, nds1) (add el1);
           tree2#scan_initial_cluster (nd2, nds2) (add el2);
           let nel1 = List.length !el1 in
