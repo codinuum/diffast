@@ -720,7 +720,28 @@ module F (Label : Spec.LABEL_T) = struct
         )
     end
     else*)
-      edits#add_edits extra_edits
+      (*edits#add_edits extra_edits*)
+    extra_edits#iter
+      (function
+        | Edit.Move(mid, _, (info1, _), (info2, _)) as mov -> begin
+            let nd1 = Info.get_node info1 in
+            let nd2 = Info.get_node info2 in
+            begin
+              try
+                let del = edits#find_del nd1 in
+                edits#remove_edit del
+              with _ -> ()
+            end;
+            begin
+              try
+                let ins = edits#find_ins nd2 in
+                edits#remove_edit ins
+              with _ -> ()
+            end;
+            edits#add_edit mov
+        end
+        | _ -> ()
+      )
   (* end of func generate_moves *)
 
 
