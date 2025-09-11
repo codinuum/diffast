@@ -4837,6 +4837,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           [%debug_log "checking %a-%a" nups n1 nups n2];
 
           if
+            (*n1 != nd1 && n2 != nd2 &&*)
             not (is_ghost_node n1) && not (is_ghost_node n2) &&
             not (List.mem (n1, n2) mask)
           then begin

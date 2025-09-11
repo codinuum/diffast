@@ -60,6 +60,12 @@ let mkstmttidattr = Lang_base.mkstmttidattr
 let xmlenc = XML.encode_string
 let xmldec = XML.decode_string
 
+let escaped_dollar_pat = Str.regexp_string "&#36;"
+let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
+
+let undeco_pat = Str.regexp "#[0-9]+"
+let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
+
 
 module type T = sig
   include Spec.LABEL_T
@@ -1400,6 +1406,8 @@ module Primary = struct
        "assertFalse#1";
        "assertEquals#2";
        "assertNotEquals#2";
+       (*"assertThat#1";
+       "assertThat#2";*) (* should be checked later *)
       ];
     s
 
@@ -2400,6 +2408,15 @@ let anonymize2 = function
   | Primary p                                                  -> Primary (Primary.anonymize2 p)
   | Expression (Primary p)                                     -> Primary (Primary.anonymize2 p)
 (*  | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary (Primary.anonymize2 p)*)
+
+(*  | Statement (Statement.Expression (Expression.Primary p, _)) when begin
+      match p with
+      | Primary.PrimaryMethodInvocation name
+      | SimpleMethodInvocation name -> undeco name = undeco name
+      | _ -> false
+  end ->
+      Primary (Primary.anonymize2 p)*) (* should be checked later *)
+
   | Qualifier _                                                -> Primary (Primary.Name "")
   | VariableDeclarator _                                       -> Primary (Primary.Name "")
   | Interface _ | Enum _                                       -> Class ""

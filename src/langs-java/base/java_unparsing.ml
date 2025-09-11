@@ -139,8 +139,7 @@ let find_nodes filt a =
   Array.of_list
     (List.filter (fun nd -> filt (getlab nd)) (Array.to_list a))
 
-let escaped_dollar_pat = Str.regexp_string "&#36;"
-let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
+let unescape_dollar = L.unescape_dollar
 
 let dollar_pat = Str.regexp_string "$"
 let norm_fqn x = unescape_dollar (Str.global_replace dollar_pat "." x)
@@ -152,8 +151,7 @@ let get_last_id name =
   else
     Xlist.last (Str.split sep_pat name)
 
-let undeco_pat = Str.regexp "#[0-9]+"
-let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
+let undeco = L.undeco
 
 let pr_id x = pr_id (unescape_dollar x)
 let pr_name x = pr_name (unescape_dollar x)
