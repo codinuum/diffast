@@ -1038,7 +1038,7 @@ module F (Label : Spec.LABEL_T) = struct
         let line_align = edits_copy#get_line_align tree1 tree2 nmapping in
         (*edits_copy#dump_diff_simple ~line_align tree1 tree2 diff;*)
         edits_copy#dump_diff_json ~line_align tree1 tree2 diff_json;
-        edits_copy#dump_gdiff_json ~comp:Compression.gzip tree1 tree2 (gdiff_json^".gz");
+        edits_copy#dump_gdiff_json ~comp:Compression.gzip tree1 tree2 nmapping (gdiff_json^".gz");
 
         edits#dump_diff_info dinfo tree1 tree2;
         (*edits#dump_diff_summary dsummary tree1 tree2 nmapping;*)

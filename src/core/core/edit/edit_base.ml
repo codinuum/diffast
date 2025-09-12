@@ -1713,7 +1713,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
   (* end of method dump_diff_ch *)
 
 
-  method dump_gdiff_json ?(comp=Compression.none) (tree1 : 'tree_t) (tree2 : 'tree_t) fname =
+  method dump_gdiff_json
+      ?(comp=Compression.none)
+      (tree1 : 'tree_t)
+      (tree2 : 'tree_t)
+      (nmapping : 'node_t Node_mapping.c)
+      fname
+      =
 
     let _del_list = ref [] in
     let _ins_list = ref [] in
@@ -1764,28 +1770,18 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           let nd2 = Info.get_node info2 in
           Nodetbl.add mapped_node_tbl nd2 nd1;
           let nds1 = List.map Info.get_node !excludes1 in
-          let nds2 = List.map Info.get_node !excludes2 in
+          (*let nds2 = List.map Info.get_node !excludes2 in*)
           Xset.add subtree_roots nd1;
           Xset.add subtree_roots nd2;
-          let el1 = ref [] in
-          let el2 = ref [] in
-          let add r n =
-            let ghost_flag = is_ghost_node n in
-            [%debug_log "%a%s" nups n (if ghost_flag then " -> ghost" else "")];
-            if true || not ghost_flag then
-              r := n :: !r
-          in
-          tree1#scan_initial_cluster (nd1, nds1) (add el1);
-          tree2#scan_initial_cluster (nd2, nds2) (add el2);
-          let nel1 = List.length !el1 in
-          let nel2 = List.length !el2 in
-          [%debug_log "%a: nd1=%a |el1|=%d nd2=%a |el2|=%d" MID.ps !mid nups nd1 nel1 nups nd2 nel2];
-          assert (nel1 = nel2);
-          List.iter2
-            (fun n1 n2 ->
-              Nodetbl.add mapped_node_tbl n2 n1;
-              _mov_list := (n1, n2) :: !_mov_list
-            ) !el1 !el2
+          tree1#scan_initial_cluster (nd1, nds1)
+            (fun n1 ->
+              if not (is_ghost_node n1) then
+                try
+                  let n1' = nmapping#find n1 in
+                  Nodetbl.add mapped_node_tbl n1' n1;
+                  _mov_list := (n1, n1') :: !_mov_list
+                with _ -> ()
+            )
       end);
 
     let cmp1 n0 n1 = compare n0#gindex n1#gindex in
