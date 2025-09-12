@@ -93,7 +93,9 @@ class manager (fn : string) = object (self)
         l, c
     end
 
-    | _ -> raise Not_found
+    | _ ->
+        -1, -1
+        (*raise Not_found*)
 
 
   method get_current_position =
