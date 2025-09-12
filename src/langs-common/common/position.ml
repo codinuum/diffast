@@ -94,8 +94,8 @@ class manager (fn : string) = object (self)
     end
 
     | _ ->
-        -1, -1
-        (*raise Not_found*)
+        [%warn_log "position not found for offset %d" ofs];
+        raise Not_found
 
 
   method get_current_position =
