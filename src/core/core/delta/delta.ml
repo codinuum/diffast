@@ -10066,6 +10066,7 @@ module Edit = struct
               in
               if not (Hashtbl.mem info_tbl ap) then begin
                 let ndata = nd#data in
+                let nchildren = nd#initial_nchildren in
                 let ln, cn = ndata#src_loc.Loc.start_line, ndata#src_loc.Loc.start_char in
                 let scope_path_opt =
                   if is_def nd then begin
@@ -10080,7 +10081,7 @@ module Edit = struct
                   else
                     None
                 in
-                Hashtbl.add info_tbl ap (ndata, ln, cn, scope_path_opt)
+                Hashtbl.add info_tbl ap (ndata, ln, cn, scope_path_opt, nchildren)
               end
             in
             let paths_add anc path pathl tid tree rt =
@@ -10112,13 +10113,13 @@ module Edit = struct
               Xset.iter add_defs scope_nodes;
               let l =
                 Hashtbl.fold
-                  (fun ap (name, ln, cn, scope_path_opt) l ->
-                    (ap, name, ln, cn, scope_path_opt)::l
+                  (fun ap (name, ln, cn, scope_path_opt, nchildren) l ->
+                    (ap, name, ln, cn, scope_path_opt, nchildren)::l
                   ) info_tbl []
               in
               let sorted =
                 List.fast_sort
-                  (fun (_, _, ln0, cn0, _) (_, _, ln1, cn1, _) -> compare (ln0, cn0) (ln1, cn1))
+                  (fun (_, _, ln0, cn0, _, _) (_, _, ln1, cn1, _, _) -> compare (ln0, cn0) (ln1, cn1))
                   l
               in
               let dest = Xchannel.Destination.of_file info_file_name in
@@ -10126,7 +10127,7 @@ module Edit = struct
               Xchannel.fprintf info_ch "{";
               let _ =
                 List.fold_left
-                  (fun comma (ap, ndata, ln, cn, scope_path_opt) ->
+                  (fun comma (ap, ndata, ln, cn, scope_path_opt, nchildren) ->
                     let name = ndata#elem_name_for_delta in
                     let aname_ =
                       try
@@ -10141,8 +10142,8 @@ module Edit = struct
                       | None -> ""
                     in
                     Xchannel.fprintf info_ch
-                      "%s\"%s\":{\"name\":\"%s\"%s,\"line\":%d,\"column\":%d%s}"
-                      comma ap name aname_ ln cn scope_path_;
+                      "%s\"%s\":{\"name\":\"%s\"%s,\"line\":%d,\"column\":%d%s,\"nchildren\":%d}"
+                      comma ap name aname_ ln cn scope_path_ nchildren;
                     ","
                   ) "" sorted
               in
