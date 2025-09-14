@@ -4386,6 +4386,9 @@ let is_phantom = function
   | ImportDeclarations
   | TypeDeclarations
   | Specifier _
+  | EVconditional
+  | EVannotation
+  | EVarrayInit
     -> true
   | _ -> false
 
