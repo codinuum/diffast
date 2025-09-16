@@ -4,7 +4,7 @@
 (using menhir 3.0)
 
 (name diffast)
-(version 0.3.2)
+(version 0.3.3)
 
 (generate_opam_files true)
 (opam_file_location inside_opam_directory)
