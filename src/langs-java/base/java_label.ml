@@ -3328,6 +3328,8 @@ let relabel_allowed (lab1, lab2) =
     | Parameter _, LocalVariableDeclaration _ | LocalVariableDeclaration _, Parameter _
     | LocalVariableDeclaration _, CatchParameter _ | CatchParameter _, LocalVariableDeclaration _
 
+    | StaticInitializer, InstanceInitializer | InstanceInitializer, StaticInitializer
+
       -> true
 
     | l1, l2 -> anonymize2 l1 = anonymize2 l2
@@ -3363,6 +3365,8 @@ let is_order_insensitive = function
   | FieldDeclaration _
   | Constructor _
   | Method _
+  | StaticInitializer
+  | InstanceInitializer
   | Class _
   | Enum _
   | Interface _
