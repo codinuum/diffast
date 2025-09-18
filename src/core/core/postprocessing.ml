@@ -1474,6 +1474,13 @@ module F (Label : Spec.LABEL_T) = struct
       false
     else
 
+    let allowed = nd1#data#relabel_allowed nd2#data in
+    [%debug_log "allowed=%B" allowed];
+
+    if not allowed then
+      false
+    else
+
     (* check ancestors *)
     let is_odd_anc =
       try
@@ -1559,10 +1566,6 @@ module F (Label : Spec.LABEL_T) = struct
     in
     [%debug_log "is_odd_desc=%B" is_odd_desc];
 
-    let allowed = nd1#data#relabel_allowed nd2#data in
-
-    [%debug_log "allowed=%B" allowed];
-
 (*
     let not_absurd =
       allowed && (check_relabel options ~exact tree1 tree2 nd1 nd2 nmapping)
@@ -1573,13 +1576,19 @@ module F (Label : Spec.LABEL_T) = struct
     let is_odd1 = not not_absurd in
 *)
 (*    is_odd_desc || is_odd1 *)
+    let same_name =
+      nd1#data#is_named_orig && nd2#data#is_named_orig &&
+      get_orig_name nd1 = get_orig_name nd2
+    in
+    [%debug_log "same_name=%B" same_name];
+
     let b0 =
       if exact then
-        is_odd_desc && is_odd_anc
+        is_odd_desc && is_odd_anc && not same_name
       else
-        is_odd_desc || is_odd_anc
+        (is_odd_desc || is_odd_anc) && not same_name
     in
-    let b = b0 || (not allowed) in
+    let b = b0(* || (not allowed)*) in
     [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
     b
   (* end of func is_odd_relabel *)
@@ -2754,14 +2763,31 @@ end;
         b
       in
       if ignore_common then
+        let has_uniq_desc_match n1 n2 =
+          let b =
+            has_p_descendant
+              (fun x1 ->
+                try
+                  let x1' = nmapping#find x1 in
+                  tree2#is_initial_ancestor n2 x1' &&
+                  cenv#has_uniq_match x1 x1'
+                with _ -> false
+              ) n1
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
         fun n1 n2 ->
           let b =
             (
              try
                (n1#data#is_common || n2#data#is_common) &&
-               n1#initial_parent#data#is_sequence &&
-               n2#initial_parent#data#is_sequence &&
-               (not (n1#data#eq n2#data) || is_cross_boundary nmapping n1 n2)
+               let pn1 = n1#initial_parent in
+               let pn2 = n2#initial_parent in
+               pn1#data#is_sequence && pn2#data#is_sequence &&
+               (pn1#initial_nchildren > 1 || pn2#initial_nchildren > 1) &&
+               (not (n1#data#eq n2#data) || is_cross_boundary nmapping n1 n2) &&
+               not (has_uniq_desc_match n1 n2)
              with _ -> false
             )
           ||
@@ -7022,6 +7048,16 @@ end;
       [%debug_log "%a -> %f" MID.ps m d];
       d
     in
+    let get_move_density1 m =
+      let _, d1, _ = _get_move_density m in
+      [%debug_log "%a -> %f" MID.ps m d1];
+      d1
+    in
+    let get_move_density2 m =
+      let _, _, d2 = _get_move_density m in
+      [%debug_log "%a -> %f" MID.ps m d2];
+      d2
+    in
 
     let dels = Xset.create 0 in
     let inss = Xset.create 0 in
@@ -7060,8 +7096,11 @@ end;
       done
     in
     let sibling_count_thresh = 2 in
+    [%debug_log "sibling_count_thresh=%d" sibling_count_thresh];
+
     let move_density_thresh = 0.5 in
     [%debug_log "move_density_thresh=%f" move_density_thresh];
+
     let sibling_move_tbl = Hashtbl.create 0 in
     let sibling_cond n1 n2 =
       let count = ref 0 in
@@ -7656,7 +7695,7 @@ end;
 
         else if
           not force &&
-          esz > 2 && get_move_density mid > 0.5 &&
+          esz > 2 && get_move_density mid > move_density_thresh &&
           let _sim0 = ref (-1.0) in
           try
             Array.exists
@@ -7769,6 +7808,15 @@ end;
           is_region_changing_move mid rt1 rt2
         then begin
           [%debug_log "region changing move"]
+        end
+        else if
+          boundary_move_flag &&
+          not rt1#data#is_named && not rt2#data#is_named &&
+          rt1#data#is_order_insensitive && rt2#data#is_order_insensitive &&
+          sz > 2 &&
+          (get_move_density1 mid = 1.0 || get_move_density2 mid = 1.0)
+        then begin
+          [%debug_log "unnamed boundary move"];
         end
         else if size_limit = 0 || sz <= size_limit then begin
           let cond =
