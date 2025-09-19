@@ -2783,6 +2783,52 @@ let rectify_renames_d
         let _, nds2 = List.split conflicting_mapping_list2_ in
         let nds1_ = !delete_list @ nds1 in
         let nds2_ = !insert_list @ nds2 in
+
+        let xnd_tbl = Hashtbl.create 0 in (* digest -> node pair list *)
+        List.iter2
+          (fun n1 n2 ->
+            try
+              let pn1 = n1#initial_parent in
+              let pn2 = n2#initial_parent in
+              if nmapping#find pn1 == pn2 then
+                let ppn1 = pn1#initial_parent in
+                let ppn2 = pn2#initial_parent in
+                if nmapping#find ppn1 == ppn2 && ppn1#data#subtree_equals ppn2#data then begin
+                  let d = ppn1#data#_digest in
+                  try
+                    let pl = Hashtbl.find xnd_tbl d in
+                    Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
+                  with Not_found ->
+                    Hashtbl.add xnd_tbl d [(n1, n2)]
+                end
+            with _ -> ()
+          ) !use_renames1 !use_renames2;
+        begin %debug_block
+          let digest_to_str = function
+            | None -> "-"
+            | Some d -> Digest.to_hex d
+          in
+          Hashtbl.iter
+            (fun d pl ->
+              [%debug_log "%s:" (digest_to_str d)];
+              List.iter
+                (fun (n1, n2) ->
+                  [%debug_log "  %a-%a" nups n1 nups n2]
+                ) pl
+            ) xnd_tbl
+        end;
+        let xnds1 = Xset.create 0 in
+        let xnds2 = Xset.create 0 in
+        Hashtbl.iter
+          (fun d pl ->
+            (*if List.length pl = 1 then*)
+              List.iter
+                (fun (n1, n2) ->
+                  Xset.add xnds1 n1;
+                  Xset.add xnds2 n2
+                ) pl
+          ) xnd_tbl;
+
         let nds1__, nds2__ =
           if
             B.is_local_def def1#data#binding && B.is_local_def def2#data#binding &&
@@ -2790,13 +2836,17 @@ let rectify_renames_d
           then begin
             List.iter2
               (fun n1 n2 ->
+                if Xset.mem xnds1 n1 then
+                  [%debug_log "skipped %a-%a" nups n1 nups n2]
+                else
                 let strict_flag_ =
                   strict_flag
                 in
                 [%debug_log "added to pairs_to_be_removed: %a-%a" nups n1 nups n2];
                 pairs_to_be_removed := (n1, n2, strict_flag_) :: !pairs_to_be_removed
               ) !use_renames1 !use_renames2;
-            !use_renames1 @ nds1_, !use_renames2 @ nds2_
+            (List.filter (fun x -> not (Xset.mem xnds1 x)) !use_renames1) @ nds1_,
+            (List.filter (fun x -> not (Xset.mem xnds2 x)) !use_renames2) @ nds2_
           end
           else
             nds1_, nds2_
