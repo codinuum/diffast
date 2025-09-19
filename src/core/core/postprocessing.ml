@@ -1576,17 +1576,17 @@ module F (Label : Spec.LABEL_T) = struct
     let is_odd1 = not not_absurd in
 *)
 (*    is_odd_desc || is_odd1 *)
-    let same_name =
+    (*let same_name =
       nd1#data#is_named_orig && nd2#data#is_named_orig &&
       get_orig_name nd1 = get_orig_name nd2
     in
-    [%debug_log "same_name=%B" same_name];
+    [%debug_log "same_name=%B" same_name];*)
 
     let b0 =
       if exact then
-        is_odd_desc && is_odd_anc && not same_name
+        is_odd_desc && is_odd_anc(* && not same_name*)
       else
-        (is_odd_desc || is_odd_anc) && not same_name
+        (is_odd_desc || is_odd_anc)(* && not same_name*)
     in
     let b = b0(* || (not allowed)*) in
     [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
@@ -2757,7 +2757,19 @@ end;
         let b =
           not (n1#data#eq n2#data) &&
           is_local_def n1 && is_local_def n2 &&
-          not (cenv#has_use_rename n1 n2)
+          not (cenv#has_use_rename n1 n2) &&
+          let bid1 = Edit.get_bid n1 in
+          let bid2 = Edit.get_bid n2 in
+          match cenv#get_use1 bid1, cenv#get_use2 bid2 with
+          | [], [] -> false
+          | [u1], [u2] -> begin
+              [%debug_log "%a %a" nups u1 nups u2];
+              not (u1#data#relabel_allowed u2#data)
+          end
+          | nl1, nl2 -> begin
+              [%debug_log "{%a} {%a}" nsps nl1 nsps nl2];
+              true
+          end
         in
         [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
         b
