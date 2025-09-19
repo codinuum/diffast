@@ -3094,6 +3094,9 @@ end;
             in
             List.iter
               (fun (c1, c2) ->
+                if not (c1#data#relabel_allowed c2#data) then
+                  ()
+                else begin
                 ignore (pre_nmapping#add_settled ~stable c1 c2);
                 pre_nmapping#add_to_pre_boundary_mapping c1 c2;
 
@@ -3141,7 +3144,7 @@ end;
 
                     ) selected_child_child_pair_list
                 end
-
+                end
                 ) selected_child_pair_list;
 
             ignore (pre_nmapping#add_settled ~stable nd1 nd2);
