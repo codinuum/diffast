@@ -2760,16 +2760,18 @@ end;
           not (cenv#has_use_rename n1 n2) &&
           let bid1 = Edit.get_bid n1 in
           let bid2 = Edit.get_bid n2 in
-          match cenv#get_use1 bid1, cenv#get_use2 bid2 with
-          | [], [] -> false
-          | [u1], [u2] -> begin
-              [%debug_log "%a %a" nups u1 nups u2];
-              not (u1#data#relabel_allowed u2#data)
-          end
-          | nl1, nl2 -> begin
-              [%debug_log "{%a} {%a}" nsps nl1 nsps nl2];
-              true
-          end
+          try
+            match cenv#get_use1 bid1, cenv#get_use2 bid2 with
+            | [], [] -> false
+            | [u1], [u2] -> begin
+                [%debug_log "%a %a" nups u1 nups u2];
+                not (u1#data#relabel_allowed u2#data)
+            end
+            | nl1, nl2 -> begin
+                [%debug_log "{%a} {%a}" nsps nl1 nsps nl2];
+                true
+            end
+          with _ -> true
         in
         [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
         b
