@@ -1921,7 +1921,7 @@ module F (Label : Spec.LABEL_T) = struct
                             nd1'#data#anonymized3_label nd2#data#anonymized3_label];
                           if
                             nd1'#data#_anonymized3_label = alab1 &&
-                            nd2#data#_anonymized3_label <> alab1
+                            nd2#data#_anonymized3_label <> alab1 && not (nd1#data#relabel_allowed nd2#data)
                           then begin
                             [%debug_log "relabel: %a-%a: anonymized3 label match (%s)"
                               nups nd1 nups nd1' nd1#data#anonymized3_label];
