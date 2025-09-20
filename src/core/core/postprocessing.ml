@@ -2836,11 +2836,13 @@ end;
           ||
             has_no_use_rename n1 n2
           ||
-            match edits_opt with
-            | None -> false
-            | Some edits ->
-                n1#data#is_named && n2#data#is_named && is_odd_relabel tree1 tree2 nmapping n1 n2 &&
-                is_crossing_with_untouched edits nmapping n1 n2
+            (
+             match edits_opt with
+             | None -> false
+             | Some edits ->
+                 n1#data#is_named && n2#data#is_named && is_odd_relabel tree1 tree2 nmapping n1 n2 &&
+                 is_crossing_with_untouched edits nmapping n1 n2
+            )
           in
           [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
           b
@@ -2985,7 +2987,7 @@ end;
 
     tree1#init; tree2#init;
 
-    let reg_deferred_op, do_deferred_op =
+    let reg_deferred_op, do_deferred_op, has_deferred_op =
       let deferred_op_tbl = Hashtbl.create 0 in
       let reg npair f = Hashtbl.add deferred_op_tbl npair f in
       let do_ npair =
@@ -2995,7 +2997,7 @@ end;
         with
           _ -> ()
       in
-      reg, do_
+      reg, do_, Hashtbl.mem deferred_op_tbl
     in
 
     let cands = ref ([] : ((node_t * node_t) * int ref) list) in
@@ -3038,6 +3040,15 @@ end;
           nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
           not nd1#data#is_boundary && not nd2#data#is_boundary &&
           not (is_move nd1#initial_parent nd2#initial_parent)
+        then begin
+          [%debug_log "@"];
+          reg_deferred_op (nd1, nd2) (add_move nd1 nd2);
+          false
+        end
+        else if
+          try
+            has_deferred_op (nd1#initial_parent, nd2#initial_parent)
+          with _ -> false
         then begin
           [%debug_log "@"];
           reg_deferred_op (nd1, nd2) (add_move nd1 nd2);
@@ -7009,7 +7020,10 @@ end;
                   1, !kind, nd1, nd2, [mov]
             in
             match ml with
-            | [_] when cenv#multiple_node_matches#is_uniq_match r1 r2 -> ()
+            | [_] when begin
+                not r1#data#is_common && not r2#data#is_common &&
+                cenv#multiple_node_matches#is_uniq_match r1 r2
+            end -> ()
             | _ -> Hashtbl.replace sz_tbl !mid (sz, esz, tsz, k, r1, r2, ml)
         end
         | _ -> assert false
@@ -8139,7 +8153,24 @@ end;
                         try
                           let nm1 = get_orig_name nd1 in
                           let nm2 = get_orig_name nd2 in
-                          nd1#data#anonymized_label = nd2#data#anonymized_label &&
+                          nd1#data#anonymized2_label = nd2#data#anonymized2_label &&
+                          (
+                           let pnd1 = nd1#initial_parent in
+                           let pnd2 = nd2#initial_parent in
+                           nmapping#find pnd1 == pnd2(* ||
+                           try
+                             let ppnd1 = pnd1#initial_parent in
+                             let ppnd2 = pnd2#initial_parent in
+                             not ppnd1#data#is_sequence && not ppnd2#data#is_sequence &&
+                             nmapping#find ppnd1 == ppnd2 ||
+                             try
+                               let pppnd1 = ppnd1#initial_parent in
+                               let pppnd2 = ppnd2#initial_parent in
+                               not pppnd1#data#is_sequence && not pppnd2#data#is_sequence &&
+                               nmapping#find pppnd1 == pppnd2
+                             with _ -> false
+                           with _ -> false*)
+                          ) &&
                           cenv#is_rename_pat (nm1, nm2) &&
                           not (is_cross_boundary nmapping nd1 nd2)
                         with

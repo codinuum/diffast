@@ -3358,6 +3358,12 @@ let is_common = function
   | Primary p
   | Expression (Expression.Primary p)
   | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary.is_common p
+
+  | Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _))
+  | Statement (Statement.Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _), _)) -> true
+
+  | Statement (Statement.If _) -> true
+
   | IDsingle n -> Xset.mem Type.common_classes n
   | _ -> false
 

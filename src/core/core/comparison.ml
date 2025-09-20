@@ -1940,7 +1940,8 @@ class ['node_t, 'tree_t] c
       1.0
     else
       let res = self#eval_label_match_list ~flat:true(*!20240205! ~strip*) ancs1 ancs2 in
-      (res.lm_score *. 2.0) /. (float ((List.length ancs1) + (List.length ancs2)))
+      let sim = (res.lm_score *. 2.0) /. (float ((List.length ancs1) + (List.length ancs2))) in
+      sim
 
 
 
@@ -3482,6 +3483,44 @@ class ['node_t, 'tree_t] c
               get_orig_name pnd1new = get_orig_name pnd2new &&
               nmapping#find pnd1new == pnd2new
              with _ -> false
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            (
+             nd1old#data#is_common && nd2old#data#is_common &&
+             nd1new#data#is_common && nd2new#data#is_common
+           (*||
+             not nd1old#data#is_named_orig && not nd2old#data#is_named_orig &&
+             not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
+             nd1old#data#_anonymized_label = nd2old#data#_anonymized_label*)
+            ) &&
+            not (is_cross_boundary nmapping nd1old nd2old) &&
+            is_cross_boundary nmapping nd1new nd2new
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            (
+             nd1old#data#is_common && nd2old#data#is_common &&
+             nd1new#data#is_common && nd2new#data#is_common
+           (*||
+             not nd1old#data#is_named_orig && not nd2old#data#is_named_orig &&
+             not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
+             nd1new#data#_anonymized_label = nd2new#data#_anonymized_label*)
+            ) &&
+            is_cross_boundary nmapping nd1old nd2old &&
+            not (is_cross_boundary nmapping nd1new nd2new)
           then begin
             [%debug_log "@"];
             let b, ncd, ncsim =
