@@ -3446,6 +3446,37 @@ class ['node_t, 'tree_t] c
             [%debug_log "%B" b];
             b
           in
+          let anc_each_other_opt_ref = ref None in
+          let anc_each_other () =
+            match !anc_each_other_opt_ref with
+            | Some b -> b
+            | _ ->
+                let b =
+                  let b0 =
+                    nd1old == nd1new &&
+                    (
+                     tree2#initial_subtree_mem nd2old nd2new
+                   ||
+                     tree2#initial_subtree_mem nd2new nd2old
+                    )
+                  in
+                  [%debug_log "b0=%B" b0];
+                  b0
+                ||
+                  let b1 =
+                    nd2old == nd2new &&
+                    (
+                     tree1#initial_subtree_mem nd1old nd1new
+                   ||
+                     tree1#initial_subtree_mem nd1new nd1old
+                    )
+                  in
+                  [%debug_log "b1=%B" b1];
+                  b1
+                in
+                anc_each_other_opt_ref := Some b;
+                b
+          in
 
           [%debug_log "@"];
 
@@ -3548,6 +3579,7 @@ class ['node_t, 'tree_t] c
           ||
             tid_eq nd1old nd2old && not (tid_eq nd1new nd2new)
           ||
+            not (anc_each_other()) &&
             has_same_subtree nd1old nd2old && not (has_same_subtree nd1new nd2new)
           ||
             in_similar_context nd1old nd2old && not (in_similar_context nd1new nd2new)
@@ -3586,6 +3618,7 @@ class ['node_t, 'tree_t] c
           ||
             tid_eq nd1new nd2new && not (tid_eq nd1old nd2old)
           ||
+            not (anc_each_other()) &&
             has_same_subtree nd1new nd2new && not (has_same_subtree nd1old nd2old)
           ||
             in_similar_context nd1new nd2new && not (in_similar_context nd1old nd2old)

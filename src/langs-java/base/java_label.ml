@@ -1094,7 +1094,13 @@ module Primary = struct
     | AmbiguousName of name
     | AmbiguousMethodInvocation of name
 
-  let get_name = function
+  let get_name ?(strip=false) = function
+    | PrimaryMethodInvocation name
+    | SimpleMethodInvocation name
+    | SuperMethodInvocation name
+    | ClassSuperMethodInvocation name
+    | AmbiguousMethodInvocation name when strip -> undeco name
+
     | Name name
     | QualifiedThis name
     | InstanceCreation name
@@ -1431,8 +1437,8 @@ module Expression = struct
     | Switch
     | NaryAdd
 
-  let get_name = function
-    | Primary prim -> Primary.get_name prim
+  let get_name ?(strip=false) = function
+    | Primary prim -> Primary.get_name ~strip prim
     | _ -> raise Not_found
 
   let is_named = function
@@ -1614,11 +1620,11 @@ module Statement = struct
     (*| Expression tid -> tid*)
     | _ -> raise Not_found
 
-  let get_name = function
+  let get_name ?(strip=false) = function
     | Break (Some ident)
     | Continue (Some ident)
     | Labeled ident -> ident
-    | Expression(expr, _) -> Expression.get_name expr
+    | Expression(expr, _) -> Expression.get_name ~strip expr
     | _ -> raise Not_found
 
   let is_named = function
@@ -4250,9 +4256,9 @@ let get_name ?(strip=false) lab =
 
 
     | Type ty -> Type.get_name ty
-    | Primary prim -> Primary.get_name prim
-    | Expression expr -> Expression.get_name expr
-    | Statement stmt -> Statement.get_name stmt
+    | Primary prim -> Primary.get_name ~strip prim
+    | Expression expr -> Expression.get_name ~strip expr
+    | Statement stmt -> Statement.get_name ~strip stmt
     | Annotation anno -> Annotation.get_name anno
 
     | NameInvocation name

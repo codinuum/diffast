@@ -2486,6 +2486,7 @@ end;
                  try
                    let n' = nmapping#find n in
                    if
+                     n' != nd2 &&
                      not (tree2#is_initial_ancestor nd2 n') &&
                      tree2#is_initial_ancestor pnd2 n'
                    then begin
@@ -2507,6 +2508,7 @@ end;
                  try
                    let n' = nmapping#inv_find n in
                    if
+                     n' != nd1 &&
                      not (tree1#is_initial_ancestor nd1 n') &&
                      tree1#is_initial_ancestor pnd1 n'
                    then begin
@@ -4601,6 +4603,9 @@ end;
                        (try
                          pn1#data#get_name = n1#data#get_name &&
                          pn2#data#get_name = n2#data#get_name
+                       ||
+                         Comparison.get_stripped_name pn1 = Comparison.get_stripped_name n1 &&
+                         Comparison.get_stripped_name pn2 = Comparison.get_stripped_name n2
                        with _ -> false) ||
                        (try
                          n1#data#is_named_orig && n1#data#eq n2#data &&
