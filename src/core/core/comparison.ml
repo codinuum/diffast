@@ -1102,6 +1102,7 @@ class ['node_t, 'tree_t] c
         self#_is_scope_breaking_mapping nmapping n1 n2
       with
         _ -> begin
+          [%debug_log "%a-%a: subtree=%B" nups n1 nups n2 subtree];
           if n1#data#is_primary && n2#data#is_primary then begin
             if subtree then begin
               try
@@ -1115,6 +1116,14 @@ class ['node_t, 'tree_t] c
                   );
                 false
               with Exit -> true
+            end
+            else if
+              n1#data#is_named_orig && n2#data#is_named_orig &&
+              n1#data#anonymized_label <> n2#data#anonymized_label &&
+              get_orig_name n1 = get_orig_name n2
+            then begin
+              [%debug_log "@"];
+              false
             end
             else
             try
