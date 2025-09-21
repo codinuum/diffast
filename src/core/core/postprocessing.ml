@@ -8614,6 +8614,21 @@ end;
           | _ -> assert false
         )
     in
+    let eliminate_mappings rt1 rt2 =
+      [%debug_log "rt1=%a rt2=%a" nups rt1 nups rt2];
+      tree1#scan_whole_initial_subtree rt1
+        (fun nd1 ->
+          try
+            let nd1' = nmapping#find nd1 in
+            if tree2#is_initial_ancestor rt2 nd1' then begin
+              if not (edits#mem_mov12 nd1 nd1') && not (edits#mem_rel12 nd1 nd1') then begin
+                let _ = nmapping#remove nd1 nd1' in
+                ()
+              end
+            end
+          with _ -> ()
+        )
+    in
     tree1#scan_whole_initial
       (fun n1 ->
         if n1#data#is_boundary then begin
@@ -8631,7 +8646,8 @@ end;
                 Xprint.verbose options#verbose_flag "elaborating edits on %s -- %s (similarity=%f)"
                   n1#data#to_string n2#data#to_string sim;
 
-                eliminate_edits n1 n2
+                eliminate_edits n1 n2;
+                eliminate_mappings n1 n2
               end
             with
               Not_found -> ()
