@@ -8623,7 +8623,8 @@ end;
             if tree2#is_initial_ancestor rt2 nd1' then begin
               if not (edits#mem_mov12 nd1 nd1') && not (edits#mem_rel12 nd1 nd1') then begin
                 let _ = nmapping#remove nd1 nd1' in
-                ()
+                edits#add_edit (Edit.make_delete nd1);
+                edits#add_edit (Edit.make_insert nd1')
               end
             end
           with _ -> ()
