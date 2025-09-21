@@ -3598,6 +3598,10 @@ class ['node_t, 'tree_t] c
             prefer_sim && subtree_sim_old > subtree_sim_new
           ||
             is_stable_ntuple nd1old nd2old && not (is_stable_ntuple nd1new nd2new)
+          ||
+            anc_each_other() &&
+            nd1old#data#is_named_orig &&
+            nd1old#data#eq nd2old#data && not (nd1new#data#eq nd2new#data)
         (*||
         (subtree_sim_old > subtree_sim_new && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin
@@ -3637,6 +3641,10 @@ class ['node_t, 'tree_t] c
             prefer_sim && subtree_sim_new > subtree_sim_old
           ||
             is_stable_ntuple nd1new nd2new && not (is_stable_ntuple nd1old nd2old)
+          ||
+            anc_each_other() &&
+            nd1new#data#is_named_orig &&
+            nd1new#data#eq nd2new#data && not (nd1old#data#eq nd2old#data)
         (*||
         (subtree_sim_new > subtree_sim_old && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin

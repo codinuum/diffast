@@ -4598,7 +4598,7 @@ end;
                     try
                       let pn1 = n1#initial_parent in
                       let pn2 = n2#initial_parent in
-                      is_cand pn1 pn2 &&
+                      (is_cand pn1 pn2 || is_mapped_pair pn1 pn2) &&
                       (
                        (try
                          pn1#data#get_name = n1#data#get_name &&
@@ -8621,7 +8621,10 @@ end;
           try
             let nd1' = nmapping#find nd1 in
             if tree2#is_initial_ancestor rt2 nd1' then begin
-              if not (edits#mem_mov12 nd1 nd1') && not (edits#mem_rel12 nd1 nd1') then begin
+              if
+                (*nd1#data#is_common && nd1'#data#is_common &&*)
+                not (edits#mem_mov12 nd1 nd1') && not (edits#mem_rel12 nd1 nd1')
+              then begin
                 let _ = nmapping#remove nd1 nd1' in
                 edits#add_edit (Edit.make_delete nd1);
                 edits#add_edit (Edit.make_insert nd1')
