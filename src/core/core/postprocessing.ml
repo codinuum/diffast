@@ -4598,7 +4598,7 @@ end;
                     try
                       let pn1 = n1#initial_parent in
                       let pn2 = n2#initial_parent in
-                      (is_cand pn1 pn2 || is_mapped_pair pn1 pn2) &&
+                      (is_cand pn1 pn2(* || is_mapped_pair pn1 pn2*)) &&
                       (
                        (try
                          pn1#data#get_name = n1#data#get_name &&
