@@ -3455,36 +3455,56 @@ class ['node_t, 'tree_t] c
             [%debug_log "%B" b];
             b
           in
+
+          let anc_each_other1 n1 n2 =
+            let b =
+              tree1#is_initial_ancestor n1 n2
+            ||
+              tree1#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+          let anc_each_other2 n1 n2 =
+            let b =
+              tree2#is_initial_ancestor n1 n2
+            ||
+              tree2#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+
           let anc_each_other_opt_ref = ref None in
           let anc_each_other () =
             match !anc_each_other_opt_ref with
             | Some b -> b
             | _ ->
                 let b =
-                  let b0 =
-                    nd1old == nd1new &&
-                    (
-                     tree2#initial_subtree_mem nd2old nd2new
-                   ||
-                     tree2#initial_subtree_mem nd2new nd2old
-                    )
-                  in
+                  let b0 = nd1old == nd1new && anc_each_other2 nd2old nd2new in
                   [%debug_log "b0=%B" b0];
                   b0
                 ||
-                  let b1 =
-                    nd2old == nd2new &&
-                    (
-                     tree1#initial_subtree_mem nd1old nd1new
-                   ||
-                     tree1#initial_subtree_mem nd1new nd1old
-                    )
-                  in
+                  let b1 = nd2old == nd2new && anc_each_other1 nd1old nd1new in
                   [%debug_log "b1=%B" b1];
                   b1
                 in
                 anc_each_other_opt_ref := Some b;
                 b
+          in
+
+          let has_common_subtree n1 n2 =
+            let b =
+              Array.exists
+                (fun c1 ->
+                  Array.exists
+                    (fun c2 ->
+                      c1#data#subtree_equals c2#data
+                    ) n2#initial_children
+                ) n1#initial_children
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
           in
 
           [%debug_log "@"];
@@ -3602,6 +3622,38 @@ class ['node_t, 'tree_t] c
             anc_each_other() &&
             nd1old#data#is_named_orig &&
             nd1old#data#eq nd2old#data && not (nd1new#data#eq nd2new#data)
+          ||
+            nd1old == nd1new && nd1old#data#is_named &&
+            nd1old#data#eq nd2old#data && not (nd1old#data#eq nd2new#data) &&
+            (try
+              let pnd1old = nd1old#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              anc_each_other2 pnd2old pnd2new &&
+              pnd1old#data#eq pnd2old#data && not (pnd1old#data#eq pnd2new#data)
+            with _ -> false)
+          ||
+            nd2old == nd2new && nd2old#data#is_named &&
+            nd2old#data#eq nd1old#data && not (nd2old#data#eq nd1new#data) &&
+            (try
+              let pnd2old = nd2old#initial_parent in
+              let pnd1old = nd1old#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              anc_each_other1 pnd1old pnd1new &&
+              pnd2old#data#eq pnd1old#data && not (pnd2old#data#eq pnd1new#data)
+            with _ -> false)
+          ||
+            nd1old == nd1new && nd1old#data#is_named &&
+            nd1old#data#eq nd2old#data && nd1old#data#eq nd2new#data &&
+            let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
+            has_common_subtree nd1old nd2old &&
+            not (has_common_subtree nd1new nd2new)
+          ||
+            nd2old == nd2new && nd2old#data#is_named &&
+            nd2old#data#eq nd1old#data && nd2old#data#eq nd1new#data &&
+            let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
+            has_common_subtree nd1old nd2old &&
+            not (has_common_subtree nd1new nd2new)
         (*||
         (subtree_sim_old > subtree_sim_new && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin
@@ -3645,6 +3697,38 @@ class ['node_t, 'tree_t] c
             anc_each_other() &&
             nd1new#data#is_named_orig &&
             nd1new#data#eq nd2new#data && not (nd1old#data#eq nd2old#data)
+          ||
+            nd1old == nd1new && nd1old#data#is_named &&
+            nd1new#data#eq nd2new#data && not (nd1new#data#eq nd2old#data) &&
+            (try
+              let pnd1new = nd1new#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              anc_each_other2 pnd2old pnd2new &&
+              pnd1new#data#eq pnd2new#data && not (pnd1new#data#eq pnd2old#data)
+            with _ -> false)
+          ||
+            nd2old == nd2new && nd2old#data#is_named &&
+            nd2new#data#eq nd1new#data && not (nd2new#data#eq nd1old#data) &&
+            (try
+              let pnd2new = nd2new#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              let pnd1old = nd1old#initial_parent in
+              anc_each_other1 pnd1old pnd1new &&
+              pnd2new#data#eq pnd1new#data && not (pnd2new#data#eq pnd1old#data)
+            with _ -> false)
+          ||
+            nd1old == nd1new && nd1old#data#is_named &&
+            nd1old#data#eq nd2old#data && nd1old#data#eq nd2new#data &&
+            let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
+            has_common_subtree nd1new nd2new &&
+            not (has_common_subtree nd1old nd2old)
+          ||
+            nd2old == nd2new && nd2old#data#is_named &&
+            nd2old#data#eq nd1old#data && nd2old#data#eq nd1new#data &&
+            let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
+            has_common_subtree nd1new nd2new &&
+            not (has_common_subtree nd1old nd2old)
         (*||
         (subtree_sim_new > subtree_sim_old && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin

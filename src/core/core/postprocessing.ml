@@ -2646,7 +2646,7 @@ end;
     else
       c
 
-  let sort_node_pairs = List.fast_sort cmp_node_pairs
+  let sort_node_pairs ?(reverse=false) = List.fast_sort (cmp_node_pairs ~reverse)
 
 
  (*
@@ -4621,13 +4621,16 @@ end;
                       (
                        is_cand pn1 pn2
                       (*||
-                       is_mapped_pair pn1 pn2*)
+                       try
+                         is_mapped_pair pn1 pn2 && pn1#data#eq pn2#data
+                       with _ -> false*)
                       ) &&
                       (
                        (try
                          pn1#data#get_name = n1#data#get_name &&
                          pn2#data#get_name = n2#data#get_name
                        ||
+                         pn1#data#eq pn2#data &&
                          Comparison.get_stripped_name pn1 = Comparison.get_stripped_name n1 &&
                          Comparison.get_stripped_name pn2 = Comparison.get_stripped_name n2
                        with _ -> false) ||
@@ -4811,7 +4814,7 @@ end;
 
                   [%debug_log "base score: %d, bonus: %d" base bonus];
 
-                  let score = base + bonus in
+                  let score = base + bonus + (if defeated then 1 else 0) in
 
                   if cnd1#data#subtree_equals cnd2#data then begin
                     let nds1 = ref [] in
@@ -5355,7 +5358,11 @@ end;
                       force := frc
                     );
                   [%debug_log "force=%B" !force];
-                  !b, !dnc, if !force then None else
+                  !b, !dnc,
+                  if !force then None else
+                  if tree2#is_initial_ancestor n2 nd2 || tree2#is_initial_ancestor nd2 n2 then
+                    None
+                  else
                   let p1 = nd1#initial_parent in
                   let b =
                     if
@@ -5423,7 +5430,11 @@ end;
                       force := frc
                     );
                   [%debug_log "force=%B" !force];
-                  !b, !dnc, if !force then None else
+                  !b, !dnc,
+                  if !force then None else
+                  if tree1#is_initial_ancestor n1 nd1 || tree1#is_initial_ancestor nd1 n1 then
+                    None
+                  else
                   let p2 = nd2#initial_parent in
                   let b =
                     if
@@ -10726,6 +10737,7 @@ end;
             false, None
         in*)
         sync_edits(* ~is_mov*) options cenv edits rps aps;
+        (*eliminate_false_moves options cenv edits nmapping*)
       end;
 
       if options#no_moves_flag then begin
