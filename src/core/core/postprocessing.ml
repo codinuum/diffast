@@ -4814,7 +4814,7 @@ end;
 
                   [%debug_log "base score: %d, bonus: %d" base bonus];
 
-                  let score = base + bonus + (if defeated then 1 else 0) in
+                  let score = base + bonus(* + (if defeated then 1 else 0)*) in
 
                   if cnd1#data#subtree_equals cnd2#data then begin
                     let nds1 = ref [] in
