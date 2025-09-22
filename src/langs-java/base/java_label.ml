@@ -1416,8 +1416,8 @@ module Primary = struct
        "assertFalse#1";
        "assertEquals#2";
        "assertNotEquals#2";
-       (*"assertThat#1";
-       "assertThat#2";*) (* should be checked later *)
+       "assertThat#1";
+       (*"assertThat#2";*) (* should be checked later *)
       ];
     s
 
