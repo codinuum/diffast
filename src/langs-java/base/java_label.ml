@@ -1062,7 +1062,7 @@ module Primary = struct
     | Name of name
     | This
     | Literal of Literal.t
-    | ClassLiteral
+    | ClassLiteral of name
     | ClassLiteralVoid
     | QualifiedThis of name
 
@@ -1102,6 +1102,7 @@ module Primary = struct
     | AmbiguousMethodInvocation name when strip -> undeco name
 
     | Name name
+    | ClassLiteral name
     | QualifiedThis name
     | InstanceCreation name
     | QualifiedInstanceCreation name
@@ -1144,6 +1145,7 @@ module Primary = struct
 
   let is_named = function
     | Name _
+    | ClassLiteral _
     | QualifiedThis _
     | InstanceCreation _
     | QualifiedInstanceCreation _
@@ -1173,6 +1175,7 @@ module Primary = struct
     | _ -> false
 
   let is_named_orig = function
+    | ClassLiteral _
     | InstanceCreation _ -> false
     | x -> is_named x
 
@@ -1182,7 +1185,7 @@ module Primary = struct
       | Name name -> sprintf "Name(%s)" name
       | This -> "This"
       | Literal lit -> Literal.to_string lit
-      | ClassLiteral -> "ClassLiteral"
+      | ClassLiteral name -> sprintf "ClassLiteral(%s)" name
       | ClassLiteralVoid -> "ClassLiteralVoid"
       | QualifiedThis name -> sprintf "QualifiedThis(%s)" name
 (*      | QualifiedNew name -> sprintf "QualifiedNew(%s)" name *)
@@ -1234,6 +1237,7 @@ module Primary = struct
   let anonymize ?(more=false) = function
     | Name _                              -> Name ""
     | Literal lit                         -> Literal (Literal.anonymize lit)
+    | ClassLiteral _                      -> ClassLiteral ""
     | QualifiedThis _                     -> QualifiedThis ""
     | InstanceCreation _                  -> InstanceCreation ""
     | QualifiedInstanceCreation _         -> QualifiedInstanceCreation ""
@@ -1279,7 +1283,7 @@ module Primary = struct
     | Name name                              -> name
     | This                                   -> "this"
     | Literal lit                            -> Literal.to_simple_string lit
-    | ClassLiteral                           -> "class"
+    | ClassLiteral name                      -> name^".class"
     | ClassLiteralVoid                       -> "void.class"
     | QualifiedThis name                     -> name^".this"
     | InstanceCreation _                     -> "new"
@@ -1310,7 +1314,7 @@ module Primary = struct
     | Name name          -> combo 0 [name]
     | This               -> mkstr 1
     | Literal lit        -> combo 2 [Literal.to_short_string lit]
-    | ClassLiteral       -> mkstr 3
+    | ClassLiteral name  -> combo 3 [name]
     | ClassLiteralVoid   -> mkstr 4
     | QualifiedThis name -> combo 5 [name]
     | InstanceCreation n                     -> combo 6 [n]
@@ -1347,7 +1351,7 @@ module Primary = struct
       | Name name                              -> "Name", ["name",xmlenc name]
       | This                                   -> "This", []
       | Literal lit                            -> Literal.to_tag lit
-      | ClassLiteral                           -> "ClassLiteral", []
+      | ClassLiteral name                      -> "ClassLiteral", ["name",xmlenc name]
       | ClassLiteralVoid                       -> "ClassLiteralVoid", []
       | QualifiedThis name                     -> "QualifiedThis", ["name",xmlenc name]
 (*      | QualifiedNew name                     -> "qualified_new", ["name",name] *)
@@ -4561,7 +4565,7 @@ let of_elem_data =
 
     "Name",                          (fun a -> mkp a Primary.(Name(find_name a)));
     "This",                          (fun a -> mkp a Primary.This);
-    "ClassLiteral",                  (fun a -> mkp a Primary.ClassLiteral);
+    "ClassLiteral",                  (fun a -> mkp a (Primary.ClassLiteral(find_name a)));
     "ClassLiteralVoid",              (fun a -> mkp a Primary.ClassLiteralVoid);
     "QualifiedThis",                 (fun a -> mkp a (Primary.QualifiedThis(find_name a)));
     "StandardInstanceCreation",      (fun a -> mkp a (Primary.InstanceCreation(find_name a)));

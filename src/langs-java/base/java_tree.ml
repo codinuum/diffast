@@ -1960,7 +1960,10 @@ class translator options =
       match p.Ast.p_desc with
       | Ast.Pname name -> let loc0 = Ast.Loc.collapse_forward p.Ast.p_loc in self#of_name loc0 name
       | Ast.Pliteral lit -> self#of_literal lit
-      | Ast.PclassLiteral ty -> self#mknode (L.Primary L.Primary.ClassLiteral) [self#of_javatype [] ty]
+      | Ast.PclassLiteral ty -> begin
+          let name = P.type_to_string ~resolve:false ~show_attr:false ty in
+          self#mknode (L.Primary (L.Primary.ClassLiteral name)) [self#of_javatype [] ty]
+      end
       | Ast.PclassLiteralVoid -> self#mkleaf (L.Primary (L.Primary.ClassLiteralVoid))
       | Ast.Pthis -> self#mkleaf (L.Primary L.Primary.This)
       | Ast.PqualifiedThis name ->

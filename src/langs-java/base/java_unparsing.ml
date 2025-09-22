@@ -1172,7 +1172,7 @@ and pr_primary ?(fail_on_error=true) ?(prec=0) p children =
       pr_string s
   end
 
-  | L.Primary.ClassLiteral     -> pr_nth_child 0; pr_string ".class"
+  | L.Primary.ClassLiteral _   -> pr_nth_child 0; pr_string ".class"
   | L.Primary.ClassLiteralVoid -> pr_string "void.class"
   | L.Primary.QualifiedThis n  -> pr_name n; pr_string ".this"
 
