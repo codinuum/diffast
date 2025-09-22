@@ -3137,6 +3137,23 @@ end;
         in
 
         if can_add then begin
+          let score =
+            if
+              Array.exists
+                (fun c1 ->
+                  Array.exists
+                    (fun c2 ->
+                      cenv#has_uniq_subtree_match c1 c2
+                    ) nd2#initial_children
+                ) nd1#initial_children
+            then begin
+              let score_ = score + 1 in
+              [%debug_log "score: %d -> %d" score score_];
+              score_
+            end
+            else
+              score
+          in
 
           begin %debug_block
             [%debug_log "[%s]: adding %a -> %a (score=%d)" context nups nd1 nups nd2 score];
