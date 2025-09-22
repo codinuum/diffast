@@ -3137,7 +3137,7 @@ end;
         in
 
         if can_add then begin
-          let score =
+          (*let score =
             if
               Array.exists
                 (fun c1 ->
@@ -3153,7 +3153,7 @@ end;
             end
             else
               score
-          in
+          in*)
 
           begin %debug_block
             [%debug_log "[%s]: adding %a -> %a (score=%d)" context nups nd1 nups nd2 score];
