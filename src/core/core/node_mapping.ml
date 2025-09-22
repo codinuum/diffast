@@ -575,7 +575,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
 
   method iter_settled_roots_sorted cmp f =
     let sorted =
-      List.fast_sort (fun (n1, _) (n2, _) -> cmp n1 n2) (Xset.to_list settled_roots)
+      List.fast_sort cmp (Xset.to_list settled_roots)
     in
     List.iter (fun (nd1, nd2) -> f nd1 nd2) sorted
 
