@@ -2629,6 +2629,19 @@ end;
     b
 
 
+  let sort_node_pairs =
+    List.fast_sort
+      (fun (n10, n20) (n11, n21) ->
+        let gi10, gi11 = n10#gindex, n11#gindex in
+        let c = Stdlib.compare gi10 gi11 in
+        if c = 0 then
+          let gi20, gi21 = n20#gindex, n21#gindex in
+          Stdlib.compare gi20 gi21
+        else
+          c
+      )
+
+
  (*
   * glueing deletes and inserts
   *)
@@ -4992,7 +5005,7 @@ end;
           if first || not upward_only then
             scan_down s n1 n2
         );
-      nmapping#iter_settled_roots (*_sorted Stdlib.compare *)
+      nmapping#iter_settled_roots_sorted Stdlib.compare
         (fun n1 n2 ->
           let s = get_scoring n1 n2 in
           scan_up s n1 n2)
@@ -6048,18 +6061,7 @@ end;
         Xset.to_list conflicted_pairs
       in
 
-      let starting_pairs =
-        List.fast_sort
-          (fun (n10, n20) (n11, n21) ->
-            let gi10, gi11 = n10#gindex, n11#gindex in
-            let c = Stdlib.compare gi10 gi11 in
-            if c = 0 then
-              let gi20, gi21 = n20#gindex, n21#gindex in
-              Stdlib.compare gi20 gi21
-            else
-              c
-          ) starting_pairs
-      in
+      let starting_pairs = sort_node_pairs starting_pairs in
 
       nmapping#add_starting_pairs_for_glueing starting_pairs;
     end
