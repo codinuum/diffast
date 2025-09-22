@@ -2629,17 +2629,24 @@ end;
     b
 
 
-  let sort_node_pairs =
-    List.fast_sort
-      (fun (n10, n20) (n11, n21) ->
-        let gi10, gi11 = n10#gindex, n11#gindex in
-        let c = Stdlib.compare gi10 gi11 in
-        if c = 0 then
-          let gi20, gi21 = n20#gindex, n21#gindex in
-          Stdlib.compare gi20 gi21
-        else
-          c
-      )
+  let cmp_node_pairs ?(reverse=false) (n10, n20) (n11, n21) =
+    let gi10, gi11 = n10#gindex, n11#gindex in
+    let c =
+      if reverse then
+        Stdlib.compare gi11 gi10
+      else
+        Stdlib.compare gi10 gi11
+    in
+    if c = 0 then
+      let gi20, gi21 = n20#gindex, n21#gindex in
+      if reverse then
+        Stdlib.compare gi21 gi20
+      else
+        Stdlib.compare gi20 gi21
+    else
+      c
+
+  let sort_node_pairs = List.fast_sort cmp_node_pairs
 
 
  (*
@@ -4611,7 +4618,11 @@ end;
                     try
                       let pn1 = n1#initial_parent in
                       let pn2 = n2#initial_parent in
-                      (is_cand pn1 pn2(* || is_mapped_pair pn1 pn2*)) &&
+                      (
+                       is_cand pn1 pn2
+                      (*||
+                       is_mapped_pair pn1 pn2*)
+                      ) &&
                       (
                        (try
                          pn1#data#get_name = n1#data#get_name &&
@@ -5005,7 +5016,7 @@ end;
           if first || not upward_only then
             scan_down s n1 n2
         );
-      nmapping#iter_settled_roots_sorted Stdlib.compare
+      nmapping#iter_settled_roots_sorted cmp_node_pairs
         (fun n1 n2 ->
           let s = get_scoring n1 n2 in
           scan_up s n1 n2)
