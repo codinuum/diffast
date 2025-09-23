@@ -7068,6 +7068,19 @@ end;
             match ml with
             | [_] when begin
                 not r1#data#is_common && not r2#data#is_common &&
+                not
+                  (
+                   tsz = 1 &&
+                   r1#data#is_sequence && r2#data#is_sequence &&
+                   r1#data#is_named && r2#data#is_named &&
+                   try
+                     let pr1 = r1#initial_parent in
+                     let pr2 = r2#initial_parent in
+                     not (is_map pr1 pr2) &&
+                     pr1#data#get_stripped_name = r1#data#get_stripped_name &&
+                     pr2#data#get_stripped_name = r2#data#get_stripped_name
+                   with _ -> false
+                  ) &&
                 cenv#multiple_node_matches#is_uniq_match r1 r2
             end -> ()
             | _ -> Hashtbl.replace sz_tbl !mid (sz, esz, tsz, k, r1, r2, ml)
