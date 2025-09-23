@@ -10198,7 +10198,40 @@ end;
                 ~edits_opt:(Some edits)
                 nmapping (new Node_mapping.c cenv)
             in
-            let is_mov _ _ = true, Some mid in
+            let is_mov n1 n2 =
+              [%debug_log "mid=%a n1=%a n2=%a" MID.ps mid nups n1 nups n2];
+              if
+                try
+                  let pn1 = n1#initial_parent in
+                  let pn2 = n2#initial_parent in
+                  try
+                    Array.iter
+                      (fun x1 ->
+                        if x1 != n1 then begin
+                          let x1' = nmapping#find x1 in
+                          if x1'#initial_parent == pn2 then begin
+                            match edits#find_mov12 x1 x1' with
+                            | Edit.Move(id, _, _, _) when !id = mid -> begin
+                                if cenv#is_crossing_or_incompatible x1 x1' n1 n2 then begin
+                                  [%debug_log "%a-%a is crossing with %a-%a"
+                                    nups n1 nups n2 nups x1 nups x1'];
+                                  raise Exit
+                                end
+                            end
+                            | _ -> ()
+                          end
+                        end
+                      ) pn1#initial_children;
+                    false
+                  with
+                    Exit -> true
+                with
+                  _ -> false
+              then
+                true, None
+              else
+                true, Some mid
+            in
             sync_edits options ~is_mov cenv edits removed_pairs added_pairs
 
           ) movs0
@@ -10231,6 +10264,7 @@ end;
             nmapping (new Node_mapping.c cenv)
         in
         let is_mov n1 n2 =
+          [%debug_log "%a-%a" nups n1 nups n2];
           edits#is_crossing_with_untouched
             ?full_scan:None
             ?mask:None ?incompatible_only:None ?weak:None
