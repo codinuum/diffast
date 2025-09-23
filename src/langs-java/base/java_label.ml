@@ -3372,7 +3372,7 @@ let is_common = function
   | Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _))
   | Statement (Statement.Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _), _)) -> true
 
-  | Statement (Statement.If _) -> true
+  | Statement (Statement.If _ | Return) -> true
 
   | IDsingle n -> Xset.mem Type.common_classes n
   | _ -> false
