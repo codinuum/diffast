@@ -3369,8 +3369,8 @@ let is_common = function
   | Expression (Expression.Primary p)
   | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary.is_common p
 
-  | Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _))
-  | Statement (Statement.Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _), _)) -> true
+  (*| Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _))
+  | Statement (Statement.Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _), _)) -> true*)
 
   | Statement (Statement.If _(* | Return*)) -> true
 

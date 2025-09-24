@@ -8297,23 +8297,44 @@ end;
                           [%debug_log "single cross boundary move: %a" MID.ps mid]
                         else if
                           sz = 1 &&
-                          let stmt_deleted =
+                          let stmt1_opt = ref None in
+                          let stmt2_opt = ref None in
+                          let stmt_deleted () =
                             try
-                              let stmt1 = Comparison.get_stmt nd1 in
+                              let stmt1 =
+                                match !stmt1_opt with
+                                | Some x -> x
+                                | _ ->
+                                    let x = Comparison.get_stmt nd1 in
+                                    stmt1_opt := Some x;
+                                    x
+                              in
                               is_del stmt1
                             with
                               _ -> false
                           in
-                          let stmt_inserted =
+                          let stmt_inserted () =
                             try
-                              let stmt2 = Comparison.get_stmt nd2 in
+                              let stmt2 =
+                                match !stmt2_opt with
+                                | Some x -> x
+                                | _ ->
+                                    let x = Comparison.get_stmt nd2 in
+                                    stmt2_opt := Some x;
+                                    x
+                              in
                               is_ins stmt2
                             with
                               _ -> false
                           in
-                          (stmt_deleted || stmt_inserted) &&
+                          (*let stmt_eq () =
+                            match !stmt1_opt, !stmt2_opt with
+                            | Some x1, Some x2 -> x1#data#eq x2#data
+                            | _ -> false
+                          in*)
+                          (stmt_deleted() || stmt_inserted()) &&
                           (
-                           stmt_deleted && stmt_inserted ||
+                           stmt_deleted() && stmt_inserted()(* && not (stmt_eq())*) ||
                            not (
                              not (is_use nd1 && is_use nd2) ||
                              try
