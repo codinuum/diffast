@@ -7068,6 +7068,8 @@ end;
             match ml with
             | [_] when begin
                 not r1#data#is_common && not r2#data#is_common &&
+                (r1#data#is_named || r1#data#has_non_trivial_value) &&
+                (r2#data#is_named || r2#data#has_non_trivial_value) &&
                 not
                   (
                    tsz = 1 &&

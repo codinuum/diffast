@@ -3362,7 +3362,7 @@ let move_disallowed = function
   (*| Type t -> Type.is_common t*)
   | _ -> false
 
-let is_common = function
+let is_common = function (* common constracts that have names or non-trivial values *)
   | Annotation a -> Annotation.move_disallowed a
   | Type t -> Type.is_common t
   | Primary p
@@ -3372,7 +3372,7 @@ let is_common = function
   (*| Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _))
   | Statement (Statement.Expression (Expression.AssignmentOperator (AssignmentOperator.Eq, _), _)) -> true*)
 
-  | Statement (Statement.If _(* | Return*)) -> true
+  (*| Statement (Statement.If _(* | Return*)) -> true*)
 
   | IDsingle n -> Xset.mem Type.common_classes n
   | _ -> false
