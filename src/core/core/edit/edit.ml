@@ -582,6 +582,7 @@ let mkfilt getlab is_x nd =
 let is_def nd = B.is_def nd#data#binding
 let is_non_local_def nd = B.is_non_local_def nd#data#binding
 let is_use nd = B.is_use nd#data#binding
+let get_def_node tree n = tree#search_node_by_uid (B.get_uid n#data#binding)
 let get_bid nd = B.get_bid nd#data#binding
 let get_bid_opt nd = B.get_bid_opt nd#data#binding
 
@@ -1672,6 +1673,27 @@ let rectify_renames_u
   end;
 
   cenv#finalize_rename_pat();
+
+  (*cenv#multiple_node_matches#iter
+    (fun (_, nds1, nds2) ->
+      List.iter
+        (fun n1 ->
+          List.iter
+            (fun n2 ->
+              if
+                n1#data#is_named && n2#data#is_named &&
+                is_use n1 && is_use n2 &&
+                try
+                  let def1 = get_def_node tree1 n1 in
+                  let def2 = get_def_node tree2 n2 in
+                  nmapping#find def1 == def2
+                with _ -> false
+              then
+                cenv#add_reliable_mapping n1 n2
+            ) nds2
+        ) nds1
+    );
+  cenv#finalize_reliable_mappings();*)
 
   let rename_tbl1 = Hashtbl.create 0 in
   let rename_tbl2 = Hashtbl.create 0 in
@@ -2828,6 +2850,21 @@ let rectify_renames_d
                   Xset.add xnds2 n2
                 ) pl
           ) xnd_tbl;
+
+        (*List.iter2
+          (fun n1 n2 ->
+            try
+              let pn1 = n1#initial_parent in
+              let pn2 = n2#initial_parent in
+              if
+                (*nmapping#find pn1 == pn2 &&*)
+                pn1#data#is_statement && pn1#data#eq pn2#data
+              then begin
+                Xset.add xnds1 n1;
+                Xset.add xnds2 n2
+              end
+            with _ -> ()
+          ) !use_renames1 !use_renames2;*)
 
         let nds1__, nds2__ =
           if

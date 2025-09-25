@@ -602,8 +602,8 @@ let weight_compare x0 x1 =
 class ['node_t, 'tree_t] c
     options
     ?(has_elaborate_edits=false)
-    (tree1 : 'tree_t) (tree2 : 'tree_t)
-
+    (tree1 : 'tree_t)
+    (tree2 : 'tree_t)
     = object (self)
 
   val mutable use_adjacency_cache = true
@@ -804,6 +804,19 @@ class ['node_t, 'tree_t] c
     let b = Xset.mem rename_pat (s1, s2) in
     [%debug_log "\"%s\"-\"%s\" -> %B" s1 s2 b];
     b
+
+  (*val mutable reliable_mappings_finalized_flag = false
+  method finalize_reliable_mappings () =
+    [%debug_log "reliable mappings finalized"];
+    reliable_mappings_finalized_flag <- true
+  val reliable_mappings = (Xset.create 0 : ('node_t * 'node_t) Xset.t)
+  method add_reliable_mapping n1 n2 =
+    [%debug_log "%a-%a" nups n1 nups n2];
+    Xset.add reliable_mappings (n1, n2)
+  method is_reliable_mapping n1 n2 =
+    let b = Xset.mem reliable_mappings (n1, n2) in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b*)
 
   val ref_npairs = (new pairs : 'node_t pairs)
   method ref_npairs = ref_npairs
@@ -1233,7 +1246,7 @@ class ['node_t, 'tree_t] c
 
   val mutable mapping_comparison_cache_hit_count = 0
 
-  val similarity_cache = (Tbl3.create() : ((bool * bool * bool), UID.t, UID.t, float) Tbl3.t)
+  val similarity_cache = (Tbl3.create() : ((bool * bool * bool(* * bool*)), UID.t, UID.t, float) Tbl3.t)
   val mutable similarity_cache_hit_count = 0
 
   val use_tbl1 = Hashtbl.create 0 (* bid -> node list *)
@@ -1399,22 +1412,28 @@ class ['node_t, 'tree_t] c
               0
           in
           s + extra * 100
+        (*else if self#is_reliable_mapping nd1 nd2 then
+          s + 2*)
         else
           s
 
       end
       else if exact_only then
         0
+      (*else if self#is_reliable_mapping nd1 nd2 then
+        3 + 2*)
       else if nd1#data#_anonymized_label = nd2#data#_anonymized_label then
         if
           (*bonus_named && *)nd1#data#is_named && nd2#data#is_named &&
-          (try
-            self#is_rename_pat (get_orig_name nd1, get_orig_name nd2)
-          with
-            Not_found ->
-              [%debug_log "%s -- %s" nd1#data#to_string nd2#data#to_string];
-              false)(* ||
-          nd1#data#_stripped_label = nd2#data#_stripped_label*)
+          (
+           try
+             self#is_rename_pat (get_orig_name nd1, get_orig_name nd2)
+           with
+             Not_found ->
+               [%debug_log "%s -- %s" nd1#data#to_string nd2#data#to_string];
+               false
+          )
+        (* || nd1#data#_stripped_label = nd2#data#_stripped_label*)
         then
           3 + if bonus_rename_pat then 2 else 0
         else if
@@ -1967,7 +1986,12 @@ class ['node_t, 'tree_t] c
 
         let score =
           Tbl3.find similarity_cache
-            (bonus_named, flat, rename_pat_finalized_flag) rt1#uid rt2#uid
+            (
+             bonus_named,
+             flat,
+             rename_pat_finalized_flag
+             (*,reliable_mappings_finalized_flag*)
+            ) rt1#uid rt2#uid
         in
 
         similarity_cache_hit_count <- similarity_cache_hit_count + 1;
@@ -1999,7 +2023,12 @@ class ['node_t, 'tree_t] c
 
             if use_similarity_cache then
               Tbl3.add similarity_cache
-                (bonus_named, flat, rename_pat_finalized_flag) rt1#uid rt2#uid s;
+                (
+                 bonus_named,
+                 flat,
+                 rename_pat_finalized_flag
+                 (*,reliable_mappings_finalized_flag*)
+                ) rt1#uid rt2#uid s;
             s
           end
           else begin
@@ -2012,7 +2041,9 @@ class ['node_t, 'tree_t] c
             | [], _ | _, [] -> 0.0
             | _ ->
                 let lmres =
-                  self#eval_label_match_list ~bonus_named ~bonus_rename_pat:true ~flat !nds1 !nds2
+                  self#eval_label_match_list
+                    ~bonus_named ~bonus_rename_pat:true ~flat
+                    !nds1 !nds2
                 in
                 let s =
                   (lmres.lm_score *. 2.0) /. (float ((List.length !nds1) + (List.length !nds2)))
@@ -2022,7 +2053,12 @@ class ['node_t, 'tree_t] c
 
                 if use_similarity_cache then
                   Tbl3.add similarity_cache
-                    (bonus_named, flat, rename_pat_finalized_flag) rt1#uid rt2#uid s;
+                    (
+                     bonus_named,
+                     flat,
+                     rename_pat_finalized_flag
+                     (*,reliable_mappings_finalized_flag*)
+                    ) rt1#uid rt2#uid s;
                 s
           end
     in
@@ -3506,6 +3542,35 @@ class ['node_t, 'tree_t] c
             [%debug_log "%a %a --> %B" nups n1 nups n2 b];
             b
           in
+          (*let has_reliable_rename n1 n2 =
+            let b =
+              let b0 =
+                n1#data#is_named && n2#data#is_named &&
+                is_use n1 && is_use n2 &&
+                try
+                  let def1 = get_def_node tree1 n1 in
+                  let def2 = get_def_node tree2 n2 in
+                  nmapping#find def1 == def2
+                with _ -> false
+              in
+              b0 ||
+              Array.exists
+                (fun c1 ->
+                  Array.exists
+                    (fun c2 ->
+                      c1#data#is_named && c2#data#is_named &&
+                      is_use c1 && is_use c2 &&
+                      try
+                        let def1 = get_def_node tree1 c1 in
+                        let def2 = get_def_node tree2 c2 in
+                        nmapping#find def1 == def2
+                      with _ -> false
+                    ) n2#initial_children
+                ) n1#initial_children
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in*)
 
           [%debug_log "@"];
 
@@ -3556,6 +3621,11 @@ class ['node_t, 'tree_t] c
              nd1old#data#is_common && nd2old#data#is_common &&
              nd1new#data#is_common && nd2new#data#is_common
            (*||
+             nd1old#data#is_statement && not nd1old#data#is_named &&
+             nd2old#data#is_statement && not nd2old#data#is_named &&
+             nd1new#data#is_statement && not nd1new#data#is_named &&
+             nd2new#data#is_statement && not nd2new#data#is_named*)
+           (*||
              not nd1old#data#is_named_orig && not nd2old#data#is_named_orig &&
              not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
              nd1old#data#_anonymized_label = nd2old#data#_anonymized_label*)
@@ -3574,6 +3644,11 @@ class ['node_t, 'tree_t] c
             (
              nd1old#data#is_common && nd2old#data#is_common &&
              nd1new#data#is_common && nd2new#data#is_common
+           (*||
+             nd1old#data#is_statement && not nd1old#data#is_named &&
+             nd2old#data#is_statement && not nd2old#data#is_named &&
+             nd1new#data#is_statement && not nd1new#data#is_named &&
+             nd2new#data#is_statement && not nd2new#data#is_named*)
            (*||
              not nd1old#data#is_named_orig && not nd2old#data#is_named_orig &&
              not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
@@ -3645,15 +3720,39 @@ class ['node_t, 'tree_t] c
           ||
             nd1old == nd1new && nd1old#data#is_named &&
             nd1old#data#eq nd2old#data && nd1old#data#eq nd2new#data &&
-            let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
-            has_common_subtree nd1old nd2old &&
-            not (has_common_subtree nd1new nd2new)
+            (
+             let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
+             has_common_subtree nd1old nd2old && not (has_common_subtree nd1new nd2new)
+           (*||
+             has_reliable_rename nd1old nd2old && not (has_reliable_rename nd1new nd2new)*)
+           (*||
+             try
+              let pnd1old = nd1old#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              pnd1old#data#is_statement &&
+              pnd1old#data#eq pnd2old#data && not (pnd1new#data#eq pnd2new#data)
+             with _ -> false*)
+            )
           ||
             nd2old == nd2new && nd2old#data#is_named &&
             nd2old#data#eq nd1old#data && nd2old#data#eq nd1new#data &&
-            let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
-            has_common_subtree nd1old nd2old &&
-            not (has_common_subtree nd1new nd2new)
+            (
+             let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
+             has_common_subtree nd1old nd2old && not (has_common_subtree nd1new nd2new)
+           (*||
+             has_reliable_rename nd1old nd2old && not (has_reliable_rename nd1new nd2new)*)
+           (*||
+             try
+              let pnd1old = nd1old#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              pnd1old#data#is_statement &&
+              pnd1old#data#eq pnd2old#data && not (pnd1new#data#eq pnd2new#data)
+             with _ -> false*)
+            )
         (*||
         (subtree_sim_old > subtree_sim_new && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin
@@ -3720,15 +3819,39 @@ class ['node_t, 'tree_t] c
           ||
             nd1old == nd1new && nd1old#data#is_named &&
             nd1old#data#eq nd2old#data && nd1old#data#eq nd2new#data &&
-            let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
-            has_common_subtree nd1new nd2new &&
-            not (has_common_subtree nd1old nd2old)
+            (
+             let _ = [%debug_log "@@@ %a--[%a,%a]" nups nd1old nups nd2old nups nd2new] in
+             has_common_subtree nd1new nd2new && not (has_common_subtree nd1old nd2old)
+           (*||
+             has_reliable_rename nd1new nd2new && not (has_reliable_rename nd1old nd2old)*)
+           (*||
+             try
+              let pnd1old = nd1old#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              pnd1new#data#is_statement &&
+              pnd1new#data#eq pnd2new#data && not (pnd1old#data#eq pnd2old#data)
+             with _ -> false*)
+            )
           ||
             nd2old == nd2new && nd2old#data#is_named &&
             nd2old#data#eq nd1old#data && nd2old#data#eq nd1new#data &&
-            let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
-            has_common_subtree nd1new nd2new &&
-            not (has_common_subtree nd1old nd2old)
+            (
+             let _ = [%debug_log "@@@ [%a,%a]--%a" nups nd1old nups nd2old nups nd2new] in
+             has_common_subtree nd1new nd2new && not (has_common_subtree nd1old nd2old)
+           (*||
+             has_reliable_rename nd1new nd2new && not (has_reliable_rename nd1old nd2old)*)
+           (*||
+             try
+              let pnd1old = nd1old#initial_parent in
+              let pnd2old = nd2old#initial_parent in
+              let pnd1new = nd1new#initial_parent in
+              let pnd2new = nd2new#initial_parent in
+              pnd1new#data#is_statement &&
+              pnd1new#data#eq pnd2new#data && not (pnd1old#data#eq pnd2old#data)
+             with _ -> false*)
+            )
         (*||
         (subtree_sim_new > subtree_sim_old && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin
