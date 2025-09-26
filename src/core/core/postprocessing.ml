@@ -2091,8 +2091,12 @@ end;
                      an1#data#_stripped_label = an2#data#_stripped_label*)
                     ) &&
                     (
-                     an1 == nd1#initial_parent || an2 == nd2#initial_parent ||
-                     is_use nd1 && nd1#data#anonymized_label = nd2#data#anonymized_label
+                     an1 == nd1#initial_parent
+                    ||
+                     an2 == nd2#initial_parent
+                    ||
+                     (is_use nd1 || nd1#data#has_non_trivial_value) &&
+                     nd1#data#anonymized_label = nd2#data#anonymized_label
                     ) &&
                     try
                       let an1' = nmapping#find an1 in
@@ -2279,7 +2283,7 @@ end;
                       begin
                         match d1 with
                         | Some d -> begin
-                            [%debug_log "d1=(Some %s)" d];
+                            [%debug_log "d1=(Some %s)" (Digest.to_hex d)];
                             [%debug_log "nd1: %s" nd1#to_string];
                             [%debug_log "nd1 (initial): %s" nd1#initial_to_string];
                         end
@@ -2288,7 +2292,7 @@ end;
                       begin
                         match d2 with
                         | Some d -> begin
-                            [%debug_log "d2=(Some %s)" d];
+                            [%debug_log "d2=(Some %s)" (Digest.to_hex d)];
                             [%debug_log "nd2: %s" nd2#to_string];
                             [%debug_log "nd2 (initial): %s" nd2#initial_to_string];
                         end
@@ -2798,26 +2802,26 @@ end;
         [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
         b
       in
-      if ignore_common then
-        let has_uniq_desc_match n1 n2 =
-          let b =
-            has_p_descendant
-              (fun x1 ->
-                try
-                  let x1' = nmapping#find x1 in
-                  tree2#is_initial_ancestor n2 x1' &&
-                  cenv#has_uniq_match x1 x1'
-                with _ -> false
-              ) n1
-          in
-          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
-          b
+      let has_uniq_desc_match n1 n2 =
+        let b =
+          has_p_descendant
+            (fun x1 ->
+              try
+                let x1' = nmapping#find x1 in
+                tree2#is_initial_ancestor n2 x1' &&
+                cenv#has_uniq_match x1 x1'
+              with _ -> false
+            ) n1
         in
+        [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+        b
+      in
+      if ignore_common then
         fun n1 n2 ->
           let b =
             (
+             (n1#data#is_common || n2#data#is_common) &&
              try
-               (n1#data#is_common || n2#data#is_common) &&
                let pn1 = n1#initial_parent in
                let pn2 = n2#initial_parent in
                pn1#data#is_sequence && pn2#data#is_sequence &&
@@ -2845,12 +2849,12 @@ end;
                cenv#is_scope_breaking_mapping nmapping n1 n2 &&
                (
                 try
-                  let d1 = get_def_node cenv#tree1 n1 in
-                  let d2 = get_def_node cenv#tree2 n2 in
-                  [%debug_log "d1=%a" nps d1];
-                  [%debug_log "d2=%a" nps d2];
-                  not (is_local_def d1 && is_local_def d2) ||
-                  nmapping#mem_dom d1 && nmapping#mem_cod d2
+                  let def1 = get_def_node cenv#tree1 n1 in
+                  let def2 = get_def_node cenv#tree2 n2 in
+                  [%debug_log "def1=%a" nps def1];
+                  [%debug_log "def2=%a" nps def2];
+                  not (is_local_def def1 && is_local_def def2) ||
+                  nmapping#mem_dom def1 && nmapping#mem_cod def2
                 with _ -> true
                )
              with Failure _ -> false
@@ -3581,13 +3585,35 @@ end;
         in
         [%debug_log "subtree_not_mapped=%B" subtree_not_mapped];
 
+        let has_better_desc_match n1 n2 =
+          let b =
+            (
+             n1#data#is_named || n1#data#has_non_trivial_value ||
+             n2#data#is_named || n2#data#has_non_trivial_value
+            ) &&
+            let alab1 = n1#data#anonymized_label in
+            let alab2 = n2#data#anonymized_label in
+            alab1 <> alab2 &&
+            (
+             has_p_descendant
+               (fun x1 -> x1#data#eq n2#data || x1#data#anonymized_label = alab2) n1
+            ||
+             has_p_descendant
+               (fun x2 -> n1#data#eq x2#data || alab1 = x2#data#anonymized_label) n2
+            )
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+
         let use_treediff_cond =
           size_cond &&
           (
            all_subtree_members_not_mapped ||
            subtree_not_mapped ||
            force_treediff ||
-           cenv#child_has_use_rename nd1 nd2
+           cenv#child_has_use_rename nd1 nd2 ||
+           has_better_desc_match nd1 nd2
           ) &&
           (not go_down_cond)
         in
