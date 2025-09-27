@@ -3588,21 +3588,38 @@ end;
         let has_better_desc_match n1 n2 =
           let b =
             (
-             n1#data#is_named || n1#data#has_non_trivial_value ||
-             n2#data#is_named || n2#data#has_non_trivial_value
+             n1#initial_nchildren = 0 &&
+             (n1#data#is_named || n1#data#has_non_trivial_value)
+            ||
+             n2#initial_nchildren = 0 &&
+             (n2#data#is_named || n2#data#has_non_trivial_value)
             ) &&
             let alab1 = n1#data#anonymized_label in
             let alab2 = n2#data#anonymized_label in
             alab1 <> alab2 &&
             (
              has_p_descendant
-               (fun x1 -> x1#data#eq n2#data || x1#data#anonymized_label = alab2) n1
+               (fun x1 ->
+                 x1#data#eq n2#data
+               ||
+                 (try cenv#is_rename_pat (get_orig_name x1, get_orig_name n2) with _ -> false)
+               ||
+                 x1#data#has_non_trivial_value && x1#data#anonymized_label = alab2
+               ) n1
             ||
              has_p_descendant
-               (fun x2 -> n1#data#eq x2#data || alab1 = x2#data#anonymized_label) n2
+               (fun x2 ->
+                 n1#data#eq x2#data
+               ||
+                 (try cenv#is_rename_pat (get_orig_name n1, get_orig_name x2) with _ -> false)
+               ||
+                 x2#data#has_non_trivial_value && alab1 = x2#data#anonymized_label
+               ) n2
             )
           in
           [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          if b then
+            [%debug_log "@@@@@"];
           b
         in
 
@@ -8383,26 +8400,39 @@ end;
                   end
                   | _ -> assert false
                 ) movl;
+              let named_or_op_ratio_thresh = 0.9 in
               Hashtbl.iter
                 (fun m (r1, movs) ->
                   let _ = m in
                   (*let sz = tree1#whole_initial_subtree_size r1 in*)
-                  let all_named = ref true in
+                  let named_or_op_count = ref 0 in
                   let _sz = ref 0 in
                   let _ =
                     tree1#scan_whole_initial_subtree r1
                       (fun n1 ->
                         incr _sz;
-                        if n1#data#is_named_orig || n1#data#has_non_trivial_value then
-                          ()
-                        else
-                          all_named := false
+                        if n1#data#is_named(*_orig*) || n1#data#has_non_trivial_value then
+                          incr named_or_op_count
+                        else if n1#data#is_op then
+                          incr named_or_op_count
+                        else begin
+                          [%debug_log "%a" nps n1]
+                        end
                       )
                   in
                   let sz = !_sz in
-                  [%debug_log "%a: sz=%d r1=%a nmovs=%d all_named=%B" MID.ps m
-                    sz nps r1 (List.length movs) !all_named];
-                  if sz > 1 && (List.length movs = sz(* || !all_named*)) then
+                  [%debug_log "%a: sz=%d r1=%a nmovs=%d named_or_op_count=%d" MID.ps m
+                    sz nps r1 (List.length movs) !named_or_op_count];
+                  if
+                    sz > 1 &&
+                    (
+                     List.length movs = sz
+                    ||
+                     let named_or_op_ratio = (float !named_or_op_count) /. (float sz) in
+                     [%debug_log "named_or_op_rate=%.2f (thresh=%.2f)" named_or_op_ratio named_or_op_ratio_thresh];
+                     named_or_op_ratio > named_or_op_ratio_thresh
+                    )
+                  then
                     List.iter
                       (fun m ->
                         [%debug_log "to be excluded: %s" (Edit.to_string m)];
