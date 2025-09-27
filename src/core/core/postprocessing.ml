@@ -3608,7 +3608,7 @@ end;
                ||
                  (try cenv#is_rename_pat (get_orig_name x1, get_orig_name n2) with _ -> false)
                ||
-                 (*x1#data#has_non_trivial_value && *)x1#data#anonymized_label = alab2
+                 x1#data#has_non_trivial_value && x1#data#anonymized_label = alab2
                ) n1
             ||
              has_p_descendant
@@ -3617,7 +3617,7 @@ end;
                ||
                  (try cenv#is_rename_pat (get_orig_name n1, get_orig_name x2) with _ -> false)
                ||
-                 (*x2#data#has_non_trivial_value && *)alab1 = x2#data#anonymized_label
+                 x2#data#has_non_trivial_value && alab1 = x2#data#anonymized_label
                ) n2
             )
           in
