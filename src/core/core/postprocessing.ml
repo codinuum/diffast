@@ -3588,12 +3588,16 @@ end;
         let has_better_desc_match n1 n2 =
           let b =
             (
+             n1#data#is_named || n1#data#has_non_trivial_value ||
+             n2#data#is_named || n2#data#has_non_trivial_value
+            ) &&
+            (*(
              n1#initial_nchildren = 0 &&
              (n1#data#is_named || n1#data#has_non_trivial_value)
             ||
              n2#initial_nchildren = 0 &&
              (n2#data#is_named || n2#data#has_non_trivial_value)
-            ) &&
+            ) &&*)
             let alab1 = n1#data#anonymized_label in
             let alab2 = n2#data#anonymized_label in
             alab1 <> alab2 &&
@@ -3604,7 +3608,7 @@ end;
                ||
                  (try cenv#is_rename_pat (get_orig_name x1, get_orig_name n2) with _ -> false)
                ||
-                 x1#data#has_non_trivial_value && x1#data#anonymized_label = alab2
+                 (*x1#data#has_non_trivial_value && *)x1#data#anonymized_label = alab2
                ) n1
             ||
              has_p_descendant
@@ -3613,7 +3617,7 @@ end;
                ||
                  (try cenv#is_rename_pat (get_orig_name n1, get_orig_name x2) with _ -> false)
                ||
-                 x2#data#has_non_trivial_value && alab1 = x2#data#anonymized_label
+                 (*x2#data#has_non_trivial_value && *)alab1 = x2#data#anonymized_label
                ) n2
             )
           in
