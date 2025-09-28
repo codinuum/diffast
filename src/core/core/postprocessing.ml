@@ -3598,6 +3598,11 @@ end;
              n2#initial_nchildren = 0 &&
              (n2#data#is_named || n2#data#has_non_trivial_value)
             ) &&*)
+            (
+             try
+               get_orig_name n1 <> get_orig_name n2
+             with _ -> true
+            ) &&
             let alab1 = n1#data#anonymized_label in
             let alab2 = n2#data#anonymized_label in
             alab1 <> alab2 &&

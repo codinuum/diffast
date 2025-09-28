@@ -65,6 +65,7 @@ let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
 
 let undeco_pat = Str.regexp "#[0-9]+"
 let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
+let get_uqn x = Xlist.last (String.split_on_char '.' x)
 
 
 module type T = sig
@@ -1102,6 +1103,9 @@ module Primary = struct
     | AmbiguousMethodInvocation name when strip -> undeco name
 
     | Name name
+    | AmbiguousName name when strip -> get_uqn name
+
+    | Name name
     | ClassLiteral name
     | QualifiedThis name
     | InstanceCreation name
@@ -1417,7 +1421,7 @@ module Primary = struct
        "assertEquals#2";
        "assertNotEquals#2";
        "assertThat#1";
-       (*"assertThat#2";*) (* should be checked later *)
+       "assertThat#2";
       ];
     s
 
