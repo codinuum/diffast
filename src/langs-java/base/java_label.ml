@@ -3246,7 +3246,7 @@ let relabel_allowed (lab1, lab2) =
         | Primary.ClassSuperMethodInvocation _
         | Primary.TypeMethodInvocation _ -> begin
             try
-              Primary.get_name _p = Primary.get_name p
+              Primary.get_name ~strip:true _p = Primary.get_name ~strip:true p
             with _ -> false
         end
         | _ -> false
