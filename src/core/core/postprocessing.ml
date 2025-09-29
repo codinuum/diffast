@@ -3598,10 +3598,11 @@ end;
              n2#initial_nchildren = 0 &&
              (n2#data#is_named || n2#data#has_non_trivial_value)
             ) &&*)
-            (
+            not (
+             n1#data#is_named_orig = n2#data#is_named_orig &&
              try
-               get_orig_name n1 <> get_orig_name n2
-             with _ -> true
+               get_orig_name n1 = get_orig_name n2
+             with _ -> false
             ) &&
             let alab1 = n1#data#anonymized_label in
             let alab2 = n2#data#anonymized_label in
@@ -3609,26 +3610,72 @@ end;
             (
              has_p_descendant
                (fun x1 ->
-                 x1#data#eq n2#data
-               ||
-                 (try cenv#is_rename_pat (get_orig_name x1, get_orig_name n2) with _ -> false)
-               ||
-                 x1#data#has_non_trivial_value && x1#data#anonymized_label = alab2
+                 let b =
+                   x1#data#eq n2#data
+                 ||
+                   (
+                    let b0 =
+                      x1#data#is_named_orig = n2#data#is_named_orig &&
+                      try
+                        get_orig_name x1 = get_orig_name n2 ||
+                        cenv#is_rename_pat (get_orig_name x1, get_orig_name n2)
+                      with _ -> false
+                    in
+                    if b0 then
+                      [%debug_log "@@@ found: %a" nups x1];
+                    b0
+                   )
+                 ||
+                   let b0 =
+                     x1#data#has_value && n2#data#has_value &&
+                     x1#data#has_non_trivial_value && n2#data#has_non_trivial_value &&
+                     x1#data#anonymized_label = alab2
+                   in
+                   if b0 then
+                     [%debug_log "@@@ found: %a" nups x1];
+                   b0
+                 in
+                 if b then begin
+                   [%debug_log "@@@ found: %a(->%a)" nups x1 nups n2];
+                 end;
+                 b
                ) n1
             ||
              has_p_descendant
                (fun x2 ->
-                 n1#data#eq x2#data
-               ||
-                 (try cenv#is_rename_pat (get_orig_name n1, get_orig_name x2) with _ -> false)
-               ||
-                 x2#data#has_non_trivial_value && alab1 = x2#data#anonymized_label
+                 let b =
+                   n1#data#eq x2#data
+                 ||
+                   (
+                    let b0 =
+                      x2#data#is_named_orig = n1#data#is_named_orig &&
+                      try
+                        get_orig_name n1 = get_orig_name x2 ||
+                        cenv#is_rename_pat (get_orig_name n1, get_orig_name x2)
+                      with _ -> false
+                    in
+                    if b0 then
+                      [%debug_log "@@@ found: %a" nups x2];
+                    b0
+                   )
+                 ||
+                   let b0 =
+                     x2#data#has_value && n1#data#has_value &&
+                     x2#data#has_non_trivial_value && n1#data#has_non_trivial_value &&
+                     alab1 = x2#data#anonymized_label
+                   in
+                   if b0 then
+                     [%debug_log "@@@ found: %a" nups x2];
+                   b0
+                 in
+                 if b then begin
+                   [%debug_log "@@@ found: %a(<-%a)" nups x2 nups n1];
+                 end;
+                 b
                ) n2
             )
           in
           [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
-          if b then
-            [%debug_log "@@@@@"];
           b
         in
 
@@ -6206,6 +6253,10 @@ end;
             if (nmapping#is_locked_node n1 && nmapping#is_locked_node n2) then
               [%debug_log " -> locked"]
 
+            else if not (n1#data#relabel_allowed n2#data) then begin
+              [%debug_log " -> relabel not allowed"];
+              add_odd (n1, n2)
+            end
             else
               try
                 match edits#find_mov12 n1 n2 with
