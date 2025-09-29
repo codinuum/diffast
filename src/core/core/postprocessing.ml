@@ -346,6 +346,11 @@ module F (Label : Spec.LABEL_T) = struct
       if nchildren1 = 0 || nchildren2 = 0 then
         true
 
+      else if
+        nchildren1 = 1 && nchildren2 = 1 && children1.(0)#data#eq children2.(0)#data
+      then
+        true
+
       else begin
         let sum_nchildren = nchildren1 + nchildren2 in
         if sum_nchildren = 0 then
@@ -360,7 +365,8 @@ module F (Label : Spec.LABEL_T) = struct
                   if Array.memq n' children2 then
                     if
                       (* n#data#eq n'#data *)
-                      n#data#_anonymized2_label = n'#data#_anonymized2_label
+                      n#data#_anonymized2_label = n'#data#_anonymized2_label ||
+                      try get_orig_name n = get_orig_name n' with _ -> false
                     then
                       count + 1
                     else
@@ -1484,8 +1490,14 @@ module F (Label : Spec.LABEL_T) = struct
     (* check ancestors *)
     let is_odd_anc =
       try
-        let an1 = Sourcecode.find_nearest_mapped_ancestor_node nmapping#mem_dom nd1 in
-        let an2 = Sourcecode.find_nearest_mapped_ancestor_node nmapping#mem_cod nd2 in
+        let mem_dom x =
+          (try nmapping#find x != nd2 with _ -> false) && nmapping#mem_dom x
+        in
+        let mem_cod x =
+          (try nmapping#inv_find x != nd1 with _ -> true) && nmapping#mem_cod x
+        in
+        let an1 = Sourcecode.find_nearest_mapped_ancestor_node mem_dom nd1 in
+        let an2 = Sourcecode.find_nearest_mapped_ancestor_node mem_cod nd2 in
         (try
           let an1' = nmapping#find an1 in
           [%debug_log "%a->%a" nups an1 nups an1'];
@@ -3585,6 +3597,8 @@ end;
         in
         [%debug_log "subtree_not_mapped=%B" subtree_not_mapped];
 
+        let better_desc_match = ref None in
+
         let has_better_desc_match n1 n2 =
           let b =
             (
@@ -3637,6 +3651,7 @@ end;
                  in
                  if b then begin
                    [%debug_log "@@@ found: %a(->%a)" nups x1 nups n2];
+                   better_desc_match := Some (x1, n2)
                  end;
                  b
                ) n1
@@ -3670,6 +3685,7 @@ end;
                  in
                  if b then begin
                    [%debug_log "@@@ found: %a(<-%a)" nups x2 nups n1];
+                   better_desc_match := Some (n1, x2)
                  end;
                  b
                ) n2
@@ -3694,11 +3710,45 @@ end;
 
         if use_treediff_cond then begin (* use tree diff *)
 
-          if force_treediff then
-            [%debug_log "force_treediff=true"];
+          [%debug_log "force_treediff=%B" force_treediff];
+          [%debug_log "better_desc_match=%s"
+             (match !better_desc_match with
+             | Some (x1, x2) -> sprintf "%a-%a" nups x1 nups x2
+             | None -> "None"
+             )
+         ];
 
-          let subtree1 = tree1#make_subtree_from_node nd1 in
-          let subtree2 = tree2#make_subtree_from_node nd2 in
+          let subtree1, subtree2 =
+            match !better_desc_match with
+            | Some (x1, x2) -> begin
+                try
+                  if x1 == nd1 then
+                    tree1#make_subtree_from_node nd1,
+                    let x2_ =
+                      if x2#initial_parent == nd2 then
+                        x2
+                      else
+                        get_p_ancestor (fun x -> x#initial_parent == nd2) x2
+                    in
+                    tree2#make_subtree_from_node x2_
+                  else if x2 == nd2 then
+                    let x1_ =
+                      if x1#initial_parent == nd1 then
+                        x1
+                      else
+                        get_p_ancestor (fun x -> x#initial_parent == nd1) x1
+                    in
+                    tree1#make_subtree_from_node x1_,
+                    tree2#make_subtree_from_node nd2
+                  else
+                    assert false
+                with _ ->
+                  tree1#make_subtree_from_node nd1, tree2#make_subtree_from_node nd2
+            end
+            | None -> begin
+                tree1#make_subtree_from_node nd1, tree2#make_subtree_from_node nd2
+            end
+          in
 
           nd1#hide_parent;
           nd2#hide_parent;
@@ -3765,7 +3815,7 @@ end;
             List.filter
               (fun (n1, n2) ->
                 [%debug_log "%a-%a" nps n1 nps n2];
-                check_relabel options ~exact:true ~matches:amatches tree1 tree2 n1 n2 nmapping
+                check_relabel options ~exact:(*true*)false ~matches:amatches tree1 tree2 n1 n2 nmapping
               ) arelabels
           in
 
