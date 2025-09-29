@@ -100,7 +100,10 @@ class node_data (tree : Storage.tree) (entry : Storage.entry_t) =
     method is_auxfile = is_auxfile
 
     method get_name = entry#name
+    method get_orig_name = entry#name
     method get_stripped_name = entry#name
+
+    method is_named_orig = true
 
     method label = entry#name
     method _label = entry#name
