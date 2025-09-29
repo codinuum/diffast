@@ -996,22 +996,23 @@ module Tree (L : Spec.LABEL_T) = struct
     (* subtree copy (gindexes are inherited) *)
     method make_subtree_copy ?(find_hook=fun _ -> raise Not_found) (nd : node_t) =
       let hooked = ref [] in
-      let rec doit nd =
-        let gi = nd#gindex in
+
+      let rec doit n =
+        let gi = n#gindex in
         if GI.is_valid gi then
-          let children = List.filter_map doit (Array.to_list nd#initial_children) in
-          let lab = get_lab nd in
-          let orig_lab_opt = get_orig_lab_opt nd in
-          let new_nd = self#mknode ~orig_lab_opt lab children in
-          new_nd#set_gindex gi;
+          let children = List.filter_map doit (Array.to_list n#initial_children) in
+          let lab = get_lab n in
+          let orig_lab_opt = get_orig_lab_opt n in
+          let new_n = self#mknode ~orig_lab_opt lab children in
+          new_n#set_gindex gi;
           begin
             try
-              let a = find_hook nd in
-              hooked := (new_nd, a) :: !hooked
+              let a = find_hook n in
+              hooked := (new_n, a) :: !hooked
             with
               Not_found -> ()
           end;
-          Some new_nd
+          Some new_n
         else
           None
       in
