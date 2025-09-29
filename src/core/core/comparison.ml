@@ -1451,7 +1451,7 @@ class ['node_t, 'tree_t] c
           2
       else if nd1#data#_anonymized2_label = nd2#data#_anonymized2_label then begin
         try (* ADOPTED *)
-          if get_orig_name nd1 = get_orig_name nd2(*nd1#data#get_name = nd2#data#get_name*) then
+          if (*get_orig_name nd1 = get_orig_name nd2*)nd1#data#get_name = nd2#data#get_name then
             2
           else
             1
@@ -1855,10 +1855,10 @@ class ['node_t, 'tree_t] c
                 0.5
               else
                 0.0
-            else if try get_orig_name n1 = get_orig_name n2 with _ -> false then
-              0.8
+            (*else if try get_orig_name n1 = get_orig_name n2 with _ -> false then
+              0.8*)
             else
-              0.5 (* subtree_similarity_thresh = 0.7 *)
+              0.7 (* subtree_similarity_thresh = 0.7 *)
           end
           else
             float (self#eval_label_match ~bonus_named ~bonus_rename_pat ~check_uniq ~exact_only n1 n2)
@@ -3303,6 +3303,36 @@ class ['node_t, 'tree_t] c
               ancsim_old, ancsim_new, false
           in
 
+          let anc_each_other1 n1 n2 =
+            let b =
+              tree1#is_initial_ancestor n1 n2
+            ||
+              tree1#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+          let anc_each_other2 n1 n2 =
+            let b =
+              tree2#is_initial_ancestor n1 n2
+            ||
+              tree2#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+
+          let prefer_sim =
+            if
+              prefer_sim &&
+              nd1old == nd1new && anc_each_other2 nd2old nd2new ||
+              nd2old == nd2new && anc_each_other1 nd1old nd1new
+            then
+              false
+            else
+              prefer_sim
+          in
+
           [%debug_log "ancestors similarity: %f --> %f" ancsim_old ancsim_new];
 
           let anc_sim_ratio = min ancsim_old ancsim_new /. max ancsim_old ancsim_new in
@@ -3494,25 +3524,6 @@ class ['node_t, 'tree_t] c
               with _ -> false
             in
             [%debug_log "%B" b];
-            b
-          in
-
-          let anc_each_other1 n1 n2 =
-            let b =
-              tree1#is_initial_ancestor n1 n2
-            ||
-              tree1#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
-            b
-          in
-          let anc_each_other2 n1 n2 =
-            let b =
-              tree2#is_initial_ancestor n1 n2
-            ||
-              tree2#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
             b
           in
 
