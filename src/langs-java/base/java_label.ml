@@ -3353,12 +3353,12 @@ let relabel_allowed (lab1, lab2) =
     | _ -> false
   in
   let b = allowed && not disallowed in
-  (*begin%debug
-    [%debug_log "%s vs %s -> %B" (to_string lab1) (to_string lab2) b;
-    let tag1, _ = to_tag lab1 in
-    let tag2, _ = to_tag lab2 in
-    [%debug_log "%s vs %s -> %B" tag1 tag2 b;
-  end%debug;*)
+
+  (*[%debug_log "%s vs %s -> %B" (to_string lab1) (to_string lab2) b];
+  let tag1, _ = to_tag lab1 in
+  let tag2, _ = to_tag lab2 in
+  [%debug_log "%s vs %s -> %B" tag1 tag2 b];*)
+
   b
 
 let move_disallowed = function

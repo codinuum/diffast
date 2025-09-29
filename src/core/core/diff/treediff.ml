@@ -26,13 +26,14 @@ module Nodetbl = Node.Tbl
 let nups = Misc.nups
 let sprintf = Printf.sprintf
 
-
+(*[%%capture_path*)
 let cost ?(nmap_opt=None) tree1 tree2 i j =
   if i = 0 && j = 0 then
     Stdlib.max_int
   else
     let nd1 = tree1#get i in
     let nd2 = tree2#get j in
+    let cost =
     if
       match nmap_opt with
       | Some nmap -> (try nmap#find nd1 == nd2 with _ -> false)
@@ -72,13 +73,19 @@ let cost ?(nmap_opt=None) tree1 tree2 i j =
       end
       else (* relabel *)
         5
+    in
+    (*[%debug_log "%a-%a --> %d" nups nd1 nups nd2 cost];*)
+    cost
+(*]*)
 
+(*[%%capture_path*)
 let semi_semantic_cost ?(nmap_opt=None) tree1 tree2 i j =
   if i = 0 && j = 0 then
     Stdlib.max_int
   else
     let nd1 = tree1#get i in
     let nd2 = tree2#get j in
+    let cost =
     if
       match nmap_opt with
       | Some nmap -> (try nmap#find nd1 == nd2 with _ -> false)
@@ -126,6 +133,10 @@ let semi_semantic_cost ?(nmap_opt=None) tree1 tree2 i j =
           5
         else
           6
+    in
+    (*[%debug_log "%a-%a --> %d" nups nd1 nups nd2 cost];*)
+    cost
+(*]*)
 
 let get_anc_labs_cache = (Nodetbl.create 0 : string Nodetbl.t)
 
@@ -157,12 +168,14 @@ let get_anc_labs n =
   end
 ]
 
+(*[%%capture_path*)
 let semantic_cost ?(nmap_opt=None) ?(rely_on_context=false) tree1 tree2 i j =
   if i = 0 && j = 0 then
     Stdlib.max_int
   else
     let nd1 = tree1#get i in
     let nd2 = tree2#get j in
+    let cost =
     if
       match nmap_opt with
       | Some nmap -> (try nmap#find nd1 == nd2 with _ -> false)
@@ -221,6 +234,10 @@ let semantic_cost ?(nmap_opt=None) ?(rely_on_context=false) tree1 tree2 i j =
               7
         else
           100(*Stdlib.max_int*)
+    in
+    (*[%debug_log "%a-%a --> %d" nups nd1 nups nd2 cost];*)
+    cost
+(*]*)
 
 let _find w tree1 tree2 = ZS.Int.find w tree1 tree2
 
