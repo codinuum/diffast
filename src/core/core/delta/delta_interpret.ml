@@ -1939,8 +1939,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     let get_upstream_count n =
       let count = ref 0 in
-      let rec scan n =
-        [%debug_log "n=%a" nps n];
+      let rec scan lv n =
+        [%debug_log "lv=%d n=%a" lv nps n];
         let c = self#get_upstream_count n in
         if c > 0 then begin
           if not (Hashtbl.mem upstream_tbl n) then
@@ -1956,7 +1956,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
           let k_opt = self#find_key_opt n in
           Array.iter
             (fun x ->
-              [%debug_log "x=%a" nps x];
+              [%debug_log "lv=%d x=%a" lv nps x];
               let n_is_deleted = self#is_deleted n in
               let x_is_deleted = self#is_deleted x in
               let x_is_insert = self#is_insert x in
@@ -1964,12 +1964,12 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                 not (n_is_deleted && x_is_deleted && not (self#has_key_opt k_opt x)) &&
                 not (n_is_deleted && x_is_insert)
               then
-                scan x
+                scan (lv+1) x
             ) n#initial_children
       in
       begin
         try
-          scan n
+          scan 0 n
         with
           Exit -> ()
       end;
@@ -2424,6 +2424,10 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                       [%debug_log "n=%a: %a -> [%a]" nps n nps x nsps xs];
                       xs
                     end
+                  end
+                  else if self#is_stable n && self#is_insert x then begin
+                    [%debug_log "n=%a: %a -> [] (insertion into a stable node)" nps n nps x];
+                    []
                   end
                   else begin
                     [%debug_log "n=%a: %a" nps n nps x];
