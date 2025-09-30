@@ -347,7 +347,10 @@ module F (Label : Spec.LABEL_T) = struct
         true
 
       else if
-        nchildren1 = 1 && nchildren2 = 1 && children1.(0)#data#eq children2.(0)#data
+        nchildren1 = 1 && nchildren2 = 1 &&
+        let c1 = children1.(0) in
+        let c2 = children2.(0) in
+        c1#data#eq c2#data
       then
         true
 
@@ -384,7 +387,7 @@ module F (Label : Spec.LABEL_T) = struct
     in
 
     let result =
-      if (* to_be_exact *) exact then
+      if (* to_be_exact *) exact || not nd1#data#is_named || not nd2#data#is_named then
         parent_cond && children_cond
       else
         parent_cond || children_cond
