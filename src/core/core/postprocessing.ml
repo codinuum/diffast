@@ -3045,6 +3045,7 @@ end;
 
     let add_cand context nd1 nd2 score =
       let _ = context in
+      [%debug_log "%a-%a" nups nd1 nups nd2];
 
       if is_bad_pair nd1 nd2 then
         [%debug_log "bad pair: %a-%a" nups nd1 nups nd2]
