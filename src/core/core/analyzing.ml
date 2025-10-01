@@ -1582,6 +1582,7 @@ end;
 
       Postprocessing.generate_edits options lang cenv pruned edits nmapping;
 
+      [%debug_log "nmapping after edit generation:\n%s\n" nmapping#to_string];
       [%debug_log "generated edits:\n %s" edits#to_string];
 
       Xprint.verbose options#verbose_flag "fixing up edit sequences...";

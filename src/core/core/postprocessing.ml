@@ -406,6 +406,8 @@ module F (Label : Spec.LABEL_T) = struct
 
 
   let generate_moves options cenv pruned edits nmapping subtree_matches =
+    [%debug_log "nmapping before move generation:\n%s\n" nmapping#to_string];
+
     let tree1 = cenv#tree1 in
     let tree2 = cenv#tree2 in
 
@@ -5835,16 +5837,33 @@ end;
           try
             let ins = edits#find_ins n2 in
             [%debug_log "removing %s" (Edit.to_string ins)];
-            edits#remove_edit ins;
+            edits#remove_edit ins
           with
             Not_found -> ()
         end;
+
         if not (n1#data#eq n2#data) then
           edits#add_edit (Edit.make_relabel n1 n2);
 
         if edits#mem_mov12 n1 n2 then
           ()
-        else
+        else begin
+          begin
+            try
+              let mov = edits#find_mov1 n1 in
+              [%debug_log "removing %s" (Edit.to_string mov)];
+              edits#remove_edit mov
+            with
+              Not_found -> ()
+          end;
+          begin
+            try
+              let mov = edits#find_mov2 n2 in
+              [%debug_log "removing %s" (Edit.to_string mov)];
+              edits#remove_edit mov
+            with
+              Not_found -> ()
+          end;
           let b, mid_opt = is_mov n1 n2 in
           [%debug_log "is_mov: %a-%a --> %B" nups n1 nups n2 b];
           if b then begin
@@ -5858,7 +5877,7 @@ end;
           end
           else if check_conflicts then
             pending_pairs := (n1, n2) :: !pending_pairs
-
+        end
       ) added_pairs;
 
     if check_conflicts then begin
@@ -5938,7 +5957,7 @@ end;
 
     [%debug_log "simple=%B" simple];
 
-    [%debug_log "nmapping:\n%s\n" nmapping#to_string];
+    [%debug_log "nmapping before edit generation:\n%s\n" nmapping#to_string];
     (*[%debug_log "nmapping (gindex):\n%s\n" nmapping#to_string_gid];*)
 
 
@@ -7059,7 +7078,9 @@ end;
       ?(weak=false)
       ?(thresh=0.1)
       is_xxx_pair (*options*)_ edits nmapping size_limit =
-    ignore thresh;
+    let _ = thresh in
+
+    [%debug_log "nmapping before move decomposition:\n%s\n" nmapping#to_string];
 
     [%debug_log "weak=%B size_limit=%d" weak size_limit];
 
