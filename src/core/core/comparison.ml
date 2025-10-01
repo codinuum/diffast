@@ -5188,7 +5188,7 @@ class ['node_t, 'tree_t] c
       ) added_then_removed_pairs
     end;
     if added_then_removed_pairs <> [] then begin
-      removed_pairs := Xlist.subtract !removed_pairs added_then_removed_pairs;
+      (*removed_pairs := Xlist.subtract !removed_pairs added_then_removed_pairs;*)
       added_pairs := Xlist.subtract !added_pairs added_then_removed_pairs
     end;
 
