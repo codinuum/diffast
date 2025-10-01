@@ -5181,15 +5181,42 @@ class ['node_t, 'tree_t] c
     end; (* if options#multi_node_match_flag *)
 
     let added_then_removed_pairs = Xlist.intersection !removed_pairs !added_pairs in
+
     begin %debug_block
       List.iter
-      (fun (n1, n2) ->
-        [%debug_log "added then removed pair: %a-%a" nups n1 nups n2]
-      ) added_then_removed_pairs
+        (fun (n1, n2) ->
+          [%debug_log "added then removed pair: %a-%a" nups n1 nups n2];
+        ) added_then_removed_pairs
     end;
+
     if added_then_removed_pairs <> [] then begin
+      added_pairs := Xlist.subtract !added_pairs added_then_removed_pairs;
+
+      let added_removed = Xset.create 0 in
+      List.iter (Xset.add added_removed) added_then_removed_pairs;
+
+      let added12 = Xset.create 0 in
+      let added1 = Xset.create 0 in
+      let added2 = Xset.create 0 in
+      List.iter
+        (fun ((n1, n2) as npair) ->
+          Xset.add added12 npair;
+          Xset.add added1 n1;
+          Xset.add added2 n2
+        ) !added_pairs;
+
+      let removed_pairs_ =
+        List.filter
+          (fun ((n1, n2) as npair) ->
+            let c0 = not (Xset.mem added_removed npair) in
+            c0 ||
+            let c1 = not (Xset.mem added12 npair) in
+            c1 && Xset.mem added1 n1 || c1 && Xset.mem added2 n2
+          ) !removed_pairs
+      in
       (*removed_pairs := Xlist.subtract !removed_pairs added_then_removed_pairs;*)
-      added_pairs := Xlist.subtract !added_pairs added_then_removed_pairs
+      removed_pairs := removed_pairs_;
+
     end;
 
     begin %debug_block
