@@ -532,16 +532,19 @@ end
 
 [%%capture_path
 let get_orig_name n =
-  [%debug_log "%s" n#data#to_string];
-  let name = try n#data#get_name with _ -> "" in
-  let sname = try n#data#get_stripped_name with _ -> "" in
-  if name <> sname then
-    sname
-  else
-    try
-      n#data#get_orig_name
-    with
-      _ -> name
+  let orig_name =
+    let name = try n#data#get_name with _ -> "" in
+    let sname = try n#data#get_stripped_name with _ -> "" in
+    if name <> sname then
+      sname
+    else
+      try
+        n#data#get_orig_name
+      with
+        _ -> name
+  in
+  [%debug_log "%s -> \"%s\"" n#data#to_string orig_name];
+  orig_name
 ]
 
 let get_stripped_name n = n#data#get_stripped_name
@@ -1448,7 +1451,7 @@ class ['node_t, 'tree_t] c
           2
       else if nd1#data#_anonymized2_label = nd2#data#_anonymized2_label then begin
         try (* ADOPTED *)
-          if nd1#data#get_name = nd2#data#get_name then
+          if (*get_orig_name nd1 = get_orig_name nd2*)nd1#data#get_name = nd2#data#get_name then
             2
           else
             1
@@ -1852,8 +1855,10 @@ class ['node_t, 'tree_t] c
                 0.5
               else
                 0.0
+            (*else if try get_orig_name n1 = get_orig_name n2 with _ -> false then
+              0.8*)
             else
-              0.7 (* subtree_similarity_thresh *)
+              0.7 (* subtree_similarity_thresh = 0.7 *)
           end
           else
             float (self#eval_label_match ~bonus_named ~bonus_rename_pat ~check_uniq ~exact_only n1 n2)
@@ -3298,6 +3303,36 @@ class ['node_t, 'tree_t] c
               ancsim_old, ancsim_new, false
           in
 
+          let anc_each_other1 n1 n2 =
+            let b =
+              tree1#is_initial_ancestor n1 n2
+            ||
+              tree1#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+          let anc_each_other2 n1 n2 =
+            let b =
+              tree2#is_initial_ancestor n1 n2
+            ||
+              tree2#is_initial_ancestor n2 n1
+            in
+            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+            b
+          in
+
+          let prefer_sim =
+            if
+              prefer_sim &&
+              nd1old == nd1new && anc_each_other2 nd2old nd2new ||
+              nd2old == nd2new && anc_each_other1 nd1old nd1new
+            then
+              false
+            else
+              prefer_sim
+          in
+
           [%debug_log "ancestors similarity: %f --> %f" ancsim_old ancsim_new];
 
           let anc_sim_ratio = min ancsim_old ancsim_new /. max ancsim_old ancsim_new in
@@ -3492,25 +3527,6 @@ class ['node_t, 'tree_t] c
             b
           in
 
-          let anc_each_other1 n1 n2 =
-            let b =
-              tree1#is_initial_ancestor n1 n2
-            ||
-              tree1#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
-            b
-          in
-          let anc_each_other2 n1 n2 =
-            let b =
-              tree2#is_initial_ancestor n1 n2
-            ||
-              tree2#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
-            b
-          in
-
           let anc_each_other_opt_ref = ref None in
           let anc_each_other () =
             match !anc_each_other_opt_ref with
@@ -3695,8 +3711,15 @@ class ['node_t, 'tree_t] c
             is_stable_ntuple nd1old nd2old && not (is_stable_ntuple nd1new nd2new)
           ||
             anc_each_other() &&
-            nd1old#data#is_named_orig &&
-            nd1old#data#eq nd2old#data && not (nd1new#data#eq nd2new#data)
+            nd1old#data#is_named &&
+            nd1old#data#is_named_orig = nd2old#data#is_named_orig &&
+            (
+             nd1old#data#eq nd2old#data && not (nd1new#data#eq nd2new#data) ||
+             try
+               get_orig_name nd1old = get_orig_name nd2old &&
+               not (get_orig_name nd1new = get_orig_name nd2new)
+             with _ -> false
+            )
           ||
             nd1old == nd1new && nd1old#data#is_named &&
             nd1old#data#eq nd2old#data && not (nd1old#data#eq nd2new#data) &&
@@ -3794,8 +3817,15 @@ class ['node_t, 'tree_t] c
             is_stable_ntuple nd1new nd2new && not (is_stable_ntuple nd1old nd2old)
           ||
             anc_each_other() &&
-            nd1new#data#is_named_orig &&
-            nd1new#data#eq nd2new#data && not (nd1old#data#eq nd2old#data)
+            nd1new#data#is_named &&
+            nd1new#data#is_named_orig = nd2new#data#is_named_orig &&
+            (
+             nd1new#data#eq nd2new#data && not (nd1old#data#eq nd2old#data) ||
+             try
+               get_orig_name nd1new = get_orig_name nd2new &&
+               not (get_orig_name nd1old = get_orig_name nd2old)
+             with _ -> false
+            )
           ||
             nd1old == nd1new && nd1old#data#is_named &&
             nd1new#data#eq nd2new#data && not (nd1new#data#eq nd2old#data) &&
@@ -5151,12 +5181,14 @@ class ['node_t, 'tree_t] c
     end; (* if options#multi_node_match_flag *)
 
     let added_then_removed_pairs = Xlist.intersection !removed_pairs !added_pairs in
+
     begin %debug_block
       List.iter
       (fun (n1, n2) ->
         [%debug_log "added then removed pair: %a-%a" nups n1 nups n2]
       ) added_then_removed_pairs
     end;
+
     if added_then_removed_pairs <> [] then begin
       removed_pairs := Xlist.subtract !removed_pairs added_then_removed_pairs;
       added_pairs := Xlist.subtract !added_pairs added_then_removed_pairs

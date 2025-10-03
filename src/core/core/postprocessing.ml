@@ -346,6 +346,14 @@ module F (Label : Spec.LABEL_T) = struct
       if nchildren1 = 0 || nchildren2 = 0 then
         true
 
+      else if
+        nchildren1 = 1 && nchildren2 = 1 &&
+        let c1 = children1.(0) in
+        let c2 = children2.(0) in
+        c1#data#eq c2#data
+      then
+        true
+
       else begin
         let sum_nchildren = nchildren1 + nchildren2 in
         if sum_nchildren = 0 then
@@ -360,7 +368,8 @@ module F (Label : Spec.LABEL_T) = struct
                   if Array.memq n' children2 then
                     if
                       (* n#data#eq n'#data *)
-                      n#data#_anonymized2_label = n'#data#_anonymized2_label
+                      n#data#_anonymized2_label = n'#data#_anonymized2_label ||
+                      try get_orig_name n = get_orig_name n' with _ -> false
                     then
                       count + 1
                     else
@@ -378,7 +387,7 @@ module F (Label : Spec.LABEL_T) = struct
     in
 
     let result =
-      if (* to_be_exact *) exact then
+      if (* to_be_exact *) exact || not nd1#data#is_named || not nd2#data#is_named then
         parent_cond && children_cond
       else
         parent_cond || children_cond
@@ -397,6 +406,8 @@ module F (Label : Spec.LABEL_T) = struct
 
 
   let generate_moves options cenv pruned edits nmapping subtree_matches =
+    [%debug_log "nmapping before move generation:\n%s\n" nmapping#to_string];
+
     let tree1 = cenv#tree1 in
     let tree2 = cenv#tree2 in
 
@@ -1484,8 +1495,14 @@ module F (Label : Spec.LABEL_T) = struct
     (* check ancestors *)
     let is_odd_anc =
       try
-        let an1 = Sourcecode.find_nearest_mapped_ancestor_node nmapping#mem_dom nd1 in
-        let an2 = Sourcecode.find_nearest_mapped_ancestor_node nmapping#mem_cod nd2 in
+        let mem_dom x =
+          (try nmapping#find x != nd2 with _ -> false) && nmapping#mem_dom x
+        in
+        let mem_cod x =
+          (try nmapping#inv_find x != nd1 with _ -> true) && nmapping#mem_cod x
+        in
+        let an1 = Sourcecode.find_nearest_mapped_ancestor_node mem_dom nd1 in
+        let an2 = Sourcecode.find_nearest_mapped_ancestor_node mem_cod nd2 in
         (try
           let an1' = nmapping#find an1 in
           [%debug_log "%a->%a" nups an1 nups an1'];
@@ -2091,8 +2108,12 @@ end;
                      an1#data#_stripped_label = an2#data#_stripped_label*)
                     ) &&
                     (
-                     an1 == nd1#initial_parent || an2 == nd2#initial_parent ||
-                     is_use nd1 && nd1#data#anonymized_label = nd2#data#anonymized_label
+                     an1 == nd1#initial_parent
+                    ||
+                     an2 == nd2#initial_parent
+                    ||
+                     (is_use nd1 || nd1#data#has_non_trivial_value) &&
+                     nd1#data#anonymized_label = nd2#data#anonymized_label
                     ) &&
                     try
                       let an1' = nmapping#find an1 in
@@ -2279,7 +2300,7 @@ end;
                       begin
                         match d1 with
                         | Some d -> begin
-                            [%debug_log "d1=(Some %s)" d];
+                            [%debug_log "d1=(Some %s)" (Digest.to_hex d)];
                             [%debug_log "nd1: %s" nd1#to_string];
                             [%debug_log "nd1 (initial): %s" nd1#initial_to_string];
                         end
@@ -2288,7 +2309,7 @@ end;
                       begin
                         match d2 with
                         | Some d -> begin
-                            [%debug_log "d2=(Some %s)" d];
+                            [%debug_log "d2=(Some %s)" (Digest.to_hex d)];
                             [%debug_log "nd2: %s" nd2#to_string];
                             [%debug_log "nd2 (initial): %s" nd2#initial_to_string];
                         end
@@ -2798,26 +2819,26 @@ end;
         [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
         b
       in
-      if ignore_common then
-        let has_uniq_desc_match n1 n2 =
-          let b =
-            has_p_descendant
-              (fun x1 ->
-                try
-                  let x1' = nmapping#find x1 in
-                  tree2#is_initial_ancestor n2 x1' &&
-                  cenv#has_uniq_match x1 x1'
-                with _ -> false
-              ) n1
-          in
-          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
-          b
+      let has_uniq_desc_match n1 n2 =
+        let b =
+          has_p_descendant
+            (fun x1 ->
+              try
+                let x1' = nmapping#find x1 in
+                tree2#is_initial_ancestor n2 x1' &&
+                cenv#has_uniq_match x1 x1'
+              with _ -> false
+            ) n1
         in
+        [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+        b
+      in
+      if ignore_common then
         fun n1 n2 ->
           let b =
             (
+             (n1#data#is_common || n2#data#is_common) &&
              try
-               (n1#data#is_common || n2#data#is_common) &&
                let pn1 = n1#initial_parent in
                let pn2 = n2#initial_parent in
                pn1#data#is_sequence && pn2#data#is_sequence &&
@@ -2845,12 +2866,12 @@ end;
                cenv#is_scope_breaking_mapping nmapping n1 n2 &&
                (
                 try
-                  let d1 = get_def_node cenv#tree1 n1 in
-                  let d2 = get_def_node cenv#tree2 n2 in
-                  [%debug_log "d1=%a" nps d1];
-                  [%debug_log "d2=%a" nps d2];
-                  not (is_local_def d1 && is_local_def d2) ||
-                  nmapping#mem_dom d1 && nmapping#mem_cod d2
+                  let def1 = get_def_node cenv#tree1 n1 in
+                  let def2 = get_def_node cenv#tree2 n2 in
+                  [%debug_log "def1=%a" nps def1];
+                  [%debug_log "def2=%a" nps def2];
+                  not (is_local_def def1 && is_local_def def2) ||
+                  nmapping#mem_dom def1 && nmapping#mem_cod def2
                 with _ -> true
                )
              with Failure _ -> false
@@ -3026,6 +3047,7 @@ end;
 
     let add_cand context nd1 nd2 score =
       let _ = context in
+      [%debug_log "%a-%a" nups nd1 nups nd2];
 
       if is_bad_pair nd1 nd2 then
         [%debug_log "bad pair: %a-%a" nups nd1 nups nd2]
@@ -3581,13 +3603,112 @@ end;
         in
         [%debug_log "subtree_not_mapped=%B" subtree_not_mapped];
 
+        let better_desc_match = ref None in
+
+        let has_better_desc_match n1 n2 =
+          let b =
+            (
+             n1#data#is_named || n1#data#has_non_trivial_value ||
+             n2#data#is_named || n2#data#has_non_trivial_value
+            ) &&
+            (*(
+             n1#initial_nchildren = 0 &&
+             (n1#data#is_named || n1#data#has_non_trivial_value)
+            ||
+             n2#initial_nchildren = 0 &&
+             (n2#data#is_named || n2#data#has_non_trivial_value)
+            ) &&*)
+            not (
+             n1#data#is_named_orig = n2#data#is_named_orig &&
+             try
+               get_orig_name n1 = get_orig_name n2
+             with _ -> false
+            ) &&
+            let alab1 = n1#data#anonymized_label in
+            let alab2 = n2#data#anonymized_label in
+            alab1 <> alab2 &&
+            (
+             has_p_descendant
+               (fun x1 ->
+                 let b =
+                   x1#data#eq n2#data
+                 ||
+                   (
+                    let b0 =
+                      x1#data#is_named_orig = n2#data#is_named_orig &&
+                      try
+                        get_orig_name x1 = get_orig_name n2 ||
+                        cenv#is_rename_pat (get_orig_name x1, get_orig_name n2)
+                      with _ -> false
+                    in
+                    if b0 then
+                      [%debug_log "@@@ found: %a" nups x1];
+                    b0
+                   )
+                 ||
+                   let b0 =
+                     x1#data#has_value && n2#data#has_value &&
+                     x1#data#has_non_trivial_value && n2#data#has_non_trivial_value &&
+                     x1#data#anonymized_label = alab2
+                   in
+                   if b0 then
+                     [%debug_log "@@@ found: %a" nups x1];
+                   b0
+                 in
+                 if b then begin
+                   [%debug_log "@@@ found: %a(->%a)" nups x1 nups n2];
+                   better_desc_match := Some (x1, n2)
+                 end;
+                 b
+               ) n1
+            ||
+             has_p_descendant
+               (fun x2 ->
+                 let b =
+                   n1#data#eq x2#data
+                 ||
+                   (
+                    let b0 =
+                      x2#data#is_named_orig = n1#data#is_named_orig &&
+                      try
+                        get_orig_name n1 = get_orig_name x2 ||
+                        cenv#is_rename_pat (get_orig_name n1, get_orig_name x2)
+                      with _ -> false
+                    in
+                    if b0 then
+                      [%debug_log "@@@ found: %a" nups x2];
+                    b0
+                   )
+                 ||
+                   let b0 =
+                     x2#data#has_value && n1#data#has_value &&
+                     x2#data#has_non_trivial_value && n1#data#has_non_trivial_value &&
+                     alab1 = x2#data#anonymized_label
+                   in
+                   if b0 then
+                     [%debug_log "@@@ found: %a" nups x2];
+                   b0
+                 in
+                 if b then begin
+                   [%debug_log "@@@ found: %a(<-%a)" nups x2 nups n1];
+                   better_desc_match := Some (n1, x2)
+                 end;
+                 b
+               ) n2
+            )
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+
         let use_treediff_cond =
           size_cond &&
           (
            all_subtree_members_not_mapped ||
            subtree_not_mapped ||
            force_treediff ||
-           cenv#child_has_use_rename nd1 nd2
+           cenv#child_has_use_rename nd1 nd2 ||
+           has_better_desc_match nd1 nd2
           ) &&
           (not go_down_cond)
         in
@@ -3595,11 +3716,45 @@ end;
 
         if use_treediff_cond then begin (* use tree diff *)
 
-          if force_treediff then
-            [%debug_log "force_treediff=true"];
+          [%debug_log "force_treediff=%B" force_treediff];
+          [%debug_log "better_desc_match=%s"
+             (match !better_desc_match with
+             | Some (x1, x2) -> sprintf "%a-%a" nups x1 nups x2
+             | None -> "None"
+             )
+         ];
 
-          let subtree1 = tree1#make_subtree_from_node nd1 in
-          let subtree2 = tree2#make_subtree_from_node nd2 in
+          let subtree1, subtree2 =
+            match !better_desc_match with
+            | Some (x1, x2) -> begin
+                try
+                  if x1 == nd1 then
+                    tree1#make_subtree_from_node nd1,
+                    let x2_ =
+                      if x2#initial_parent == nd2 then
+                        x2
+                      else
+                        get_p_ancestor (fun x -> x#initial_parent == nd2) x2
+                    in
+                    tree2#make_subtree_from_node x2_
+                  else if x2 == nd2 then
+                    let x1_ =
+                      if x1#initial_parent == nd1 then
+                        x1
+                      else
+                        get_p_ancestor (fun x -> x#initial_parent == nd1) x1
+                    in
+                    tree1#make_subtree_from_node x1_,
+                    tree2#make_subtree_from_node nd2
+                  else
+                    assert false
+                with _ ->
+                  tree1#make_subtree_from_node nd1, tree2#make_subtree_from_node nd2
+            end
+            | None -> begin
+                tree1#make_subtree_from_node nd1, tree2#make_subtree_from_node nd2
+            end
+          in
 
           nd1#hide_parent;
           nd2#hide_parent;
@@ -3666,7 +3821,7 @@ end;
             List.filter
               (fun (n1, n2) ->
                 [%debug_log "%a-%a" nps n1 nps n2];
-                check_relabel options ~exact:true ~matches:amatches tree1 tree2 n1 n2 nmapping
+                check_relabel options ~exact:(*true*)false ~matches:amatches tree1 tree2 n1 n2 nmapping
               ) arelabels
           in
 
@@ -5682,16 +5837,33 @@ end;
           try
             let ins = edits#find_ins n2 in
             [%debug_log "removing %s" (Edit.to_string ins)];
-            edits#remove_edit ins;
+            edits#remove_edit ins
           with
             Not_found -> ()
         end;
+
         if not (n1#data#eq n2#data) then
           edits#add_edit (Edit.make_relabel n1 n2);
 
         if edits#mem_mov12 n1 n2 then
           ()
-        else
+        else begin
+          begin
+            try
+              let mov = edits#find_mov1 n1 in
+              [%debug_log "removing %s" (Edit.to_string mov)];
+              edits#remove_edit mov
+            with
+              Not_found -> ()
+          end;
+          begin
+            try
+              let mov = edits#find_mov2 n2 in
+              [%debug_log "removing %s" (Edit.to_string mov)];
+              edits#remove_edit mov
+            with
+              Not_found -> ()
+          end;
           let b, mid_opt = is_mov n1 n2 in
           [%debug_log "is_mov: %a-%a --> %B" nups n1 nups n2 b];
           if b then begin
@@ -5705,7 +5877,7 @@ end;
           end
           else if check_conflicts then
             pending_pairs := (n1, n2) :: !pending_pairs
-
+        end
       ) added_pairs;
 
     if check_conflicts then begin
@@ -5785,7 +5957,7 @@ end;
 
     [%debug_log "simple=%B" simple];
 
-    [%debug_log "nmapping:\n%s\n" nmapping#to_string];
+    [%debug_log "nmapping before edit generation:\n%s\n" nmapping#to_string];
     (*[%debug_log "nmapping (gindex):\n%s\n" nmapping#to_string_gid];*)
 
 
@@ -6154,6 +6326,10 @@ end;
             if (nmapping#is_locked_node n1 && nmapping#is_locked_node n2) then
               [%debug_log " -> locked"]
 
+            else if not (n1#data#relabel_allowed n2#data) then begin
+              [%debug_log " -> relabel not allowed"];
+              add_odd (n1, n2)
+            end
             else
               try
                 match edits#find_mov12 n1 n2 with
@@ -6902,7 +7078,9 @@ end;
       ?(weak=false)
       ?(thresh=0.1)
       is_xxx_pair (*options*)_ edits nmapping size_limit =
-    ignore thresh;
+    let _ = thresh in
+
+    [%debug_log "nmapping before move decomposition:\n%s\n" nmapping#to_string];
 
     [%debug_log "weak=%B size_limit=%d" weak size_limit];
 
@@ -8357,26 +8535,39 @@ end;
                   end
                   | _ -> assert false
                 ) movl;
+              let named_or_op_ratio_thresh = 0.9 in
               Hashtbl.iter
                 (fun m (r1, movs) ->
                   let _ = m in
                   (*let sz = tree1#whole_initial_subtree_size r1 in*)
-                  let all_named = ref true in
+                  let named_or_op_count = ref 0 in
                   let _sz = ref 0 in
                   let _ =
                     tree1#scan_whole_initial_subtree r1
                       (fun n1 ->
                         incr _sz;
-                        if n1#data#is_named_orig || n1#data#has_non_trivial_value then
-                          ()
-                        else
-                          all_named := false
+                        if n1#data#is_named(*_orig*) || n1#data#has_non_trivial_value then
+                          incr named_or_op_count
+                        else if n1#data#is_op then
+                          incr named_or_op_count
+                        else begin
+                          [%debug_log "%a" nps n1]
+                        end
                       )
                   in
                   let sz = !_sz in
-                  [%debug_log "%a: sz=%d r1=%a nmovs=%d all_named=%B" MID.ps m
-                    sz nps r1 (List.length movs) !all_named];
-                  if sz > 1 && (List.length movs = sz(* || !all_named*)) then
+                  [%debug_log "%a: sz=%d r1=%a nmovs=%d named_or_op_count=%d" MID.ps m
+                    sz nps r1 (List.length movs) !named_or_op_count];
+                  if
+                    sz > 1 &&
+                    (
+                     List.length movs = sz
+                    ||
+                     let named_or_op_ratio = (float !named_or_op_count) /. (float sz) in
+                     [%debug_log "named_or_op_rate=%.2f (thresh=%.2f)" named_or_op_ratio named_or_op_ratio_thresh];
+                     named_or_op_ratio > named_or_op_ratio_thresh
+                    )
+                  then
                     List.iter
                       (fun m ->
                         [%debug_log "to be excluded: %s" (Edit.to_string m)];

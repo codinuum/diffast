@@ -65,6 +65,7 @@ let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
 
 let undeco_pat = Str.regexp "#[0-9]+"
 let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
+let get_uqn x = Xlist.last (String.split_on_char '.' x)
 
 
 module type T = sig
@@ -1102,6 +1103,9 @@ module Primary = struct
     | AmbiguousMethodInvocation name when strip -> undeco name
 
     | Name name
+    | AmbiguousName name when strip -> get_uqn name
+
+    | Name name
     | ClassLiteral name
     | QualifiedThis name
     | InstanceCreation name
@@ -1417,7 +1421,7 @@ module Primary = struct
        "assertEquals#2";
        "assertNotEquals#2";
        "assertThat#1";
-       (*"assertThat#2";*) (* should be checked later *)
+       "assertThat#2";
       ];
     s
 
@@ -3242,7 +3246,7 @@ let relabel_allowed (lab1, lab2) =
         | Primary.ClassSuperMethodInvocation _
         | Primary.TypeMethodInvocation _ -> begin
             try
-              Primary.get_name _p = Primary.get_name p
+              Primary.get_name ~strip:true _p = Primary.get_name ~strip:true p
             with _ -> false
         end
         | _ -> false
@@ -3349,12 +3353,12 @@ let relabel_allowed (lab1, lab2) =
     | _ -> false
   in
   let b = allowed && not disallowed in
-  (*begin%debug
-    [%debug_log "%s vs %s -> %B" (to_string lab1) (to_string lab2) b;
-    let tag1, _ = to_tag lab1 in
-    let tag2, _ = to_tag lab2 in
-    [%debug_log "%s vs %s -> %B" tag1 tag2 b;
-  end%debug;*)
+
+  (*[%debug_log "%s vs %s -> %B" (to_string lab1) (to_string lab2) b];
+  let tag1, _ = to_tag lab1 in
+  let tag2, _ = to_tag lab2 in
+  [%debug_log "%s vs %s -> %B" tag1 tag2 b];*)
+
   b
 
 let move_disallowed = function
