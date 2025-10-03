@@ -155,12 +155,12 @@ class diffast_args = object
 
   method repo =
     let doc = Arg.info [] ~docv:"REPO_PATH" ~doc:"Path to the repository." in
-    let path =
-      let cv x = Ok Fpath.(v x) in
-      let pr = Fpath.pp in
-      Arg.conv ~docv:"<path>" (cv, pr)
+    let fpath =
+      let parser x = Ok Fpath.(v x) in
+      let pp = Fpath.pp in
+      Arg.Conv.make ~docv:"<path>" ~parser ~pp ()
     in
-    Arg.(required & pos 0 (some path) None & doc )
+    Arg.(required & pos 0 (some fpath) None & doc)
 
   method clearcache = mk_flag ["clearcache"] "Clear diff cache."
 
@@ -813,17 +813,17 @@ let help = {
   term =
     let topic =
       let doc = Arg.info [] ~docv:"TOPIC" ~doc:"The topic to get help on." in
-      Arg.(value & pos 0 (some string) None & doc )
+      Arg.(value & pos 0 (some string) None & doc)
     in
     let help man_format cmds topic () = match topic with
       | None       -> `Help (`Pager, None)
       | Some topic ->
         let topics = "topics" :: cmds in
-        let conv, _ = Arg.enum (List.rev_map (fun s -> (s, s)) topics) in
-        match conv topic with
-        | `Error e                -> `Error (false, e)
-        | `Ok t when t = "topics" -> List.iter print_endline cmds; `Ok ()
-        | `Ok t                   -> `Help (man_format, Some t) in
+        let conv = Arg.enum (List.rev_map (fun s -> (s, s)) topics) in
+        match (Arg.Conv.parser conv) topic with
+        | Error e                -> `Error (false, e)
+        | Ok t when t = "topics" -> List.iter print_endline cmds; `Ok ()
+        | Ok t                   -> `Help (man_format, Some t) in
     Term.(ret (const help $Arg.man_format $Term.choice_names $topic $setup_log))
 }
 
