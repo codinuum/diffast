@@ -9225,6 +9225,11 @@ end;
                 MID.ps mid (get_depth mid) xsz (get_ysz mid) nps nd1 nps nd2];
 
               let anc_ok () =
+                let cross_boundary_flag = is_cross_boundary nmapping nd1 nd2 in
+                [%debug_log "cross_boundary_flag=%B" cross_boundary_flag];
+                let boundary_check x1 x2 =
+                  cross_boundary_flag = is_cross_boundary nmapping x1 x2
+                in
                 let mem_dom n1 =
                   if
                     Xset.mem incompat_nds1 n1 ||
@@ -9232,7 +9237,9 @@ end;
                   then
                     false
                   else
-                    nmapping#mem_dom n1
+                    try
+                      boundary_check n1 (nmapping#find n1)
+                    with _ -> false
                 in
                 let mem_cod n2 =
                   if
@@ -9241,7 +9248,9 @@ end;
                   then
                     false
                   else
-                    nmapping#mem_cod n2
+                    try
+                      boundary_check (nmapping#inv_find n2) n2
+                    with _ -> false
                 in
                 let b =
                   try

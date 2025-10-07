@@ -2450,7 +2450,8 @@ class translator options =
           let lab = L.Statement (L.Statement.If tid) in
           let s_ = self#of_statement ~block_context:"if" s in
           let s_ = self#normalize_block_stmt s_ in
-          self#mknode lab [e_; s_] (* order sensitive s -> e *)
+          let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1]) in
+          self#mknode ~ordinal_tbl_opt lab [e_; s_] (* order sensitive s -> e *)
 
       | Ast.SifThenElse(e, s1, s2) -> begin
 
@@ -2494,7 +2495,13 @@ class translator options =
           let s2_ = self#of_statement ~extra_locs ~block_context:"if" s2 in
           let s1_ = self#normalize_block_stmt s1_ in
           let s2_ = self#normalize_block_stmt s2_ in
-          let nd = self#mknode lab [e_; s1_; s2_] in (* order sensitive s2 -> s1 -> e *)
+          let ordinal_tbl_opt =
+            if flatten_if then
+              None
+            else
+              Some (new ordinal_tbl [1; 1; 1])
+          in
+          let nd = self#mknode ~ordinal_tbl_opt lab [e_; s1_; s2_] in (* order sensitive s2 -> s1 -> e *)
 
           begin %debug_block
             if flatten_if then
@@ -2622,7 +2629,8 @@ class translator options =
       | Ast.Swhile(e, s) ->
           let s_ = self#of_statement ~block_context:"while" s in
           let s_ = self#normalize_block_stmt s_ in
-          self#mknode (L.Statement L.Statement.While) [self#of_expression e; s_]
+          let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1]) in
+          self#mknode ~ordinal_tbl_opt (L.Statement L.Statement.While) [self#of_expression e; s_]
 
       | Ast.Sfor(init_opt, e_opt, se_list, s) ->
           let ordinal_tbl_opt =
