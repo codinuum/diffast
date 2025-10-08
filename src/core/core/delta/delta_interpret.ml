@@ -280,7 +280,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
   val staying_moves = Xset.create 0
 
-  val move_relabel_tbl = Hashtbl.create 0 (* node -> unit *)
+  val move_relabel_tbl = Hashtbl.create 0 (* node -> node -> unit *)
+  val move_relabel_id_tbl = Hashtbl.create 0 (* node -> mid(int) *)
 
   val mutable deferred_relabel_list = [] (* unit -> unit *)
 
@@ -305,7 +306,11 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
   method add_deferred_relabel f = deferred_relabel_list <- f::deferred_relabel_list
 
-  method add_move_relabel nd f = Hashtbl.add move_relabel_tbl nd f
+  method add_move_relabel ?(mid_opt=None) nd f =
+    Hashtbl.add move_relabel_tbl nd f;
+    match mid_opt with
+    | None -> ()
+    | Some mid -> Hashtbl.add move_relabel_id_tbl nd mid
 
   method do_deferred_relabels() =
     [%debug_log "performing deferred relabels..."];
@@ -5744,8 +5749,15 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     [%debug_log "nd=%s" nd#initial_to_string];
 
-    let find_move_relabel nd =
-      Hashtbl.find move_relabel_tbl nd
+    let find_move_relabel =
+      try
+        let i = Hashtbl.find move_relabel_id_tbl nd in
+        if string_of_int i = MID.to_raw mid then
+          Hashtbl.find move_relabel_tbl
+        else
+          fun _ -> raise Not_found
+      with
+        _ -> Hashtbl.find move_relabel_tbl
     in
     let subtree =
       tree#make_subtree_copy ?find_hook:(Some find_move_relabel) nd
@@ -6391,7 +6403,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
       [%debug_log "copy: excluded: [%s]" (nodes_to_uids_string nds)];
 
-      if mctl <> MinsertOnly then
+      if match mctl with MinsertOnly _ -> false | _ -> true then
         self#prune_cluster nd#initial_parent nd#initial_pos nds;
 
       if mctl <> MdeleteOnly then
@@ -6447,7 +6459,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     [%debug_log "nd=%s" nd#initial_to_string];
     match mctl with
     | MdeleteOnly -> self#add_deferred_relabel (fun () -> apply nd)
-    | MinsertOnly -> self#add_move_relabel nd apply
+    | MinsertOnly mid_opt -> self#add_move_relabel ~mid_opt nd apply
     | Mfull -> apply nd
 
   method interpret_change_attr ?(mctl=Mfull) (path : path_c) attr v =
@@ -6459,7 +6471,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     [%debug_log "nd=%s" nd#initial_to_string];
     match mctl with
     | MdeleteOnly -> self#add_deferred_relabel (fun () -> apply nd)
-    | MinsertOnly -> self#add_move_relabel nd apply
+    | MinsertOnly _ -> self#add_move_relabel nd apply
     | Mfull -> apply nd
 
   method interpret_delete_attr ?(mctl=Mfull) (path : path_c) attr =
@@ -6471,7 +6483,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     [%debug_log "nd=%s" nd#initial_to_string];
     match mctl with
     | MdeleteOnly -> self#add_deferred_relabel (fun () -> apply nd)
-    | MinsertOnly -> self#add_move_relabel nd apply
+    | MinsertOnly _ -> self#add_move_relabel nd apply
     | Mfull -> apply nd
 
   method interpret_insert_attr ?(mctl=Mfull) (path : path_c) attr v =
@@ -6483,7 +6495,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     [%debug_log "nd=%s" nd#initial_to_string];
     match mctl with
     | MdeleteOnly -> self#add_deferred_relabel (fun () -> apply nd)
-    | MinsertOnly -> self#add_move_relabel nd apply
+    | MinsertOnly _ -> self#add_move_relabel nd apply
     | Mfull -> apply nd
 
   method private is_edited_node nd =

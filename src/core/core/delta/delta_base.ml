@@ -170,19 +170,28 @@ let potential_dup_attr = mktag "potential_dup"
 
 let potential_dup_attr_ = mktag_ "potential_dup"
 
-(* for partial application of move *)
-type move_control = Mfull | MdeleteOnly | MinsertOnly
+(* for partial application of move/change *)
+type move_control = Mfull | MdeleteOnly | MinsertOnly of int option
 
 let move_control_to_string = function
   | Mfull -> "F"
   | MdeleteOnly -> "D"
-  | MinsertOnly -> "I"
+  | MinsertOnly None -> "I"
+  | MinsertOnly (Some i) -> sprintf "I:%d" i
 
 let move_control_of_string = function
   | "F" -> Mfull
   | "D" -> MdeleteOnly
-  | "I" -> MinsertOnly
-  | _ -> Mfull
+  | "I" -> MinsertOnly None
+  | x when String.starts_with ~prefix:"I:" x -> begin
+      try
+        let _x = String.sub x 2 (String.length x - 2) in
+        let i = int_of_string _x in
+        MinsertOnly (Some i)
+      with _ -> [%warn_log "invalid mctl: %s" x]; Mfull
+  end
+  | "" -> Mfull
+  | x -> let _ = x in [%warn_log "invalid mctl: %s" x]; Mfull
 
 let move_control_attr = mktag "mctl"
 let move_control_attr_ = mktag_ "mctl"
