@@ -19,7 +19,7 @@ doc: "https://github.com/codinuum/diffast/README.md"
 bug-reports: "https://github.com/codinuum/diffast/issues"
 depends: [
   "ocaml" {>= "4.14"}
-  "dune" {>= "3.17"}
+  "dune" {>= "3.18"}
   "dune-site"
   "camlp-streams"
   "uuidm"
@@ -48,3 +48,4 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/codinuum/diffast.git"
+x-maintenance-intent: ["(latest)"]
