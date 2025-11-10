@@ -180,6 +180,7 @@
   menhirLib
   (diffast-misc (= :version))
   (vlt (>= 0.2.4))
+  (cppo :build)
  )
 )
 

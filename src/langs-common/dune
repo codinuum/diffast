@@ -1,4 +1,15 @@
-(include_subdirs unqualified)
+;(include_subdirs unqualified)
+
+(rule
+ (deps (:< unparsing_base.ml.cppo))
+ (targets unparsing_base.ml)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:cppo} -V "OCAML:%{ocaml_version}" %{<})
+  )
+ )
+)
 
 (library
  (public_name diffast-langs-common)
