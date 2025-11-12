@@ -25,8 +25,8 @@ RUN set -x && \
     opam init -y --disable-sandboxing --bare && \
     eval $(opam env) && \
     opam update && \
-    opam switch create 5.3.0+flambda ocaml-variants.5.3.0+options ocaml-option-flambda && \
-    eval $(opam env --switch=5.3.0+flambda) && \
+    opam switch create 5.4.0+flambda ocaml-variants.5.4.0+options ocaml-option-flambda && \
+    eval $(opam env --switch=5.4.0+flambda) && \
     echo 'test -r /root/.opam/opam-init/init.sh && . /root/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true' >> .bashrc && \
     echo 'export PATH=/opt/cca/bin:${PATH}' >> .bashrc
 
