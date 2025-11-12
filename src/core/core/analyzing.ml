@@ -2185,13 +2185,27 @@ end;
         let pruned1 = Xset.create 0 in
         let pruned2 = Xset.create 0 in
 
+        let is_parent_anon_seq nd =
+          try
+            let pnd = nd#initial_parent in
+            pnd#data#is_sequence && not pnd#data#is_named
+          with _ -> false
+        in
         let prune1 nd =
-          [%debug_log "%a to be pruned" nups nd];
-          Xset.add pruned1 nd
+          if is_parent_anon_seq nd then
+            [%debug_log "%a not to be pruned" nups nd]
+          else begin
+            [%debug_log "%a to be pruned" nups nd];
+            Xset.add pruned1 nd
+          end
         in
         let prune2 nd =
-          [%debug_log "%a to be pruned" nups nd];
-          Xset.add pruned2 nd
+          if is_parent_anon_seq nd then
+            [%debug_log "%a not to be pruned" nups nd]
+          else begin
+            [%debug_log "%a to be pruned" nups nd];
+            Xset.add pruned2 nd
+          end
         in
 
         let part pruned_nodes =

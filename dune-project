@@ -1,10 +1,10 @@
-(lang dune 3.17)
+(lang dune 3.18)
 
 (using dune_site 0.1)
 (using menhir 3.0)
 
 (name diffast)
-(version 0.3.5.1)
+(version 0.3.6-dev)
 
 (generate_opam_files true)
 (opam_file_location inside_opam_directory)
@@ -30,6 +30,7 @@
  (name diffast)
  (synopsis "Diff/AST: A fine-grained source code differencing tool")
  (description "Diff/AST is a fine-grained source code differencing tool based on an algorithm for computing tree edit distance (TED) between two ordered labeled trees.")
+ (maintenance_intent "(latest)")
  (allow_empty)
  (depends
   (ocaml (>= 4.14))
@@ -179,6 +180,7 @@
   menhirLib
   (diffast-misc (= :version))
   (vlt (>= 0.2.4))
+  (cppo :build)
  )
 )
 

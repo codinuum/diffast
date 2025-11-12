@@ -297,10 +297,14 @@ module IrreversibleFormat = struct
           | Ddelete(path, paths) -> begin
               interpreter#reg_deleted path paths (Some (gen_del_stid_key()))
           end
-          | Dmove(mctl, mid, path_from, _, _, _, _, _, _, _, _) when mctl <> MinsertOnly -> begin
-              let nd = interpreter#acc path_from#path in
-              movs := (nd, ed)::!movs;
-              Hashtbl.add mov_tbl mid ed
+          | Dmove(mctl, mid, path_from, _, _, _, _, _, _, _, _) when begin
+              match mctl with
+              | MinsertOnly _ -> false
+              | _ -> true
+          end -> begin
+            let nd = interpreter#acc path_from#path in
+            movs := (nd, ed)::!movs;
+            Hashtbl.add mov_tbl mid ed
           end
           | _ -> ()
         ) delta;
@@ -312,8 +316,12 @@ module IrreversibleFormat = struct
       List.iter
         (fun (_, ed) ->
           match ed with
-          | Dmove(mctl, mid, path_from, paths_from, _, _, _, _, _, _, _) when mctl <> MinsertOnly -> begin
-              interpreter#reg_deleted path_from paths_from (Some (key_of_mid mid));
+          | Dmove(mctl, mid, path_from, paths_from, _, _, _, _, _, _, _) when begin
+              match mctl with
+              | MinsertOnly _ -> false
+              | _ -> true
+          end -> begin
+            interpreter#reg_deleted path_from paths_from (Some (key_of_mid mid));
           end
           | _ -> ()
         ) movs;

@@ -146,6 +146,9 @@ class ppbox = object (self)
                Format.out_newline = out_newline;
                Format.out_spaces  = orig_functions.Format.out_spaces;
                Format.out_indent  = orig_functions.Format.out_indent;
+#if OCAML_VERSION >= (5, 4, 0)
+               Format.out_width   = orig_functions.Format.out_width;     
+#endif
              }
     in
     let stat = self#checkpoint_box() in
