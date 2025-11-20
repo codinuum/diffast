@@ -1,0 +1,2 @@
+available: arch != "x86_32" & arch != "arm32" & arch != "s390x"
+conflicts: [ "ocaml-option-fp" ]

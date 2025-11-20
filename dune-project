@@ -4,7 +4,7 @@
 (using menhir 3.0)
 
 (name diffast)
-(version 0.3.6)
+(version 0.4-dev)
 
 (generate_opam_files true)
 (opam_file_location inside_opam_directory)
@@ -156,7 +156,7 @@
  (depends
   (ocaml (>= 4.14))
   dune
-  cmdliner
+  (cmdliner (>= 2.0))
   (mtime (>= 2.0))
   fmt
   logs
