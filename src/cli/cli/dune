@@ -13,8 +13,44 @@
  (enabled_if (<> %{system} macosx))
 )
 
-(executables
- (names parsesrc simast diffast patchast)
+(executable
+ (public_name parsesrc_.exe)
+ (name parsesrc)
+ (package diffast-cli)
+ (modules parsesrc)
+ (libraries threads dynlink diffast-api vlt)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(executable
+ (public_name simast_.exe)
+ (name simast)
+ (package diffast-cli)
+ (modules simast)
+ (libraries threads dynlink diffast-api vlt)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(executable
+ (public_name diffast_.exe)
+ (name diffast)
+ (package diffast-cli)
+ (modules diffast)
+ (libraries threads dynlink diffast-api vlt)
+ (link_flags (:include link_flags.txt))
+ (preprocess
+  (pps vlt.ppx -- -level %{env:DIFFAST_LOG_LEVEL=WARN}))
+)
+
+(executable
+ (public_name patchast_.exe)
+ (name patchast)
+ (package diffast-cli)
+ (modules patchast)
  (libraries threads dynlink diffast-api vlt)
  (link_flags (:include link_flags.txt))
  (preprocess
@@ -24,7 +60,6 @@
 (install
  (section bin)
  (files
-  parsesrc.exe simast.exe diffast.exe patchast.exe
   parsesrc parsesrc-debug
   simast simast-debug
   diffast diffast-debug
