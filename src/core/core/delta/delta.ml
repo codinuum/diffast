@@ -511,7 +511,8 @@ module Edit = struct
                     options#ignore_non_orig_relabel_flag &&
                     match nd1#data#orig_lab_opt, nd2#data#orig_lab_opt with
                     | Some o1, Some o2 ->
-                        o1 = o2 || nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
+                        o1 = o2 ||
+                        nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
                     | _ -> false
                   end then begin
                     [%debug_log "filtered: %s" (to_string ed)];
@@ -549,7 +550,8 @@ module Edit = struct
                       Exit -> false) &&
                     match edit_seq#find12 pnd1 pnd2 with
                     | [] -> true
-                    | [Editop.Relabel _] -> pnd1#data#elem_name_for_delta = pnd2#data#elem_name_for_delta
+                    | [Editop.Relabel _] ->
+                        pnd1#data#elem_name_for_delta = pnd2#data#elem_name_for_delta
                     | _ -> false
                   then begin
                     [%debug_log "filtered: %s" (to_string ed)];

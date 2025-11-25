@@ -629,9 +629,9 @@ module Tree (L : Spec.LABEL_T) = struct
               | _ -> false)
             ||
               self#is_compatible_with ~weak:true x
-            ||
+            (*||
               self#is_named_orig && x#is_named_orig &&
-              get_orig_name self = get_orig_name x
+              get_orig_name self = get_orig_name x*)
             )
           else
             (fun x ->
