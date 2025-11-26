@@ -9670,7 +9670,8 @@ end;
             if !kind <> Edit.Mpermutation && List.mem !mid !permutations then begin
 
               [%debug_log "kind changed: %a: %s -> %s (same group)"
-                MID.ps !mid (Edit.move_kind_to_string !kind) (Edit.move_kind_to_string Edit.Mpermutation)];
+                MID.ps !mid
+                 (Edit.move_kind_to_string !kind) (Edit.move_kind_to_string Edit.Mpermutation)];
 
               kind := Edit.Mpermutation
             end
@@ -11586,7 +11587,44 @@ end;
         Not_found -> Nodetbl.add m k [v]
     in (* end of func map_add *)
 
-
+    if options#ignore_phantom_node_flag then begin
+      [%debug_log "filtering edits on phantom nodes..."];
+      edits#filter
+        (function
+          | Delete(_, info, _) as del -> begin
+              let _ = del in
+              let nd = Info.get_node info in
+              if nd#data#is_phantom then begin
+                [%debug_log "filtered: %s" (Edit.to_string del)];
+                false
+              end
+              else
+                true
+          end
+          | Insert(_, info, _) as ins -> begin
+              let _ = ins in
+              let nd = Info.get_node info in
+              if nd#data#is_phantom then begin
+                [%debug_log "filtered: %s" (Edit.to_string ins)];
+                false
+              end
+              else
+                true
+          end
+          | Relabel(_, (info1, _), (info2, _)) as rel -> begin
+              let _ = rel in
+              let nd1 = Info.get_node info1 in
+              let nd2 = Info.get_node info2 in
+              if nd1#data#is_phantom && nd2#data#is_phantom then begin
+                [%debug_log "filtered: %s" (Edit.to_string rel)];
+                false
+              end
+              else
+                true
+          end
+          | _ -> true
+        )
+    end;
 
     [%debug_log "GROUPING EDITS..."];
 

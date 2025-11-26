@@ -1606,7 +1606,10 @@ end;
       end;
 
       let orig_edits, find_mov_gr, find_mov_gr_mems =
-        if options#ignore_non_orig_relabel_flag || options#ignore_move_of_unordered_flag then
+        if
+          options#ignore_non_orig_relabel_flag ||
+          options#ignore_move_of_unordered_flag
+        then
           edits#copy, Hashtbl.find edits_copy#_mov_gr_tbl, Hashtbl.find edits_copy#_mov_gr_mem_tbl
         else
           edits, (fun _ -> raise Not_found), (fun _ -> raise Not_found)
@@ -1637,9 +1640,11 @@ end;
                   [%debug_log "filtered: %s" (Edit.to_string rel)];
                   false
                 end
-                | _ when nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq -> begin
-                    [%debug_log "filtered: %s" (Edit.to_string rel)];
-                    false
+                | _ when begin
+                    nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
+                end -> begin
+                  [%debug_log "filtered: %s" (Edit.to_string rel)];
+                  false
                 end
 
                 | _ -> true

@@ -1400,12 +1400,20 @@ module Primary = struct
     else
       Xlist.last (Str.split sep_pat lname)
 
-  let is_compatible p1 p2 =
+  let is_compatible ?(weak=false) p1 p2 =
     match p1, p2 with
     | AmbiguousName name1, FieldAccess name2
     | FieldAccess name2, AmbiguousName name1 -> last_of_lname name1 = name2
     | Name name1, FieldAccess name2
     | FieldAccess name2, Name name1 -> name1 = name2
+
+    | PrimaryMethodInvocation x1, SimpleMethodInvocation x2
+    | SimpleMethodInvocation x2, PrimaryMethodInvocation x1 when weak -> x1 = x2
+    | PrimaryMethodInvocation x1, TypeMethodInvocation(_, x2)
+    | TypeMethodInvocation(_, x2), PrimaryMethodInvocation x1 when weak -> x1 = x2
+    | SimpleMethodInvocation x1, TypeMethodInvocation(_, x2)
+    | TypeMethodInvocation(_, x2), SimpleMethodInvocation x1 when weak -> x1 = x2
+
     | _ -> false
 
   let common_methods =
@@ -3188,7 +3196,7 @@ let is_statement_expression = function
 
 let is_compatible ?(weak=false) lab1 lab2 =
   match lab1, lab2 with
-  | Primary p1, Primary p2 -> Primary.is_compatible p1 p2
+  | Primary p1, Primary p2 -> Primary.is_compatible ~weak p1 p2
   | Method(n1, _), Method(n2, _) -> n1 = n2
   | Constructor(n1, _), Constructor(n2, _) -> n1 = n2
 
@@ -3202,13 +3210,15 @@ let is_compatible ?(weak=false) lab1 lab2 =
       | Primary.SimpleMethodInvocation _
       | Primary.SuperMethodInvocation _
       | Primary.ClassSuperMethodInvocation _
-      | Primary.TypeMethodInvocation _ -> _p = p
+      | Primary.TypeMethodInvocation _ -> Primary.is_compatible ~weak _p p
       | _ -> false
   end
 
-  | ClassBody _, InterfaceBody _ | InterfaceBody _, ClassBody _ when weak -> true (* invalid when dumping delta *)
+  | ClassBody _, InterfaceBody _ | InterfaceBody _, ClassBody _ when
+      weak -> true (* invalid when dumping delta *)
   | ClassBody _, EnumBody _ | EnumBody _, ClassBody _ when weak -> true
   | EnumBody _, InterfaceBody _ | InterfaceBody _, EnumBody _ when weak -> true
+
   | _ -> false
 
 let quasi_eq lab1 lab2 =
@@ -4409,7 +4419,8 @@ let is_phantom = function
   | Modifiers _
   | ImportDeclarations
   | TypeDeclarations
-  | Specifier _
+  | FieldDeclarations _
+  (*| Specifier _*)
   | EVconditional
   | EVannotation
   | EVarrayInit
