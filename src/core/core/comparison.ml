@@ -1188,36 +1188,38 @@ class ['node_t, 'tree_t] c
     Xset.add bad_pairs (n1, n2)
   method is_bad_pair n1 n2 = Xset.mem bad_pairs (n1, n2)
 
-  val subtree_matches = (Xset.create 0 : ('node_t * 'node_t * int) Xset.t)
+  val subtree_matches = Nodetbl.create 0
   method subtree_matches = subtree_matches
 
   method in_subtree_matches n1 n2 =
-    let sz = tree1#fast_whole_initial_subtree_size n1 in
-    Xset.mem subtree_matches (n1, n2, sz)
+    try
+      let n1', _ = Nodetbl.find subtree_matches n1 in
+      n1' == n2
+    with _ -> false
 
   method get_subtree_match_size n1 n2 =
-    let sz = tree1#fast_whole_initial_subtree_size n1 in
-    if Xset.mem subtree_matches (n1, n2, sz) then
+    let n1', sz = Nodetbl.find subtree_matches n1 in
+    if n1' == n2 then
       sz
     else
       raise Not_found
 
-  method add_subtree_match ((nd, _, _) as elem) =
+  method add_subtree_match nd nd' sz =
     let lgi = (tree1#initial_leftmost nd)#gindex in
     let gi = nd#gindex in
     try
-      Xset.filter_inplace
-        (fun (n0, _, _) ->
+      Nodetbl.filter_map_inplace
+        (fun n0 x ->
           let lgi0 = (tree1#initial_leftmost n0)#gindex in
           let gi0 = n0#gindex in
           if lgi0 <= lgi && gi < gi0 then
             raise Exit
           else if lgi <= lgi0 && gi0 < gi then
-            false
+            None
           else
-            true
+            Some x
         ) subtree_matches;
-      Xset.add subtree_matches elem
+      Nodetbl.add subtree_matches nd (nd', sz)
     with
       Exit -> ()
 
@@ -2850,6 +2852,47 @@ class ['node_t, 'tree_t] c
     has_p_descendant ~moveon (self#is_matched_subtree nmapping r1 r2) n
 
 
+  method has_matched_uniq_subtree ?(filt=fun x -> true) r1 r2 =
+    let b =
+      has_p_descendant
+        (fun x1 ->
+          try
+            let x1', _ = Nodetbl.find subtree_matches x1 in
+            if filt x1 && tree2#is_initial_ancestor r2 x1' then begin
+              [%debug_log "found: %a-%a" nups x1 nups x1'];
+              true
+            end
+            else
+              false
+          with
+            _ -> false
+        ) r1
+    in
+    [%debug_log "%a-%a --> %B" nups r1 nups r2 b];
+    b
+
+  method get_matched_uniq_subtree_size ?(filt=fun x -> true) r1 r2 =
+    let sz = ref 0 in
+    let _ =
+      get_p_descendants
+        (fun x1 ->
+          try
+            let x1', s = Nodetbl.find subtree_matches x1 in
+            if filt x1 && tree2#is_initial_ancestor r2 x1' then begin
+              [%debug_log "found: %a-%a (%d)" nups x1 nups x1' s];
+              if s > !sz then
+                sz := s;
+              true
+            end
+            else
+              false
+          with
+            _ -> false
+        ) r1
+    in
+    [%debug_log "%a-%a --> %d" nups r1 nups r2 !sz];
+    !sz
+
   method check_op_mappings_m nmapping _nd1 _nd2 nd1 nd2 =
     let b =
     _nd1 == nd1 &&
@@ -3590,6 +3633,18 @@ class ['node_t, 'tree_t] c
 
           [%debug_log "@"];
 
+          let get_matched_uniq_subtree_size =
+            let pred x =
+              x#data#is_named_orig ||
+              x#data#has_non_trivial_value
+            in
+            let filt nd =
+              nd#data#is_statement &&
+              has_p_descendant pred nd
+            in
+            self#get_matched_uniq_subtree_size ~filt
+          in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -3776,6 +3831,21 @@ class ['node_t, 'tree_t] c
               pnd1old#data#eq pnd2old#data && not (pnd1new#data#eq pnd2new#data)
              with _ -> false*)
             )
+          ||
+            let b =
+              nd1old#data#is_boundary && nd2old#data#is_boundary &&
+              nd1new#data#is_boundary && nd2new#data#is_boundary &&
+              nd1old#data#_anonymized_label = nd2old#data#_anonymized_label &&
+              (get_orig_name nd1old) <> (get_orig_name nd2old) &&
+              (get_orig_name nd1new) <> (get_orig_name nd2new) &&
+              let old_sz = get_matched_uniq_subtree_size nd1old nd2old in
+              let new_sz = get_matched_uniq_subtree_size nd1new nd2new in
+              old_sz > new_sz
+            in
+            [%debug_log "@@@@@ %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            if b then
+              nmapping#finalize_mapping nd1old nd2old;
+            b
         (*||
         (subtree_sim_old > subtree_sim_new && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin
@@ -3882,6 +3952,21 @@ class ['node_t, 'tree_t] c
               pnd1new#data#eq pnd2new#data && not (pnd1old#data#eq pnd2old#data)
              with _ -> false*)
             )
+          ||
+            let b =
+              nd1old#data#is_boundary && nd2old#data#is_boundary &&
+              nd1new#data#is_boundary && nd2new#data#is_boundary &&
+              nd1new#data#_anonymized_label = nd2new#data#_anonymized_label &&
+              (get_orig_name nd1old) <> (get_orig_name nd2old) &&
+              (get_orig_name nd1new) <> (get_orig_name nd2new) &&
+              let old_sz = get_matched_uniq_subtree_size nd1old nd2old in
+              let new_sz = get_matched_uniq_subtree_size nd1new nd2new in
+              old_sz < new_sz
+            in
+            [%debug_log "@@@@@ %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            if b then
+              nmapping#finalize_mapping nd1new nd2new;
+            b
         (*||
         (subtree_sim_new > subtree_sim_old && subtree_sim_ratio < subtree_similarity_ratio_cutoff)*)
           then begin

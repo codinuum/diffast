@@ -604,8 +604,9 @@ module F (Label : Spec.LABEL_T) = struct
 
             let ncstmts12 = ref 0 in
 
-            Xset.iter
-              (fun (rn1, rn2, sz) ->
+            Nodetbl.iter
+              (fun rn1 rn2_sz ->
+                let rn2, sz = rn2_sz in
                 (*if
                   try
                     rn1#initial_parent = an1 && rn2#initial_parent = an2
@@ -9962,6 +9963,20 @@ end;
 
         let is_mov nd1 nd2 =
           [%debug_log "%a-%a" nups nd1 nups nd2];
+
+          let not_move =
+            try
+              let pnd1 = nd1#initial_parent in
+              let pnd2 = nd2#initial_parent in
+              not pnd1#data#is_sequence && not pnd2#data#is_sequence &&
+              nmapping#is_final_mapping pnd1 pnd2
+            with _ -> false
+          in
+          [%debug_log "not_move=%B" not_move];
+          if not_move then
+            false, None
+          else
+
           let mid_opt = ref None in
           try
             List.iter

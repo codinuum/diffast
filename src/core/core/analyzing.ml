@@ -2359,7 +2359,7 @@ end;
             [%debug_log "%sdigest (or value) match: %a[%a] <--> %a[%a] <%a> (size=%d)" mes
               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1 sz];
 
-            cenv#add_subtree_match (nd1, nd2, sz);
+            cenv#add_subtree_match nd1 nd2 sz;
 
             if not add_parent_match_only then begin
               pre_map_add nd1 nd2;
