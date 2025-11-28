@@ -11609,7 +11609,7 @@ end;
           | Delete(_, info, _) as del -> begin
               let _ = del in
               let nd = Info.get_node info in
-              if nd#data#is_phantom then begin
+              if nd#data#is_phantom && nd#initial_nchildren = 0 then begin
                 [%debug_log "filtered: %s" (Edit.to_string del)];
                 false
               end
@@ -11619,7 +11619,7 @@ end;
           | Insert(_, info, _) as ins -> begin
               let _ = ins in
               let nd = Info.get_node info in
-              if nd#data#is_phantom then begin
+              if nd#data#is_phantom && nd#initial_nchildren = 0 then begin
                 [%debug_log "filtered: %s" (Edit.to_string ins)];
                 false
               end
