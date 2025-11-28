@@ -1101,31 +1101,33 @@ let rectify_renames_u
             Hashtbl.add non_rename_bid_map1 bi1 bi2;
             Hashtbl.add non_rename_bid_map2 bi2 bi1;
 
-            let d1 = get_def_node tree1 n1 in
-            let d2 = get_def_node tree2 n2 in
-            [%debug_log "d1=%a" nps d1];
-            [%debug_log "d2=%a" nps d2];
-            if
-              not (d1#data#eq d2#data) &&
-              d1#data#relabel_allowed d2#data &&
-              (Comparison.get_orig_name d1) = (Comparison.get_orig_name d2) &&
-              (
-               not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
-               (try
-                 let d1' = nmapping#find d1 in
-                 d1' != d2 && not (d1#data#relabel_allowed d1'#data)
-               with _ -> false) ||
-               (try
-                 let d2' = nmapping#inv_find d2 in
-                 d2' != d1 && not (d2'#data#relabel_allowed d2#data)
-               with _ -> false)
-              )
-            then begin
-              [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
-              Hashtbl.add cands_pair_tbl (bi1, bi2) ([d1], [d2])
-            end;
-
             [%debug_log "non_rename (use): %a-%a (%s)" BID.ps bi1 BID.ps bi2 name];
+
+            try
+              let d1 = get_def_node tree1 n1 in
+              let d2 = get_def_node tree2 n2 in
+              [%debug_log "d1=%a" nps d1];
+              [%debug_log "d2=%a" nps d2];
+              if
+                not (d1#data#eq d2#data) &&
+                d1#data#relabel_allowed d2#data &&
+                (Comparison.get_orig_name d1) = (Comparison.get_orig_name d2) &&
+                (
+                 not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
+                 (try
+                   let d1' = nmapping#find d1 in
+                   d1' != d2 && not (d1#data#relabel_allowed d1'#data)
+                 with _ -> false) ||
+                 (try
+                   let d2' = nmapping#inv_find d2 in
+                   d2' != d1 && not (d2'#data#relabel_allowed d2#data)
+                 with _ -> false)
+                )
+              then begin
+                [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
+                Hashtbl.add cands_pair_tbl (bi1, bi2) ([d1], [d2])
+              end
+            with _ -> ()
           end
 
         end
@@ -2157,6 +2159,48 @@ let rectify_renames_u
      Hashtbl.iter (fun b1 b2 -> [%debug_log "rename_tbl1: %a->%a" BID.ps b1 BID.ps b2]) rename_tbl1;
      Hashtbl.iter (fun b2 b1 -> [%debug_log "rename_tbl2: %a<-%a" BID.ps b1 BID.ps b2]) rename_tbl2
   end;
+
+  let extra_pairs = Xset.create 0 in
+  let compatible_nodes1 = Xset.create 0 in
+  let compatible_nodes2 = Xset.create 0 in
+  List.iter
+    (fun (n1, n2) ->
+      Xset.add compatible_nodes1 n1;
+      Xset.add compatible_nodes2 n2;
+      if is_use n1 && is_use n2 then begin
+        [%debug_log "%a-%a" nups n1 nups n2];
+        try
+          let d1 = get_def_node tree1 n1 in
+          let d2 = get_def_node tree2 n2 in
+          [%debug_log "d1=%a" nps d1];
+          [%debug_log "d2=%a" nps d2];
+          if
+            not (Xset.mem extra_pairs (d1, d2)) &&
+            not (d1#data#eq d2#data) &&
+            d1#data#relabel_allowed d2#data &&
+            (
+             not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
+             (try
+               let d1' = nmapping#find d1 in
+               d1' != d2 && not (d1#data#relabel_allowed d1'#data)
+             with _ -> false) ||
+             (try
+               let d2' = nmapping#inv_find d2 in
+               d2' != d1 && not (d2'#data#relabel_allowed d2#data)
+             with _ -> false)
+            )
+          then begin
+            [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
+            Xset.add extra_pairs (d1, d2)
+          end
+        with _ -> ()
+      end
+    ) !compatible_pairs;
+  Xset.iter
+    (fun (n1, n2) ->
+      if not (Xset.mem compatible_nodes1 n1) && not (Xset.mem compatible_nodes2 n2) then
+        compatible_pairs := (n1, n2) :: !compatible_pairs
+    ) extra_pairs;
 
   (*[%debug_log "* generating compatible edits..."];
   let nrels =

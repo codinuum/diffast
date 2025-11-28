@@ -385,6 +385,10 @@ class visitor options bid_gen static_vdtors tree = object (self)
       nd#data#set_scope_node tree#root
     end;
 
+    if L.is_import_single_static lab then begin
+      nd#data#set_scope_node tree#root
+    end;
+
     if L.is_parameter lab then begin
       let name = L.get_name lab in
       let bid = bid_gen#gen in
@@ -649,6 +653,7 @@ class translator options =
     (* for imports *)
     let importtbl = Hashtbl.create 0 (* FQN -> node *) in
     let reftytbl = Hashtbl.create 0 (* FQN -> node *) in
+    let qnametbl = Hashtbl.create 0 (* FQN -> node *) in
 
     (* for fields *)
     let fieldtbl = Hashtbl.create 0 (* FQN -> node *) in
@@ -667,6 +672,7 @@ class translator options =
     in
     let add_import = add importtbl in
     let add_refty = add reftytbl in
+    let add_qname = add qnametbl in
     let add_field = add fieldtbl in
     let add_facc = add facctbl in
     (*let add_method = add methodtbl in
@@ -676,6 +682,24 @@ class translator options =
       match nd#initial_children with
       | [||] -> true
       | [|n|] -> L.is_primarythis (getlab n)
+      | _ -> false
+    in
+
+    let is_qname nd =
+      let lab = getlab nd in
+      L.is_name lab &&
+      match get_orig_lab_opt nd with
+      | Some orig_lab when nd#initial_nchildren = 0 -> begin
+          let name = L.get_name lab in
+          let b =
+            let is_sep = function '.' | '$' -> true | _ -> false in
+            String.exists is_sep name &&
+            let orig_name = L.get_name orig_lab in
+            not (String.exists is_sep orig_name)
+          in
+          [%debug_log "%s -> %B" nd#to_string b];
+          b
+      end
       | _ -> false
     in
 
@@ -711,6 +735,11 @@ class translator options =
             add_facc fqn nd
           end
         end
+        else if is_qname nd then begin
+          let fqn = L.get_name lab in
+          [%debug_log "QNAME: fqn=%s %s" fqn nd#data#to_string];
+          add_qname fqn nd
+        end
         (*else if L.is_field lab then begin
           let fqn = get_fqn ~strip:true "" nd lab in
           [%debug_log "FDECL: fqn=%s %s" fqn nd#data#to_string];
@@ -737,6 +766,9 @@ class translator options =
         else if L.is_import_single lab then begin
           add_import (L.get_name lab) nd
         end
+        else if L.is_import_single_static lab then begin
+          add_import (L.get_name lab) nd
+        end
         else if L.is_type lab then begin
           let rec getn = function
             | L.Type.ClassOrInterface n | L.Type.Class n | L.Type.Interface n -> n
@@ -755,12 +787,12 @@ class translator options =
       (fun nm nds ->
         let bid = bid_gen#gen in
         tree#add_to_bid_tbl bid nm;
-        let ref_bnd = Binding.make_use bid in
         [%debug_log "FQN: %s (bid=%a)" nm BID.ps bid];
         let referred = ref 0 in
         begin
           try
             let nds' = Hashtbl.find reftytbl nm in
+            let ref_bnd = Binding.make_use bid in
             List.iter
               (fun n ->
                 [%debug_log "    refty: %s" n#to_string];
@@ -771,13 +803,35 @@ class translator options =
             Not_found ->
               [%debug_log "    refty: not found"]
         end;
-        let def_bnd = Binding.make_used_def bid !referred false in
-        List.iter
-          (fun n ->
-            [%debug_log "    import: %s" n#to_string];
-            n#data#set_binding def_bnd;
-            tree#add_to_def_bid_tbl bid n
-          ) nds;
+        match nds with
+        | [] -> ()
+        | def_nd::rest -> begin
+            [%debug_log "    import: %s" def_nd#to_string];
+            begin
+              try
+                let nds' = Hashtbl.find qnametbl nm in
+                let loc_opt = Some (def_nd#uid, def_nd#data#src_loc) in
+                let ref_bnd = Binding.make_use ~loc_opt bid in
+                List.iter
+                  (fun n ->
+                    [%debug_log "    qname: %s" n#to_string];
+                    n#data#set_binding ref_bnd;
+                    incr referred
+                  ) nds'
+              with
+                Not_found ->
+                  [%debug_log "    qname: not found"]
+            end;
+            let def_bnd = Binding.make_used_def bid !referred false in
+            def_nd#data#set_binding def_bnd;
+            tree#add_to_def_bid_tbl bid def_nd;
+            List.iter
+              (fun n ->
+                [%debug_log "    import: %s" n#to_string];
+                n#data#set_binding def_bnd;
+                tree#add_to_def_bid_tbl bid n
+              ) rest
+        end
       ) importtbl;
 
     Hashtbl.iter

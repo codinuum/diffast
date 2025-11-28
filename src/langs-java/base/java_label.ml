@@ -3690,6 +3690,10 @@ let is_import_single = function
   | IDsingle _ -> true
   | _ -> false
 
+let is_import_single_static = function
+  | IDsingleStatic _ -> true
+  | _ -> false
+
 let is_type = function
   | Type _ -> true
   | _ -> false
