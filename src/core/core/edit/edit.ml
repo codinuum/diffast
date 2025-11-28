@@ -1065,6 +1065,8 @@ let rectify_renames_u
     bi1
   in
 
+  let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)
+
   nmapping#iter
     (fun n1 n2 ->
       [%debug_log "non_rename: checking %a-%a" nups n1 nups n2];
@@ -1077,10 +1079,13 @@ let rectify_renames_u
       try
         let bi1 = get_bid n1 in
         let bi2 = get_bid n2 in
+        [%debug_log "bi1=%a bi2=%a" BID.ps bi1 BID.ps bi2];
         if n1#data#eq n2#data then begin
 
           let name = try n1#data#get_name with _ -> "" in
           let _ = name in
+
+          [%debug_log "name=\"%s\"" name];
 
           if (*is_non_local_def*)is_def n1 && (*is_non_local_def*)is_def n2 then begin
             set_tbl_def non_rename_bid_tbl1 bi1;
@@ -1095,6 +1100,30 @@ let rectify_renames_u
             set_tbl_use non_rename_bid_tbl2 bi2;
             Hashtbl.add non_rename_bid_map1 bi1 bi2;
             Hashtbl.add non_rename_bid_map2 bi2 bi1;
+
+            let d1 = get_def_node tree1 n1 in
+            let d2 = get_def_node tree2 n2 in
+            [%debug_log "d1=%a" nps d1];
+            [%debug_log "d2=%a" nps d2];
+            if
+              not (d1#data#eq d2#data) &&
+              d1#data#relabel_allowed d2#data &&
+              (Comparison.get_orig_name d1) = (Comparison.get_orig_name d2) &&
+              (
+               not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
+               (try
+                 let d1' = nmapping#find d1 in
+                 d1' != d2 && not (d1#data#relabel_allowed d1'#data)
+               with _ -> false) ||
+               (try
+                 let d2' = nmapping#inv_find d2 in
+                 d2' != d1 && not (d2'#data#relabel_allowed d2#data)
+               with _ -> false)
+              )
+            then begin
+              [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
+              Hashtbl.add cands_pair_tbl (bi1, bi2) ([d1], [d2])
+            end;
 
             [%debug_log "non_rename (use): %a-%a (%s)" BID.ps bi1 BID.ps bi2 name];
           end
@@ -1977,7 +2006,7 @@ let rectify_renames_u
 
   [%debug_log "* finding compatible pairs..."];
 
-  let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)
+  (*let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)*)
 
   let subtree_eq n1 n2 =
     let b = n1#data#_digest <> None && n1#data#subtree_equals n2#data in

@@ -3345,6 +3345,9 @@ let relabel_allowed (lab1, lab2) =
     | VariableDeclarator _, InferredFormalParameter _
     | InferredFormalParameter _, VariableDeclarator _
 
+    | Parameter _, InferredFormalParameter _
+    | InferredFormalParameter _, Parameter _
+
     | LocalVariableDeclaration _, FieldDeclaration _
     | FieldDeclaration _, LocalVariableDeclaration _
 
@@ -3639,6 +3642,10 @@ let is_method = function
 
 let is_parameter = function
   | Parameter _ -> true
+  | _ -> false
+
+let is_inferred_formal_parameter = function
+  | InferredFormalParameter _ -> true
   | _ -> false
 
 let is_va_parameter = function
