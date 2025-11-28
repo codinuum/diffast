@@ -2749,22 +2749,44 @@ let rectify_renames_d
         | _ -> ()
       end
       else begin (* is good def pair *)
+        let chk_def1 n1 n2 =
+          let d1 = get_def_node cenv#tree1 n1 in
+          try
+            let d1' = nmapping#find d1 in
+            Misc.is_cross_scope nmapping d1 d1' &&
+            not (Misc.is_scope_compatible nmapping d1 d1')
+          with
+            Not_found -> true
+        in
+        let chk_def2 n1 n2 =
+          let d2 = get_def_node cenv#tree2 n2 in
+          try
+            let d2' = nmapping#inv_find d2 in
+            Misc.is_cross_scope nmapping d2' d2 &&
+            not (Misc.is_scope_compatible nmapping d2' d2)
+          with
+            Not_found -> true
+        in
         let conflicting_mapping_list1_, conflicting_mapping_list2_ =
-          let filt =
+          let filt chk_def =
             List.filter
               (fun (n1, n2) ->
                 let b =
                   not (Misc.is_cross_boundary nmapping n1 n2) &&
-                  (strict_flag ||
-                  try
-                    nmapping#find n1#initial_parent != n2#initial_parent
-                  with _ -> true)
+                  (
+                   strict_flag ||
+                   (try
+                     nmapping#find n1#initial_parent != n2#initial_parent
+                   with _ -> true) ||
+                   chk_def n1 n2
+                  )
                 in
                 [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
                 b
               )
           in
-          filt !conflicting_mapping_list1, filt !conflicting_mapping_list2
+          filt chk_def2 !conflicting_mapping_list1,
+          filt chk_def1 !conflicting_mapping_list2
         in
         List.iter
           (fun ((*i*)_, pl) ->
