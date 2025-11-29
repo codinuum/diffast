@@ -4434,7 +4434,6 @@ let is_phantom = function
   (*| Specifier _*)
   | EVconditional
   | EVannotation
-  | EVarrayInit
     -> true
   | _ -> false
 
