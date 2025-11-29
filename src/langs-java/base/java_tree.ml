@@ -788,25 +788,26 @@ class translator options =
         let bid = bid_gen#gen in
         tree#add_to_bid_tbl bid nm;
         [%debug_log "FQN: %s (bid=%a)" nm BID.ps bid];
-        let referred = ref 0 in
-        begin
-          try
-            let nds' = Hashtbl.find reftytbl nm in
-            let ref_bnd = Binding.make_use bid in
-            List.iter
-              (fun n ->
-                [%debug_log "    refty: %s" n#to_string];
-                n#data#set_binding ref_bnd;
-                incr referred
-              ) nds'
-          with
-            Not_found ->
-              [%debug_log "    refty: not found"]
-        end;
         match nds with
         | [] -> ()
         | def_nd::rest -> begin
             [%debug_log "    import: %s" def_nd#to_string];
+            let referred = ref 0 in
+            begin
+              try
+                let nds' = Hashtbl.find reftytbl nm in
+                let loc_opt = Some (def_nd#uid, def_nd#data#src_loc) in
+                let ref_bnd = Binding.make_use ~loc_opt bid in
+                List.iter
+                  (fun n ->
+                    [%debug_log "    refty: %s" n#to_string];
+                    n#data#set_binding ref_bnd;
+                    incr referred
+                  ) nds'
+              with
+                Not_found ->
+                  [%debug_log "    refty: not found"]
+            end;
             begin
               try
                 let nds' = Hashtbl.find qnametbl nm in
