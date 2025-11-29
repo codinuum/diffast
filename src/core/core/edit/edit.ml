@@ -2823,7 +2823,8 @@ let rectify_renames_d
       end
       else begin (* is good def pair *)
         let chk_def1 n1 n2 =
-          [%debug_log "%a-%a" nups n1 nups n2];
+          is_use n1 && is_use n2 &&
+          let _ = [%debug_log "%a-%a" nups n1 nups n2] in
           let d1 = get_def_node cenv#tree1 n1 in
           try
             let d1' = nmapping#find d1 in
@@ -2833,7 +2834,8 @@ let rectify_renames_d
             Not_found -> true
         in
         let chk_def2 n1 n2 =
-          [%debug_log "%a-%a" nups n1 nups n2];
+          is_use n1 && is_use n2 &&
+          let _ = [%debug_log "%a-%a" nups n1 nups n2] in
           let d2 = get_def_node cenv#tree2 n2 in
           try
             let d2' = nmapping#inv_find d2 in
