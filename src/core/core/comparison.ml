@@ -2253,7 +2253,7 @@ class ['node_t, 'tree_t] c
           end;
 
           let finish idx1 idx2 anc1 anc2 ipos1 ipos2 =
-            let d = idx1 + idx2
+            let d = max idx1 idx2(*idx1 + idx2*)
                     (*(get_n_skipped tree1 snd1 nd1) + (get_n_skipped tree2 snd2 nd2)*)
             in
             let ichildren1 = anc1#initial_children in
