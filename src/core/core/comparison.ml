@@ -2562,14 +2562,13 @@ class ['node_t, 'tree_t] c
 
         (* for ancestor statement *)
         let score_stmt =
-          let get_stmt = get_p_ancestor (fun x -> x#data#is_statement) in
           let filt1 n1 =
-            (n1#data#is_named_orig || n1#data#has_non_trivial_value) &&
-            self#has_uniq_match1 n1
+            (n1#data#is_named_orig || n1#data#has_non_trivial_value)(* &&
+            self#has_uniq_match1 n1*)
           in
           let filt2 n2 =
-            (n2#data#is_named_orig || n2#data#has_non_trivial_value) &&
-            self#has_uniq_match2 n2
+            (n2#data#is_named_orig || n2#data#has_non_trivial_value)(* &&
+            self#has_uniq_match2 n2*)
           in
           if
             nd1#data#is_statement || nd2#data#is_statement ||
@@ -2584,26 +2583,33 @@ class ['node_t, 'tree_t] c
               let stmt2 = get_stmt nd2 in
               (*if not stmt1#data#is_named || not stmt2#data#is_named then
                 raise Abort;*)
-              let desc1 = ref [] in
-              let desc2 = ref [] in
-              tree1#preorder_scan_whole_initial_subtree stmt1
-                (fun n1 ->
-                  if filt1 n1 then
-                    desc1 := n1 :: !desc1
-                );
-              tree2#preorder_scan_whole_initial_subtree stmt2
-                (fun n2 ->
-                  if filt2 n2 then
-                    desc2 := n2 :: !desc2
-                );
               [%debug_log "nd1: %a" nps nd1];
               [%debug_log "nd2: %a" nps nd2];
               [%debug_log "stmt1: %a" nps stmt1];
               [%debug_log "stmt2: %a" nps stmt2];
-              match !desc1, !desc2 with
-              | [], [] -> 0.0
-              | [], _ | _, [] -> 0.0
-              | _ -> _incr_score ~exact_only:true !desc1 !desc2
+              List.fold_left
+                (fun s (r1, r2) ->
+                  [%debug_log "%a-%a" nups r1 nups r2];
+                  let desc1 = ref [] in
+                  let desc2 = ref [] in
+                  tree1#preorder_scan_whole_initial_subtree r1
+                    (fun n1 ->
+                      if filt1 n1 then
+                        desc1 := n1 :: !desc1
+                    );
+                  tree2#preorder_scan_whole_initial_subtree r2
+                    (fun n2 ->
+                      if filt2 n2 then
+                        desc2 := n2 :: !desc2
+                    );
+                  [%debug_log "desc1: %a" nsps !desc1];
+                  [%debug_log "desc2: %a" nsps !desc2];
+                  s +.
+                    List.fold_left2
+                    (fun s x1 x2 ->
+                      s +. _incr_score ~exact_only:true [x1] [x2]
+                    ) 0.0 !desc1 !desc2
+                ) 0.0 (self#get_matched_uniq_subtree_root_pairs stmt1 stmt2)
             with
               _ -> 0.0
         in
@@ -2892,6 +2898,31 @@ class ['node_t, 'tree_t] c
     in
     [%debug_log "%a-%a --> %d" nups r1 nups r2 !sz];
     !sz
+
+  method get_matched_uniq_subtree_root_pairs ?(filt=fun x -> true) r1 r2 =
+    let root_pairs = ref [] in
+    let _ =
+      get_p_descendants
+        (fun x1 ->
+          try
+            let x1', s = Nodetbl.find subtree_matches x1 in
+            if filt x1 && tree2#is_initial_ancestor r2 x1' then begin
+              [%debug_log "found: %a-%a (%d)" nups x1 nups x1' s];
+              root_pairs := (x1, x1') :: !root_pairs;
+              true
+            end
+            else
+              false
+          with
+            _ -> false
+        ) r1
+    in
+    [%debug_log "%a-%a --> %s" nups r1 nups r2
+       (String.concat ";"
+          (List.map
+             (fun (x1, x2) -> sprintf "%a-%a" nups x1 nups x2)
+             !root_pairs))];
+    !root_pairs
 
   method check_op_mappings_m nmapping _nd1 _nd2 nd1 nd2 =
     let b =
@@ -3346,24 +3377,8 @@ class ['node_t, 'tree_t] c
               ancsim_old, ancsim_new, false
           in
 
-          let anc_each_other1 n1 n2 =
-            let b =
-              tree1#is_initial_ancestor n1 n2
-            ||
-              tree1#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
-            b
-          in
-          let anc_each_other2 n1 n2 =
-            let b =
-              tree2#is_initial_ancestor n1 n2
-            ||
-              tree2#is_initial_ancestor n2 n1
-            in
-            [%debug_log "%a %a --> %B" nups n1 nups n2 b];
-            b
-          in
+          let anc_each_other1 = anc_each_other1 tree2 in
+          let anc_each_other2 = anc_each_other2 tree2 in
 
           let prefer_sim =
             if

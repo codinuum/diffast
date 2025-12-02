@@ -380,6 +380,27 @@ let next_to_each_other n1 n2 =
     n1#initial_parent == n2#initial_parent && abs (n1#initial_pos - n2#initial_pos) = 1
   with _ -> false
 
+[%%capture_path
+let anc_each_other1 tree1 n1 n2 =
+  let b =
+    tree1#is_initial_ancestor n1 n2
+  ||
+    tree1#is_initial_ancestor n2 n1
+  in
+  [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+  b
+]
+
+[%%capture_path
+let anc_each_other2 tree2 n1 n2 =
+  let b =
+    tree2#is_initial_ancestor n1 n2
+  ||
+    tree2#is_initial_ancestor n2 n1
+  in
+  [%debug_log "%a %a --> %B" nups n1 nups n2 b];
+  b
+]
 
 let get_p_ancestor ?(moveon=fun _ -> true) pred nd =
   try

@@ -5483,6 +5483,10 @@ end;
 
     let failed_cands = ref [] in
 
+    let get_stmt = Comparison.get_stmt in
+    let anc_each_other1 = anc_each_other1 tree1 in
+    let anc_each_other2 = anc_each_other2 tree2 in
+
     let add_mappings =
     List.iter (* add mappings *)
       (fun (nd1, nd2) ->
@@ -5496,6 +5500,8 @@ end;
           let to_be_removed = ref [] in
           let ncross = ref (-1) in
           let adj = ref (-1.0) in
+          let stmt_cond1 = ref true in
+          let stmt_cond2 = ref true in
 
           let can_add1, dnc1, padj1 =
             try
@@ -5513,10 +5519,12 @@ end;
                   false, None, None
                 end
                 else if can_override nd1 nd2 nd1 n2 then begin
+                  [%debug_log "@"];
                   to_be_removed := (nd1, n2) :: !to_be_removed;
                   true, None, None
                 end
                 else begin
+                  [%debug_log "@"];
                   to_be_removed := (nd1, n2) :: !to_be_removed;
                   let b = ref false in
                   let dnc = ref None in
@@ -5536,27 +5544,37 @@ end;
                   if tree2#is_initial_ancestor n2 nd2 || tree2#is_initial_ancestor nd2 n2 then
                     None
                   else
-                  let p1 = nd1#initial_parent in
-                  let b =
-                    if
-                      is_cross_boundary nmapping p1 n2#initial_parent &&
-                      not (is_cross_boundary nmapping p1 nd2#initial_parent)
+                  let pnd1 = nd1#initial_parent in
+                  let pnd2 = nd2#initial_parent in
+                  let p2 = n2#initial_parent in
+                  let padj1 =
+                    if pnd2#data#eq p2#data && anc_each_other2 pnd2 p2 then
+                      false
+                    else if
+                      is_cross_boundary nmapping pnd1 p2 &&
+                      not (is_cross_boundary nmapping pnd1 pnd2)
                     then
                       true
                     else if
-                      is_cross_boundary nmapping p1 nd2#initial_parent &&
-                      not (is_cross_boundary nmapping p1 n2#initial_parent)
+                      is_cross_boundary nmapping pnd1 pnd2 &&
+                      not (is_cross_boundary nmapping pnd1 p2)
                     then
                       false
                     else
-                      (*if Comparison.next_to_each_other n2#initial_parent nd2#initial_parent then
+                      (*if Comparison.next_to_each_other p2 pnd2 then
                         false
                       else!!!NG!!!*)
-                        cenv#get_adjacency_score p1 n2#initial_parent <
-                        cenv#get_adjacency_score p1 nd2#initial_parent
+                        cenv#get_adjacency_score pnd1 p2 <
+                        cenv#get_adjacency_score pnd1 pnd2
                   in
-                  [%debug_log "padj1=%B" b];
-                  Some b
+                  [%debug_log "padj1=%B" padj1];
+                  if not padj1 then begin
+                    try
+                      if anc_each_other2 (get_stmt nd2) (get_stmt n2) then
+                        stmt_cond1 := false
+                    with _ -> ()
+                  end;
+                  Some padj1
                 end
               end
               else (* n2 == nd2 *)
@@ -5585,10 +5603,12 @@ end;
                   false, None, None
                 end
                 else if can_override nd1 nd2 n1 nd2 then begin
+                  [%debug_log "@"];
                   to_be_removed := (n1, nd2) :: !to_be_removed;
                   true, None, None
                 end
                 else begin
+                  [%debug_log "@"];
                   to_be_removed := (n1, nd2) :: !to_be_removed;
                   let b = ref false in
                   let dnc = ref None in
@@ -5608,27 +5628,37 @@ end;
                   if tree1#is_initial_ancestor n1 nd1 || tree1#is_initial_ancestor nd1 n1 then
                     None
                   else
-                  let p2 = nd2#initial_parent in
-                  let b =
-                    if
-                      is_cross_boundary nmapping n1#initial_parent p2 &&
-                      not (is_cross_boundary nmapping nd1#initial_parent p2)
+                  let pnd2 = nd2#initial_parent in
+                  let pnd1 = nd1#initial_parent in
+                  let p1 = n1#initial_parent in
+                  let padj2 =
+                    if pnd1#data#eq p1#data && anc_each_other1 pnd1 p1 then
+                      false
+                    else if
+                      is_cross_boundary nmapping p1 pnd2 &&
+                      not (is_cross_boundary nmapping pnd1 pnd2)
                     then
                       true
                     else if
-                      is_cross_boundary nmapping nd1#initial_parent p2 &&
-                      not (is_cross_boundary nmapping n1#initial_parent p2)
+                      is_cross_boundary nmapping pnd1 pnd2 &&
+                      not (is_cross_boundary nmapping p1 pnd2)
                     then
                       false
                     else
-                      (*if Comparison.next_to_each_other n1#initial_parent nd1#initial_parent then
+                      (*if Comparison.next_to_each_other p1 pnd1 then
                         false
                       else!!!NG!!!*)
-                        cenv#get_adjacency_score n1#initial_parent p2 <
-                        cenv#get_adjacency_score nd1#initial_parent p2
+                        cenv#get_adjacency_score p1 pnd2 <
+                        cenv#get_adjacency_score pnd1 pnd2
                   in
-                  [%debug_log "padj2=%B" b];
-                  Some b
+                  [%debug_log "padj2=%B" padj2];
+                  if not padj2 then begin
+                    try
+                      if anc_each_other1 (get_stmt nd1) (get_stmt n1) then
+                        stmt_cond2 := false
+                    with _ -> ()
+                  end;
+                  Some padj2
                 end
               end
               else (* n1 == nd1 *)
@@ -5646,11 +5676,17 @@ end;
               | Some d -> string_of_int d
               | None -> "-"
             in
-            [%debug_log "can_add1=%B can_add2=%B dnc1:%s dnc2:%s"
-              can_add1 can_add2 (dnc_to_str dnc1) (dnc_to_str dnc2)];
+            let padj_to_str = function
+              | Some b -> string_of_bool b
+              | None -> "-"
+            in
+            [%debug_log "can_add1=%B can_add2=%B dnc1:%s dnc2:%s padj1=%s padj2=%s"
+              can_add1 can_add2 (dnc_to_str dnc1) (dnc_to_str dnc2)
+               (padj_to_str padj1) (padj_to_str padj2)];
+            [%debug_log "stmt_cond1=%B stmt_cond2=%B" !stmt_cond1 !stmt_cond2]
           end;
           if
-            (can_add1 && can_add2) ||
+            (can_add1 && can_add2 && !stmt_cond1 && !stmt_cond2) ||
             (
              (
               nd1#data#_digest = nd2#data#_digest ||
