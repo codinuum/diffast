@@ -842,6 +842,26 @@ module Tree (L : Spec.LABEL_T) = struct
       gi2 < gi1 && (self#initial_leftmost nd1)#gindex <= gi2 ||
       gi1 < gi2 && (self#initial_leftmost nd2)#gindex <= gi1
 
+
+    val mutable true_category_tbl = (Hashtbl.create 0 : (node_t, string) Hashtbl.t)
+    method find_true_category nd =
+      let cat = Hashtbl.find true_category_tbl nd in
+      [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#get_category cat];
+      cat
+    method set_true_category_tbl tbl = true_category_tbl <- tbl
+
+    val mutable true_loc_tbl = (Hashtbl.create 0 : (node_t, Loc.t) Hashtbl.t)
+    method find_true_loc nd =
+      let loc = Hashtbl.find true_loc_tbl nd in
+      [%debug_log "%a: %s -> %s" UID.ps nd#uid (Loc.to_string nd#data#src_loc) (Loc.to_string loc)];
+      loc
+    method set_true_loc_tbl tbl = true_loc_tbl <- tbl
+
+    val mutable virtual_nodes = (Xset.create 0 : node_t Xset.t)
+    method is_virtual_node nd = Xset.mem virtual_nodes nd
+    method set_virtual_nodes set = virtual_nodes <- set
+
+
     val mutable true_parent_tbl = (Hashtbl.create 0 : (UID.t, node_t) Hashtbl.t)
     method set_true_parent_tbl tbl = true_parent_tbl <- tbl
     method find_true_parent uid = Hashtbl.find true_parent_tbl uid

@@ -28,7 +28,6 @@ module Loc = Diffast_misc.Loc
 module SB = Spec_base
 
 
-
 class type node_data_t = object ('self)
   inherit SB.node_data_t_shared
 
@@ -123,6 +122,17 @@ class type tree_t = object ('self)
 
   method unparse_subtree_ch       : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> node_t -> SB.OutChannel.t -> unit
   method unparse_ch               : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> SB.OutChannel.t -> unit
+
+
+  method find_true_category : node_t -> string
+  method set_true_category_tbl : (node_t, string) Hashtbl.t -> unit
+
+  method find_true_loc : node_t -> Loc.t
+  method set_true_loc_tbl : (node_t, Loc.t) Hashtbl.t -> unit
+
+  method is_virtual_node : node_t -> bool
+  method set_virtual_nodes : node_t Xset.t -> unit
+
 
   method set_true_parent_tbl      : (UID.t, node_t) Hashtbl.t -> unit
   method find_true_parent         : UID.t -> node_t

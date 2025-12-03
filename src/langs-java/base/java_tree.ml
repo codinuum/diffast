@@ -34,6 +34,7 @@ module Spec = Diffast_core.Spec
 module Fact_base = Diffast_core.Fact_base
 module Lang_base = Diffast_core.Lang_base
 module Sourcecode = Diffast_core.Sourcecode
+module Node = Diffast_core.Node
 module P   = Java_parsing.Printer
 module L   = Java_label
 module BID = Binding.ID
@@ -43,6 +44,7 @@ module Triple = Diffast_core.Triple
 
 module Ast = Java_parsing.Ast
 module Astloc = Langs_common.Astloc
+
 
 let sprintf = Printf.sprintf
 
@@ -647,6 +649,22 @@ class translator options =
 
   method huge_array_list = huge_array_list
   method reg_huge_array orig nd = huge_array_list <- (orig, nd) :: huge_array_list
+
+  val true_category_tbl = Hashtbl.create 0
+  method true_category_tbl = true_category_tbl
+  method reg_true_category nd cat =
+    [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#get_category cat];
+    Hashtbl.add true_category_tbl nd cat
+
+  val true_loc_tbl = Hashtbl.create 0
+  method true_loc_tbl = true_loc_tbl
+  method reg_true_loc nd loc =
+    [%debug_log "%a: %s -> %s" UID.ps nd#uid (Loc.to_string nd#data#src_loc) (Loc.to_string loc)];
+    Hashtbl.add true_loc_tbl nd loc
+
+  val virtual_nodes = Xset.create 0
+  method virtual_nodes = virtual_nodes
+  method reg_virtual_node nd = Xset.add virtual_nodes nd
 
   method set_bindings (tree : Spec.tree_t) =
 
@@ -2618,6 +2636,9 @@ class translator options =
                         | None -> next#data#src_loc
                       in
                       nd_#data#set_loc loc_;
+
+                      self#reg_virtual_node nd_;
+
                       incr else_count;
                       [nd0; nd_]
                     end
@@ -2643,6 +2664,10 @@ class translator options =
                     [%debug_log "loc_=%s" (Loc.to_string loc_)];
                     let nd_ = self#_mknode lab_ (Array.sub nd0#children 0 2) in
                     nd_#data#set_loc loc_;
+
+                    self#reg_true_category nd_ (L.get_category lab0);
+                    self#reg_true_loc nd_ nd0#data#src_loc;
+
                     incr elseif_count;
                     if L.is_if (getlab next) then
                       nd_ :: (flatten ~is_top:false next)
@@ -2655,6 +2680,9 @@ class translator options =
                           _ -> next#data#src_loc
                       in
                       nd__#data#set_loc loc__;
+
+                      self#reg_virtual_node nd__;
+
                       incr else_count;
                       [nd_; nd__]
                     end
@@ -2668,6 +2696,10 @@ class translator options =
                         _ -> nd0#data#src_loc;
                     in
                     nd_#data#set_loc loc_;
+
+                    self#reg_true_category nd_ (L.get_category lab0);
+                    self#reg_true_loc nd_ nd0#data#src_loc;
+
                     incr elseif_count;
                     [nd_]
                   end
@@ -3932,6 +3964,11 @@ let of_compilation_unit options cu =
   let n_huge_arrays = List.length trans#huge_array_list in
   [%debug_log "T:\n%s" tree#to_string];
   [%debug_log "%d huge array(s) found" n_huge_arrays];
+
+  tree#set_true_category_tbl trans#true_category_tbl;
+  tree#set_true_loc_tbl trans#true_loc_tbl;
+  tree#set_virtual_nodes trans#virtual_nodes;
+
   tree#set_true_parent_tbl trans#true_parent_tbl;
   tree#set_true_children_tbl trans#true_children_tbl;
   if options#use_binding_info_flag then
