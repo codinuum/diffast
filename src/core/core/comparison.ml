@@ -2445,7 +2445,27 @@ class ['node_t, 'tree_t] c
         let ancs1 = List.rev (tree1#initial_ancestor_nodes nd1) in
         let ancs2 = List.rev (tree2#initial_ancestor_nodes nd2) in
 
-        let score_anc = _incr_score ~weight:0.5 ~bonus_named:true ancs1 ancs2 in
+        let anc_weight = 0.5 in
+
+        let score_anc = _incr_score ~weight:anc_weight ~bonus_named:true ancs1 ancs2 in
+
+        let score_anc =
+          match ancs1, ancs2 with
+          | p1::_, p2::_ -> begin
+              if
+                p1#data#eq p2#data &&
+                not p1#data#is_sequence && not p2#data#is_sequence &&
+                not p1#data#is_ntuple && not p2#data#is_ntuple &&
+                nd1#initial_pos = nd2#initial_pos
+              then
+                let pos_bonus = anc_weight /. (float (List.length ancs1 + List.length ancs2)) in
+                [%debug_log "pos_bonus=%f" pos_bonus];
+                score_anc +. pos_bonus
+              else
+                score_anc
+          end
+          | _ -> score_anc
+        in
 
         [%debug_log "score for ancestors: %f" score_anc];
 

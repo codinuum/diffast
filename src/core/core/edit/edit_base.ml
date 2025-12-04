@@ -4919,7 +4919,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           if n1#data#is_statement && n2#data#is_statement then begin
             if
               not (self#mem_mov12 n1 n2) &&
-              n1#data#_anonymized_label = n2#data#_anonymized_label
+              (*n1#data#_anonymized_label = n2#data#_anonymized_label*)
+              n1#data#relabel_allowed n2#data &&
+              (not n1#data#is_named && not n2#data#is_named || n1#data#get_name <> n2#data#get_name)
             then begin
               [%debug_log "%a-%a" nps n1 nps n2];
               let cand_tbl1 = Nodetbl.create 0 in
@@ -4938,6 +4940,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               tree1#preorder_scan_whole_initial_subtree n1
                 (fun x1 ->
                   incr node_count;
+
+                  begin
+                    try
+                      if tree2#is_initial_ancestor n2 (nmapping#find x1) then
+                        incr map_count
+                    with _ -> ()
+                  end;
 
                   if x1#data#is_block then
                     skip_flag := true;
@@ -4960,13 +4969,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       end
                     with _ -> ()
                   end
-                  else begin
-                    if nmapping#mem_dom x1 then
-                      incr map_count
-                  end
                 );
               let stability1 = (float !map_count) /. (float !node_count) in
-              [%debug_log "stability1=%f" stability1];
+              [%debug_log "  stability1=%f" stability1];
 
               skip_flag := false;
               map_count := 0;
@@ -4975,6 +4980,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               tree2#preorder_scan_whole_initial_subtree n2
                 (fun x2 ->
                   incr node_count;
+
+                  begin
+                    try
+                      if tree1#is_initial_ancestor n1 (nmapping#inv_find x2) then
+                        incr map_count
+                    with _ -> ()
+                  end;
 
                   if x2#data#is_block then
                     skip_flag := true;
@@ -4997,13 +5009,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       end
                     with _ -> ()
                   end
-                  else begin
-                    if nmapping#mem_cod x2 then
-                      incr map_count
-                  end
                 );
               let stability2 = (float !map_count) /. (float !node_count) in
-              [%debug_log "stability2=%f" stability2];
+              [%debug_log "  stability2=%f" stability2];
 
               let count1 = ref 0 in
               let count2 = ref 0 in
@@ -5037,7 +5045,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 [%debug_log "  %a -> %a (%d)" nups n1 nups !cand2 !count2];
                 cand := Some (n1, !cand2)
               end;
-              if !cand1 != n1 && !count2 > !count1 then begin
+              if !cand1 != n1 && !count1 > !count2 then begin
                 [%debug_log "  %a (%d) <- %a" nups !cand1 !count1 nups n2];
                 cand := Some (!cand1, n2);
                 Xset.add modified (!cand1)
