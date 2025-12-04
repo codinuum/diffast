@@ -4873,6 +4873,220 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         [%debug_log "true"];
         true
 
+
+  method dump_stmt_map_json
+      ?(comp=Compression.none)
+      (cenv : ('node_t, 'tree_t) Comparison.c)
+      (nmapping : 'node_t Node_mapping.c)
+      fname
+      =
+    let tree1 = cenv#tree1 in
+    let tree2 = cenv#tree2 in
+    let cmp n1 n2 = Stdlib.compare n1#gindex n2#gindex in
+    let modified = Xset.create 0 in
+    let extract_stmt_map iter =
+      let map = Nodetbl.create 0 in
+      iter cmp
+        (fun n1 n2 ->
+          if n1#data#is_statement && n2#data#is_statement then begin
+            if
+              not (self#mem_mov12 n1 n2) &&
+              n1#data#_anonymized_label = n2#data#_anonymized_label
+            then begin
+              [%debug_log "%a-%a" nps n1 nps n2];
+              let cand_tbl1 = Nodetbl.create 0 in
+              let cand_tbl2 = Nodetbl.create 0 in
+              let add_cand tbl n =
+                try
+                  let c = Nodetbl.find tbl n in
+                  Nodetbl.replace tbl n (c+1)
+                with
+                  Not_found -> Nodetbl.add tbl n 1
+              in
+              let skip_flag = ref false in
+              let map_count = ref 0 in
+              let node_count = ref 0 in
+
+              tree1#preorder_scan_whole_initial_subtree n1
+                (fun x1 ->
+                  incr node_count;
+
+                  if x1#data#is_block then
+                    skip_flag := true;
+
+                  if self#mem_mov1 x1 then begin
+                    try
+                      if !skip_flag then
+                        raise Exit;
+                      let x2 = nmapping#find x1 in
+                      [%debug_log "  %a -> %a" nps x1 nps x2];
+                      let stmt2 = Misc.get_stmt x2 in
+                      [%debug_log "  stmt2=%a" nps stmt2];
+                      if
+                        stmt2 != n2 &&
+                        stmt2#data#_anonymized_label = n1#data#_anonymized_label &&
+                        not (nmapping#mem_cod stmt2)
+                      then begin
+                        [%debug_log "@"];
+                        add_cand cand_tbl2 stmt2
+                      end
+                    with _ -> ()
+                  end
+                  else begin
+                    if nmapping#mem_dom x1 then
+                      incr map_count
+                  end
+                );
+              let stability1 = (float !map_count) /. (float !node_count) in
+              [%debug_log "stability1=%f" stability1];
+
+              skip_flag := false;
+              map_count := 0;
+              node_count := 0;
+
+              tree2#preorder_scan_whole_initial_subtree n2
+                (fun x2 ->
+                  incr node_count;
+
+                  if x2#data#is_block then
+                    skip_flag := true;
+
+                  if self#mem_mov2 x2 then begin
+                    try
+                      if !skip_flag then
+                        raise Exit;
+                      let x1 = nmapping#inv_find x2 in
+                      [%debug_log "  %a <- %a" nps x1 nps x2];
+                      let stmt1 = Misc.get_stmt x1 in
+                      [%debug_log "  stmt1=%a" nps stmt1];
+                      if
+                        stmt1 != n1 &&
+                        stmt1#data#_anonymized_label = n2#data#_anonymized_label &&
+                        not (nmapping#mem_dom stmt1)
+                      then begin
+                        [%debug_log "@"];
+                        add_cand cand_tbl1 stmt1
+                      end
+                    with _ -> ()
+                  end
+                  else begin
+                    if nmapping#mem_cod x2 then
+                      incr map_count
+                  end
+                );
+              let stability2 = (float !map_count) /. (float !node_count) in
+              [%debug_log "stability2=%f" stability2];
+
+              let count1 = ref 0 in
+              let count2 = ref 0 in
+              let cand1 = ref n1 in
+              let cand2 = ref n2 in
+
+              let stability_thresh = 0.5 in
+
+              if stability1 < stability_thresh then
+                Nodetbl.iter
+                  (fun s1 c1 ->
+                    [%debug_log "  s1=%a c1=%d" nups s1 c1];
+                    if c1 > !count1 then begin
+                      cand1 := s1;
+                      count1 := c1
+                    end
+                  ) cand_tbl1;
+
+              if stability2 < stability_thresh then
+                Nodetbl.iter
+                  (fun s2 c2 ->
+                    [%debug_log "  s2=%a c2=%d" nups s2 c2];
+                    if c2 > !count2 then begin
+                      cand2 := s2;
+                      count2 := c2
+                    end
+                  ) cand_tbl2;
+
+              let cand = ref None in
+              if !cand2 != n2 then begin
+                [%debug_log "  %a -> %a (%d)" nups n1 nups !cand2 !count2];
+                cand := Some (n1, !cand2)
+              end;
+              if !cand1 != n1 && !count2 > !count1 then begin
+                [%debug_log "  %a (%d) <- %a" nups !cand1 !count1 nups n2];
+                cand := Some (!cand1, n2);
+                Xset.add modified (!cand1)
+              end
+              else if !cand2 != n2 then begin
+                Xset.add modified (!cand2)
+              end;
+              match !cand with
+              | Some (x1, x2) -> Nodetbl.add map x1 x2
+              | None -> Nodetbl.add map n1 n2
+            end
+            else
+              Nodetbl.add map n1 n2
+          end
+        );
+      map
+    in
+    let stmt_map = extract_stmt_map nmapping#iter_unsettled_sorted in
+    let stmt_s_map = extract_stmt_map nmapping#iter_settled_sorted in
+
+    let _fprintf ch fmt =
+      Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt
+    in
+    let dump_node ch tree nd =
+      let loc =
+        try
+          tree#find_true_loc nd
+        with
+          Not_found -> nd#data#src_loc
+      in
+      let so = loc.Loc.start_offset in
+      let eo = loc.Loc.end_offset in
+      let sl = loc.Loc.start_line in
+      let el = loc.Loc.end_line in
+      let lab =
+        try
+          tree#find_true_category nd
+        with
+          Not_found -> nd#data#get_category
+      in
+      _fprintf ch "{";
+      _fprintf ch "\"label\":\"%s\"" lab;
+      _fprintf ch ",\"start_offset\":%d,\"end_offset\":%d,\"start_line\":%d,\"end_line\":%d" so eo sl el;
+      if Xset.mem modified nd then
+        _fprintf ch ",\"modified\":true";
+      _fprintf ch "}";
+    in
+    let dump_map ?(comma=false) ch map =
+      let comma_flag = ref comma in
+      Nodetbl.iter
+        (fun n1 n2 ->
+          if tree1#is_virtual_node n1 || tree2#is_virtual_node n2 then
+            [%debug_log "%a-%a: skipped" nups n1 nups n2]
+          else begin
+            if !comma_flag then
+              _fprintf ch ",";
+            _fprintf ch "[";
+            dump_node ch tree1 n1;
+            _fprintf ch ",";
+            dump_node ch tree2 n2;
+            _fprintf ch "]";
+            comma_flag := true;
+          end
+        ) map;
+      !comma_flag
+    in
+    try
+      let ch = new Xchannel.out_channel ~comp (Xchannel.Destination.of_file fname) in
+      _fprintf ch "[";
+      let comma = dump_map ch stmt_map in
+      let _ = dump_map ~comma ch stmt_s_map in
+      _fprintf ch "]";
+      ch#close
+    with
+    | Xchannel.Error s -> let _ = s in [%warn_log "%s" s]
+
+
   method dump_delta
       ?(extra_ns_decls=([] : (string * string) list))
       ?(info_file_path="")

@@ -315,6 +315,7 @@ class type nmapping_t = object ('self)
   method dump : string -> unit
 
   method dump_with_info : ?comp:Compression.c -> string -> unit
+  method dump_map_json : ?comp:Compression.c -> string -> unit
 
   method print_status : unit
 

@@ -5483,7 +5483,6 @@ end;
 
     let failed_cands = ref [] in
 
-    let get_stmt = Comparison.get_stmt in
     let anc_each_other1 = anc_each_other1 tree1 in
     let anc_each_other2 = anc_each_other2 tree2 in
 
@@ -8522,7 +8521,7 @@ end;
                                 match !stmt1_opt with
                                 | Some x -> x
                                 | _ ->
-                                    let x = Comparison.get_stmt nd1 in
+                                    let x = get_stmt nd1 in
                                     stmt1_opt := Some x;
                                     x
                               in
@@ -8536,7 +8535,7 @@ end;
                                 match !stmt2_opt with
                                 | Some x -> x
                                 | _ ->
-                                    let x = Comparison.get_stmt nd2 in
+                                    let x = get_stmt nd2 in
                                     stmt2_opt := Some x;
                                     x
                               in

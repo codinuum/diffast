@@ -998,29 +998,17 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     with
       Sys_error s -> let _ = s in [%warn_log "%s" s]
 
-  method dump_json ?(comp=Comp.none) fname =
+  method dump_map_json ?(comp=Comp.none) fname =
     let _fprintf ch fmt =
       Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt
     in
-    let tree1 = cenv#tree1 in
-    let tree2 = cenv#tree2 in
-    let dump_node ch tree nd =
-      let loc =
-        try
-          tree#find_true_loc nd
-        with
-          Not_found -> nd#data#src_loc
-      in
+    let dump_node ch nd =
+      let loc = nd#data#src_loc in
       let so = loc.Loc.start_offset in
       let eo = loc.Loc.end_offset in
       let sl = loc.Loc.start_line in
       let el = loc.Loc.end_line in
-      let lab =
-        try
-          tree#find_true_category nd
-        with
-          Not_found -> nd#data#get_category
-      in
+      let lab = nd#data#get_category in
       _fprintf ch "{";
       _fprintf ch "\"label\":\"%s\"" lab;
       _fprintf ch ",\"start_offset\":%d,\"end_offset\":%d,\"start_line\":%d,\"end_line\":%d" so eo sl el;
@@ -1030,18 +1018,14 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
       let comma_flag = ref comma in
       Nodetbl.iter
         (fun n1 n2 ->
-          if tree1#is_virtual_node n1 || tree2#is_virtual_node n2 then
-            [%debug_log "%a-%a: skipped" nups n1 nups n2]
-          else begin
           if !comma_flag then
             _fprintf ch ",";
           _fprintf ch "[";
-          dump_node ch tree1 n1;
+          dump_node ch n1;
           _fprintf ch ",";
-          dump_node ch tree2 n2;
+          dump_node ch n2;
           _fprintf ch "]";
           comma_flag := true;
-          end
         ) map;
       !comma_flag
     in

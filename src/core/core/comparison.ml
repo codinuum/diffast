@@ -107,7 +107,6 @@ let estimate_cost_of_move tree1 tree2 nmapping nd1 nd2 = (* cost = number of acc
 ]
 
 let get_bn = get_p_ancestor (fun x -> x#data#is_boundary)
-let get_stmt = get_p_ancestor (fun x -> x#data#is_statement)
 
 let _is_map nmapping n1 n2 =
   try

@@ -417,6 +417,9 @@ let get_p_ancestor ?(moveon=fun _ -> true) pred nd =
     Otree.Parent_not_found _ -> raise Not_found
 
 
+let get_stmt n = get_p_ancestor (fun x -> x#data#is_statement) n
+
+
 [%%capture_path
 let has_p_ancestor ?(moveon=fun _ -> true) pred nd =
   let b =

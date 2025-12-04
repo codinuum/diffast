@@ -959,6 +959,7 @@ module F (Label : Spec.LABEL_T) = struct
     (*let dstat     = Filename.concat cache_path Stat.stat_file_name in*)
     let dstat_json = Filename.concat cache_path Stat.stat_file_name^".json" in
     let dmap      = Filename.concat cache_path Stat.map_file_name in
+    let dstmtmap  = Filename.concat cache_path ("stmt-"^Stat.map_file_name) in
     let dgmap     = Filename.concat cache_path "g"^Stat.map_file_name in
     let dmapfact  = Filename.concat cache_path Stat.map_file_name^".nt" in
     let dsrc      = Filename.concat cache_path Stat.sources_file_name in
@@ -1053,7 +1054,8 @@ module F (Label : Spec.LABEL_T) = struct
 
       if not options#dist_flag then begin
         nmapping#dump_with_info ~comp:Compression.gzip (dmap^".gz");
-        nmapping#dump_json ~comp:Compression.gzip (dmap^".json.gz");
+        nmapping#dump_map_json ~comp:Compression.gzip (dmap^".json.gz");
+        edits#dump_stmt_map_json ~comp:Compression.gzip cenv nmapping (dstmtmap^".json.gz");
 
         let moved_nodes = edits#get_moved_nodes tree1 in
         let is_mov n1 n2 =
