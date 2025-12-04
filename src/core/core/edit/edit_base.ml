@@ -4066,6 +4066,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let cand_tbl = Hashtbl.create 0 in
 
+    let exactly_matched_stmts1 = Xset.create 0 in
+    let exactly_matched_stmts2 = Xset.create 0 in
+
     Hashtbl.iter
       (fun mid pairs ->
         [%debug_log "* checking move %a..." MID.ps mid];
@@ -4097,6 +4100,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           (fun (nd1, nd2) ->
 
             [%debug_log "  move %a-%a:" nups nd1 nups nd2];
+
+            if
+              nd1#data#is_statement && nd2#data#is_statement &&
+              nd1#data#subtree_equals nd2#data
+            then begin
+              [%debug_log "exactly matched stmt: %a-%a" nps nd1 nps nd2];
+              Xset.add exactly_matched_stmts1 nd1;
+              Xset.add exactly_matched_stmts2 nd2
+            end;
 
             let nd1, nd2 =
               match root_pair_opt with
@@ -4492,8 +4504,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         let stable_matches1, stable_matches2 = List.split !stable_matches in
         let is_invalid_cand cand =
           let b =
-            List.exists (fun (n1, _) -> List.memq n1 stable_matches1) cand ||
-            List.exists (fun (_, n2) -> List.memq n2 stable_matches2) cand
+            List.exists
+              (fun (n1, _) ->
+                List.memq n1 stable_matches1 ||
+                Xset.mem exactly_matched_stmts1 n1
+              ) cand
+          ||
+            List.exists
+              (fun (_, n2) ->
+                List.memq n2 stable_matches2 ||
+                Xset.mem exactly_matched_stmts2 n2
+              ) cand
           in
           [%debug_log "[%s] -> %B" (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
           b
