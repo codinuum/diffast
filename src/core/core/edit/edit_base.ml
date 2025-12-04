@@ -4062,6 +4062,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
     let is_crossing = Node_mapping.is_crossing in
     (*let is_incompatible = Node_mapping.is_incompatible tree1 tree2 in*)
 
+    let has_def_child nd =
+      let b = Array.exists (fun c -> Comparison.is_def c) nd#initial_children in
+      [%debug_log "%a --> %B" nups nd b];
+      b
+    in
+
     [%debug_log "-----"];
 
     let cand_tbl = Hashtbl.create 0 in
@@ -4103,6 +4109,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
             if
               nd1#data#is_statement && nd2#data#is_statement &&
+              not (has_def_child nd1) && not (has_def_child nd2) &&
               nd1#data#subtree_equals nd2#data
             then begin
               [%debug_log "exactly matched stmt: %a-%a" nps nd1 nps nd2];
