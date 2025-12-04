@@ -3698,6 +3698,23 @@ class ['node_t, 'tree_t] c
             bpl
           in
 
+          let get_names_from_children nd =
+            let nl =
+              Array.fold_right
+              (fun c nl ->
+                if c != nd && c#data#is_statement then
+                  if c#data#is_named_orig then
+                    (get_orig_name c)::nl
+                  else
+                    nl
+                else
+                  nl
+              ) nd#initial_children []
+            in
+            [%debug_log "%a --> [%s]" nups nd (String.concat ";" nl)];
+            nl
+          in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -3782,6 +3799,74 @@ class ['node_t, 'tree_t] c
             not (is_cross_boundary nmapping nd1new nd2new)
           then begin
             [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            subtree_sim_old > subtree_sim_new &&
+            List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
+            (
+             (nd2old == nd2new && try
+               let bn2 = get_bn nd2old in
+               [%debug_log "bn2=%a" nps bn2];
+               if bn2#data#is_named_orig then
+                 let bname = get_orig_name bn2 in
+                 let nl = get_names_from_children (nmapping#find nd1old#initial_parent) in
+                 List.mem bname nl
+               else
+                 false
+             with _ -> false) ||
+             (nd1old == nd1new && try
+               let bn1 = get_bn nd1old in
+               [%debug_log "bn1=%a" nps bn1];
+               if bn1#data#is_named_orig then
+                 let bname = get_orig_name bn1 in
+                 let nl = get_names_from_children (nmapping#find nd2old#initial_parent) in
+                 List.mem bname nl
+               else
+                 false
+             with _ -> false)
+            )
+          then begin
+            [%debug_log "@"];
+            nmapping#finalize_mapping nd1old nd2old;
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            subtree_sim_old < subtree_sim_new &&
+            List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
+            (
+             (nd2old == nd2new && try
+               let bn2 = get_bn nd2old in
+               [%debug_log "bn2=%a" nps bn2];
+               if bn2#data#is_named_orig then
+                 let bname = get_orig_name bn2 in
+                 let nl = get_names_from_children (nmapping#find nd1new#initial_parent) in
+                 List.mem bname nl
+               else
+                 false
+             with _ -> false) ||
+             (nd1old == nd1new && try
+               let bn1 = get_bn nd1old in
+               [%debug_log "bn1=%a" nps bn1];
+               if bn1#data#is_named_orig then
+                 let bname = get_orig_name bn1 in
+                 let nl = get_names_from_children (nmapping#find nd2new#initial_parent) in
+                 List.mem bname nl
+               else
+                 false
+             with _ -> false)
+            )
+          then begin
+            [%debug_log "@"];
+            nmapping#finalize_mapping nd1new nd2new;
             let b, ncd, ncsim =
               action_new None None false;
               true, None, None
