@@ -2650,7 +2650,7 @@ class translator options =
                 if L.is_if lab0 then
                   let lab_ =
                     match lab0 with
-                    | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.ElseIf tid0)
+                    | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.(*Else*)If tid0)
                     | _ -> assert false
                   in
                   if nchildren0 = 3 then begin

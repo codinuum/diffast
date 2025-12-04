@@ -2916,7 +2916,7 @@ class ['node_t, 'tree_t] c
             _ -> false
         ) r1
     in
-    [%debug_log "%a-%a --> %s" nups r1 nups r2
+    [%debug_log "%a-%a --> [%s]" nups r1 nups r2
        (String.concat ";"
           (List.map
              (fun (x1, x2) -> sprintf "%a-%a" nups x1 nups x2)
@@ -3659,6 +3659,45 @@ class ['node_t, 'tree_t] c
             self#get_matched_uniq_subtree_size ~filt
           in
 
+          let has_mapped_block n1 n2 =
+            let b =
+            Array.exists
+              (fun c1 ->
+                c1#data#is_block &&
+                try
+                  let c2 = nmapping#find c1 in
+                  c2#data#is_block && c2#initial_parent == n2
+                with
+                  _ -> false
+              ) n1#initial_children
+            in
+            [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+            b
+          in
+
+          let get_mapped_block_pairs n1 n2 =
+            let bpl =
+              Array.fold_right
+                (fun c1 pl ->
+                  if c1#data#is_block then
+                    try
+                      let c2 = nmapping#find c1 in
+                      if c2#data#is_block && c2#initial_parent == n2 then
+                        (c1, c2) :: pl
+                      else
+                        pl
+                    with
+                      _ -> pl
+                  else
+                    pl
+              ) n1#initial_children []
+            in
+            [%debug_log "%a-%a --> [%s]" nups n1 nups n2
+               (String.concat ";"
+                  (List.map (fun (x1, x2) -> sprintf "%a-%a" nups x1 nups x2) bpl))];
+            bpl
+          in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -3846,7 +3885,7 @@ class ['node_t, 'tree_t] c
              with _ -> false*)
             )
           ||
-            let b =
+            (let b =
               nd1old#data#is_boundary && nd2old#data#is_boundary &&
               nd1new#data#is_boundary && nd2new#data#is_boundary &&
               nd1old#data#_anonymized_label = nd2old#data#_anonymized_label &&
@@ -3856,7 +3895,27 @@ class ['node_t, 'tree_t] c
               let new_sz = get_matched_uniq_subtree_size nd1new nd2new in
               old_sz > new_sz
             in
-            [%debug_log "@@@@@ %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            [%debug_log "@BOUNDARY %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            if b then
+              nmapping#finalize_mapping nd1old nd2old;
+            b)
+          ||
+            let b =
+              nd1old#data#is_statement && nd2old#data#is_statement &&
+              nd1new#data#is_statement && nd2new#data#is_statement &&
+              (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
+              nd1old#data#_anonymized_label = nd2old#data#_anonymized_label &&
+              let bpl = get_mapped_block_pairs nd1old nd2old in
+              bpl <> [] &&
+              not (has_mapped_block nd1new nd2new) &&
+              List.exists
+                (fun (x1, x2) ->
+                  let sim = self#get_similarity_score x1 x2 in
+                  [%debug_log "sim: %a-%a --> %f" nups x1 nups x2 sim];
+                  sim > 0.9
+                ) bpl
+            in
+            [%debug_log "@STMT %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
             if b then
               nmapping#finalize_mapping nd1old nd2old;
             b
@@ -3967,7 +4026,7 @@ class ['node_t, 'tree_t] c
              with _ -> false*)
             )
           ||
-            let b =
+            (let b =
               nd1old#data#is_boundary && nd2old#data#is_boundary &&
               nd1new#data#is_boundary && nd2new#data#is_boundary &&
               nd1new#data#_anonymized_label = nd2new#data#_anonymized_label &&
@@ -3977,7 +4036,27 @@ class ['node_t, 'tree_t] c
               let new_sz = get_matched_uniq_subtree_size nd1new nd2new in
               old_sz < new_sz
             in
-            [%debug_log "@@@@@ %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            [%debug_log "@BOUNDARY %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
+            if b then
+              nmapping#finalize_mapping nd1new nd2new;
+            b)
+          ||
+            let b =
+              nd1old#data#is_statement && nd2old#data#is_statement &&
+              nd1new#data#is_statement && nd2new#data#is_statement &&
+              (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
+              nd1new#data#_anonymized_label = nd2new#data#_anonymized_label &&
+              let bpl = get_mapped_block_pairs nd1new nd2new in
+              bpl <> [] &&
+              not (has_mapped_block nd1old nd2old) &&
+              List.exists
+                (fun (x1, x2) ->
+                  let sim = self#get_similarity_score x1 x2 in
+                  [%debug_log "sim: %a-%a --> %f" nups x1 nups x2 sim];
+                  sim > 0.9
+                ) bpl
+            in
+            [%debug_log "@STMT %a-%a vs %a-%a -> %B" nups nd1old nups nd2old nups nd1new nups nd2new b];
             if b then
               nmapping#finalize_mapping nd1new nd2new;
             b
