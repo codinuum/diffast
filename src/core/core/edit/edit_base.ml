@@ -4111,6 +4111,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               nd1#data#is_statement && nd2#data#is_statement &&
               not (has_def_child nd1) && not (has_def_child nd2) &&
               nd1#data#subtree_equals nd2#data
+              (*cenv#has_uniq_subtree_match nd1 nd2*)
             then begin
               [%debug_log "exactly matched stmt: %a-%a" nps nd1 nps nd2];
               Xset.add exactly_matched_stmts1 nd1;
@@ -4512,15 +4513,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         let is_invalid_cand cand =
           let b =
             List.exists
-              (fun (n1, _) ->
+              (fun (n1, x2) ->
                 List.memq n1 stable_matches1 ||
-                Xset.mem exactly_matched_stmts1 n1
+                Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data)
               ) cand
           ||
             List.exists
-              (fun (_, n2) ->
+              (fun (x1, n2) ->
                 List.memq n2 stable_matches2 ||
-                Xset.mem exactly_matched_stmts2 n2
+                Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data)
               ) cand
           in
           [%debug_log "[%s] -> %B" (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
