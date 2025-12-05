@@ -3722,11 +3722,8 @@ class ['node_t, 'tree_t] c
             let nl =
               Array.fold_right
               (fun c nl ->
-                if c != nd && c#data#is_statement then
-                  if c#data#is_named_orig then
-                    (get_orig_name c)::nl
-                  else
-                    nl
+                if c#data#is_named_orig then
+                  (get_orig_name c)::nl
                 else
                   nl
               ) nd#initial_children []
@@ -3829,26 +3826,55 @@ class ['node_t, 'tree_t] c
             subtree_sim_old > subtree_sim_new &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
-             (nd2old == nd2new && try
-               let bn2 = get_bn nd2old in
-               [%debug_log "bn2=%a" nps bn2];
-               if bn2#data#is_named_orig then
-                 let bname = get_orig_name bn2 in
-                 let nl = get_names_from_children (nmapping#find nd1old#initial_parent) in
-                 List.mem bname nl
-               else
-                 false
-             with _ -> false) ||
-             (nd1old == nd1new && try
-               let bn1 = get_bn nd1old in
-               [%debug_log "bn1=%a" nps bn1];
-               if bn1#data#is_named_orig then
-                 let bname = get_orig_name bn1 in
-                 let nl = get_names_from_children (nmapping#find nd2old#initial_parent) in
-                 List.mem bname nl
-               else
-                 false
-             with _ -> false)
+             nd2old == nd2new &&
+             (
+              (try
+                let bn2 = get_bn nd2old in
+                [%debug_log "bn2=%a" nps bn2];
+                if bn2#data#is_named_orig then
+                  let bname = get_orig_name bn2 in
+                  let nl = get_names_from_children (nmapping#find nd1old#initial_parent) in
+                  List.mem bname nl
+                else
+                  false
+              with _ -> false)
+              ||
+               (try
+                 let bn1 = get_bn nd1old in
+                 [%debug_log "bn1=%a" nps bn1];
+                 if bn1#data#is_named_orig then
+                   let bname = get_orig_name bn1 in
+                   let nl = get_names_from_children nd1new in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+             )
+            ||
+              nd1old == nd1new &&
+              (
+               (try
+                 let bn1 = get_bn nd1old in
+                 [%debug_log "bn1=%a" nps bn1];
+                 if bn1#data#is_named_orig then
+                   let bname = get_orig_name bn1 in
+                   let nl = get_names_from_children (nmapping#find nd2old#initial_parent) in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+              ||
+                (try
+                  let bn2 = get_bn nd2old in
+                  [%debug_log "bn2=%a" nps bn2];
+                  if bn2#data#is_named_orig then
+                    let bname = get_orig_name bn2 in
+                    let nl = get_names_from_children nd2new in
+                    List.mem bname nl
+                  else
+                    false
+                with _ -> false)
+              )
             )
           then begin
             [%debug_log "@"];
@@ -3863,26 +3889,55 @@ class ['node_t, 'tree_t] c
             subtree_sim_old < subtree_sim_new &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
-             (nd2old == nd2new && try
-               let bn2 = get_bn nd2old in
-               [%debug_log "bn2=%a" nps bn2];
-               if bn2#data#is_named_orig then
-                 let bname = get_orig_name bn2 in
-                 let nl = get_names_from_children (nmapping#find nd1new#initial_parent) in
-                 List.mem bname nl
-               else
-                 false
-             with _ -> false) ||
-             (nd1old == nd1new && try
-               let bn1 = get_bn nd1old in
-               [%debug_log "bn1=%a" nps bn1];
-               if bn1#data#is_named_orig then
-                 let bname = get_orig_name bn1 in
-                 let nl = get_names_from_children (nmapping#find nd2new#initial_parent) in
-                 List.mem bname nl
-               else
-                 false
-             with _ -> false)
+             nd2old == nd2new &&
+             (
+              (try
+                let bn2 = get_bn nd2old in
+                [%debug_log "bn2=%a" nps bn2];
+                if bn2#data#is_named_orig then
+                  let bname = get_orig_name bn2 in
+                  let nl = get_names_from_children (nmapping#find nd1new#initial_parent) in
+                  List.mem bname nl
+                else
+                  false
+              with _ -> false)
+             ||
+              (try
+                let bn1 = get_bn nd1old in
+                [%debug_log "bn1=%a" nps bn1];
+                if bn1#data#is_named_orig then
+                  let bname = get_orig_name bn1 in
+                  let nl = get_names_from_children nd1new in
+                  List.mem bname nl
+                else
+                  false
+              with _ -> false)
+             )
+            ||
+              nd1old == nd1new &&
+              (
+               (try
+                 let bn1 = get_bn nd1old in
+                 [%debug_log "bn1=%a" nps bn1];
+                 if bn1#data#is_named_orig then
+                   let bname = get_orig_name bn1 in
+                   let nl = get_names_from_children (nmapping#find nd2new#initial_parent) in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+              ||
+               (try
+                 let bn2 = get_bn nd2old in
+                 [%debug_log "bn2=%a" nps bn2];
+                 if bn2#data#is_named_orig then
+                   let bname = get_orig_name bn2 in
+                   let nl = get_names_from_children nd2new in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+              )
             )
           then begin
             [%debug_log "@"];
