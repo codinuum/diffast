@@ -4925,6 +4925,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               (not n1#data#is_named && not n2#data#is_named || n1#data#get_name <> n2#data#get_name)
             then begin
               [%debug_log "%a-%a" nps n1 nps n2];
+
               let cand_tbl1 = Nodetbl.create 0 in
               let cand_tbl2 = Nodetbl.create 0 in
               let add_cand tbl n =
@@ -4937,6 +4938,21 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               let skip_flag = ref false in
               let map_count = ref 0 in
               let node_count = ref 0 in
+
+              let rename_pat_flag1 = ref false in
+              let rename_pat_flag2 = ref false in
+
+              let has_rename_pat n1 n2 =
+                let b =
+                  try
+                    n1#data#is_named && n2#data#is_named &&
+                    cenv#is_rename_pat
+                      (Comparison.get_stripped_name n1, Comparison.get_stripped_name n2)
+                  with _ -> false
+                in
+                [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+                b
+              in
 
               tree1#preorder_scan_whole_initial_subtree n1
                 (fun x1 ->
@@ -4966,7 +4982,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                         not (nmapping#mem_cod stmt2)
                       then begin
                         [%debug_log "@"];
-                        add_cand cand_tbl2 stmt2
+                        add_cand cand_tbl2 stmt2;
+                        if has_rename_pat x1 x2 then
+                          rename_pat_flag2 := true
                       end
                     with _ -> ()
                   end
@@ -5006,13 +5024,18 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                         not (nmapping#mem_dom stmt1)
                       then begin
                         [%debug_log "@"];
-                        add_cand cand_tbl1 stmt1
+                        add_cand cand_tbl1 stmt1;
+                        if has_rename_pat x1 x2 then
+                          rename_pat_flag1 := true
                       end
                     with _ -> ()
                   end
                 );
               let stability2 = (float !map_count) /. (float !node_count) in
               [%debug_log "  stability2=%f" stability2];
+
+              [%debug_log "rename_pat_flag1=%B" !rename_pat_flag1];
+              [%debug_log "rename_pat_flag2=%B" !rename_pat_flag2];
 
               let count1 = ref 0 in
               let count2 = ref 0 in
@@ -5021,7 +5044,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
               let stability_thresh = 0.5 in
 
-              if stability1 < stability_thresh then
+              if stability1 < stability_thresh || !rename_pat_flag1 then
                 Nodetbl.iter
                   (fun s1 c1 ->
                     [%debug_log "  s1=%a c1=%d" nups s1 c1];
@@ -5031,7 +5054,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     end
                   ) cand_tbl1;
 
-              if stability2 < stability_thresh then
+              if stability2 < stability_thresh || !rename_pat_flag2 then
                 Nodetbl.iter
                   (fun s2 c2 ->
                     [%debug_log "  s2=%a c2=%d" nups s2 c2];
