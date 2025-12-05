@@ -3720,7 +3720,7 @@ class ['node_t, 'tree_t] c
             bpl
           in
 
-          let get_names_from_children nd =
+          let get_names_from_children ?(add_self=false) nd =
             let nl =
               Array.fold_right
               (fun c nl ->
@@ -3729,6 +3729,12 @@ class ['node_t, 'tree_t] c
                 else
                   nl
               ) nd#initial_children []
+            in
+            let nl =
+              if add_self && nd#data#is_named_orig then
+                (get_orig_name nd)::nl
+              else
+                nl
             in
             [%debug_log "%a --> [%s]" nups nd (String.concat ";" nl)];
             nl
@@ -3851,6 +3857,17 @@ class ['node_t, 'tree_t] c
                  else
                    false
                with _ -> false)
+              ||
+               (try
+                 let bn1 = get_bn nd1new in
+                 [%debug_log "bn1=%a" nps bn1];
+                 if bn1#data#is_named_orig then
+                   let bname = get_orig_name bn1 in
+                   let nl = get_names_from_children ~add_self:true nd1old in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
              )
             ||
               nd1old == nd1new &&
@@ -3876,10 +3893,21 @@ class ['node_t, 'tree_t] c
                   else
                     false
                 with _ -> false)
+              ||
+                (try
+                  let bn2 = get_bn nd2new in
+                  [%debug_log "bn2=%a" nps bn2];
+                  if bn2#data#is_named_orig then
+                    let bname = get_orig_name bn2 in
+                    let nl = get_names_from_children ~add_self:true nd2old in
+                    List.mem bname nl
+                  else
+                    false
+                with _ -> false)
               )
             )
           then begin
-            [%debug_log "@"];
+            [%debug_log "@EXTRACT/INLINE"];
             nmapping#finalize_mapping nd1old nd2old;
             let b, ncd, ncsim =
               action_old None None false;
@@ -3914,6 +3942,17 @@ class ['node_t, 'tree_t] c
                 else
                   false
               with _ -> false)
+             ||
+              (try
+                let bn1 = get_bn nd1new in
+                [%debug_log "bn1=%a" nps bn1];
+                if bn1#data#is_named_orig then
+                  let bname = get_orig_name bn1 in
+                  let nl = get_names_from_children ~add_self:true nd1old in
+                  List.mem bname nl
+                else
+                  false
+              with _ -> false)
              )
             ||
               nd1old == nd1new &&
@@ -3939,10 +3978,21 @@ class ['node_t, 'tree_t] c
                  else
                    false
                with _ -> false)
+              ||
+               (try
+                 let bn2 = get_bn nd2new in
+                 [%debug_log "bn2=%a" nps bn2];
+                 if bn2#data#is_named_orig then
+                   let bname = get_orig_name bn2 in
+                   let nl = get_names_from_children ~add_self:true nd2old in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
               )
             )
           then begin
-            [%debug_log "@"];
+            [%debug_log "@EXTRACT/INLINE"];
             nmapping#finalize_mapping nd1new nd2new;
             let b, ncd, ncsim =
               action_new None None false;
