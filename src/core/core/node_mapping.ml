@@ -634,26 +634,39 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
         let n1' = try self#find n1 with _ -> n2 in
         let n2' = try self#inv_find n2 with _ -> n1 in
         if n1' != n2 || n2' != n1 then begin (* conflict *)
-          let score = cenv#get_adjacency_score n1 n2 in
-          let cond1 =
-            if mem1 then begin
-              [%debug_log "conflict with %a-%a" nups n1 nups n1'];
-              let score' = cenv#get_adjacency_score n1 n1' in
-              score > score'
-            end
-            else
-              true
+          if mem1 then
+            [%debug_log "conflict with %a-%a" nups n1 nups n1'];
+          if mem2 then
+            [%debug_log "conflict with %a-%a" nups n2' nups n2];
+
+          let cond =
+            cenv#in_subtree_matches n1 n2 &&
+            (
+             mem1 && not (cenv#in_subtree_matches n1 n1') ||
+             mem2 && not (cenv#in_subtree_matches n2' n2)
+            )
+          ||
+            let score = cenv#get_adjacency_score n1 n2 in
+            let cond1 =
+              if mem1 then begin
+                let score' = cenv#get_adjacency_score n1 n1' in
+                score > score'
+              end
+              else
+                true
+            in
+            let cond2 =
+              if mem2 then begin
+                let score' = cenv#get_adjacency_score n2' n2 in
+                score > score'
+              end
+              else
+                true
+            in
+            [%debug_log "cond1=%B cond2=%B" cond1 cond2];
+            cond1 && cond2
           in
-          let cond2 =
-            if mem2 then begin
-              [%debug_log "conflict with %a-%a" nups n2' nups n2];
-              let score' = cenv#get_adjacency_score n2' n2 in
-              score > score'
-            end
-            else
-              true
-          in
-          if cond1 && cond2 then
+          if cond then
             adder n1 n2
           else begin
             let cl1 = Array.to_list n1#initial_children in
