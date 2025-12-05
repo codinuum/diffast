@@ -2292,7 +2292,32 @@ end;
 
                 with Not_found -> true | Found -> false
               in
-              if passed1 && passed2 then begin
+              if
+                not (nd1#data#subtree_equals nd2#data) &&
+                (
+                 (match nd1#data#_digest with
+                 | Some d -> begin
+                     try
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | _ -> true
+                     with _ -> false
+                 end
+                 | None -> false)
+               ||
+                 (match nd2#data#_digest with
+                 | Some d -> begin
+                     try
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | _ -> true
+                     with _ -> false
+                 end
+                 | None -> false)
+                )
+              then
+                [%debug_log "@"]
+              else if passed1 && passed2 then begin
                 add_enclave nd1 nd2;
                 let d1 = get_digest tree1 nd1 in
                 let d2 = get_digest tree2 nd2 in
