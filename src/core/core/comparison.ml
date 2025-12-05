@@ -3740,6 +3740,23 @@ class ['node_t, 'tree_t] c
             nl
           in
 
+          let name_matches_old () =
+            let b =
+              nd1old#data#is_named_orig && nd2old#data#is_named_orig &&
+              get_orig_name nd1old = get_orig_name nd2old
+            in
+            [%debug_log "%B" b];
+            b
+          in
+          let name_matches_new () =
+            let b =
+              nd1new#data#is_named_orig && nd2new#data#is_named_orig &&
+              get_orig_name nd1new = get_orig_name nd2new
+            in
+            [%debug_log "%B" b];
+            b
+          in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -3831,7 +3848,7 @@ class ['node_t, 'tree_t] c
             add_cache false b ncd ncsim
           end
           else if
-            subtree_sim_old > subtree_sim_new &&
+            (subtree_sim_old > subtree_sim_new || name_matches_old() && not (name_matches_new())) &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
              nd2old == nd2new &&
@@ -3888,18 +3905,7 @@ class ['node_t, 'tree_t] c
                   [%debug_log "bn2=%a" nps bn2];
                   if bn2#data#is_named_orig then
                     let bname = get_orig_name bn2 in
-                    let nl = get_names_from_children nd2new in
-                    List.mem bname nl
-                  else
-                    false
-                with _ -> false)
-              ||
-                (try
-                  let bn2 = get_bn nd2new in
-                  [%debug_log "bn2=%a" nps bn2];
-                  if bn2#data#is_named_orig then
-                    let bname = get_orig_name bn2 in
-                    let nl = get_names_from_children ~add_self:true nd2old in
+                    let nl = get_names_from_children ~add_self:true nd2new in
                     List.mem bname nl
                   else
                     false
@@ -3916,7 +3922,7 @@ class ['node_t, 'tree_t] c
             add_cache false b ncd ncsim
           end
           else if
-            subtree_sim_old < subtree_sim_new &&
+            (subtree_sim_new > subtree_sim_old || name_matches_new() && not (name_matches_old())) &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
              nd2old == nd2new &&
@@ -3963,17 +3969,6 @@ class ['node_t, 'tree_t] c
                  if bn1#data#is_named_orig then
                    let bname = get_orig_name bn1 in
                    let nl = get_names_from_children (nmapping#find nd2new#initial_parent) in
-                   List.mem bname nl
-                 else
-                   false
-               with _ -> false)
-              ||
-               (try
-                 let bn2 = get_bn nd2old in
-                 [%debug_log "bn2=%a" nps bn2];
-                 if bn2#data#is_named_orig then
-                   let bname = get_orig_name bn2 in
-                   let nl = get_names_from_children nd2new in
                    List.mem bname nl
                  else
                    false
