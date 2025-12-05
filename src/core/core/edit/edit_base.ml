@@ -4939,25 +4939,40 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               let map_count = ref 0 in
               let node_count = ref 0 in
 
-              let rename_pat_flag1 = ref false in
-              let rename_pat_flag2 = ref false in
+              let evidence_tbl1 = Nodetbl.create 0 in
+              let evidence_tbl2 = Nodetbl.create 0 in
 
-              let has_rename_pat n1 n2 =
-                let b =
-                  try
+              let names1 = Xset.create 0 in
+              let names2 = Xset.create 0 in
+
+              let get_stripped_name = Comparison.get_stripped_name in
+              let get_rename_pat n1 n2 =
+                try
+                  let name1 = get_stripped_name n1 in
+                  let name2 = get_stripped_name n2 in
+                  let np = (name1, name2) in
+                  if
                     n1#data#is_named && n2#data#is_named &&
-                    cenv#is_rename_pat
-                      (Comparison.get_stripped_name n1, Comparison.get_stripped_name n2)
-                  with _ -> false
-                in
-                [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
-                b
+                    cenv#is_rename_pat np
+                  then begin
+                    [%debug_log "%a-%a --> (%s, %s)" nups n1 nups n2 name1 name2];
+                    Some np
+                  end
+                  else
+                    None
+                with _ -> None
               in
 
               tree1#preorder_scan_whole_initial_subtree n1
                 (fun x1 ->
                   incr node_count;
 
+                  begin
+                    try
+                      let name1 = get_stripped_name x1 in
+                      Xset.add names1 name1
+                    with _ -> ()
+                  end;
                   begin
                     try
                       if tree2#is_initial_ancestor n2 (nmapping#find x1) then
@@ -4983,8 +4998,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       then begin
                         [%debug_log "@"];
                         add_cand cand_tbl2 stmt2;
-                        if has_rename_pat x1 x2 then
-                          rename_pat_flag2 := true
+                        match get_rename_pat x1 x2 with
+                        | Some (_, nm) -> Nodetbl.add evidence_tbl2 stmt2 nm
+                        | None -> ()
                       end
                     with _ -> ()
                   end
@@ -5000,6 +5016,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 (fun x2 ->
                   incr node_count;
 
+                  begin
+                    try
+                      let name2 = get_stripped_name x2 in
+                      Xset.add names2 name2
+                    with _ -> ()
+                  end;
                   begin
                     try
                       if tree1#is_initial_ancestor n1 (nmapping#inv_find x2) then
@@ -5025,17 +5047,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       then begin
                         [%debug_log "@"];
                         add_cand cand_tbl1 stmt1;
-                        if has_rename_pat x1 x2 then
-                          rename_pat_flag1 := true
+                        match get_rename_pat x1 x2 with
+                        | Some (nm, _) -> Nodetbl.add evidence_tbl1 stmt1 nm
+                        | None -> ()
                       end
                     with _ -> ()
                   end
                 );
               let stability2 = (float !map_count) /. (float !node_count) in
               [%debug_log "  stability2=%f" stability2];
-
-              [%debug_log "rename_pat_flag1=%B" !rename_pat_flag1];
-              [%debug_log "rename_pat_flag2=%B" !rename_pat_flag2];
 
               let count1 = ref 0 in
               let count2 = ref 0 in
@@ -5044,25 +5064,56 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
               let stability_thresh = 0.5 in
 
-              if stability1 < stability_thresh || !rename_pat_flag1 then
-                Nodetbl.iter
-                  (fun s1 c1 ->
-                    [%debug_log "  s1=%a c1=%d" nups s1 c1];
-                    if c1 > !count1 then begin
-                      cand1 := s1;
-                      count1 := c1
-                    end
-                  ) cand_tbl1;
+              let stability_low1 = stability1 < stability_thresh in
+              let stability_low2 = stability2 < stability_thresh in
 
-              if stability2 < stability_thresh || !rename_pat_flag2 then
-                Nodetbl.iter
-                  (fun s2 c2 ->
-                    [%debug_log "  s2=%a c2=%d" nups s2 c2];
-                    if c2 > !count2 then begin
-                      cand2 := s2;
-                      count2 := c2
-                    end
-                  ) cand_tbl2;
+              [%debug_log "  stability_low1=%B" stability_low1];
+              [%debug_log "  stability_low2=%B" stability_low2];
+
+              begin %debug_block
+                  List.iter
+                    (fun (i, etbl) ->
+                      [%debug_log "evidence_tbl%d:" i];
+                      Nodetbl.iter
+                        (fun s nm ->
+                          [%debug_log "  %a --> %s" nups s nm];
+                        ) etbl
+                    ) [1, evidence_tbl1; 2, evidence_tbl2]
+              end;
+
+              let chk_ev etbl names s =
+                let b =
+                  let nml = Nodetbl.find_all etbl s in
+                  nml <> [] &&
+                  List.for_all (fun nm -> not (Xset.mem names nm)) nml
+                in
+                [%debug_log "%a --> %B" nups s b];
+                b
+              in
+
+              Nodetbl.iter
+                (fun s1 c1 ->
+                  [%debug_log "  s1=%a c1=%d" nups s1 c1];
+                  if
+                    (stability_low1 || chk_ev evidence_tbl1 names1 s1) &&
+                    c1 > !count1
+                  then begin
+                    cand1 := s1;
+                    count1 := c1
+                  end
+                ) cand_tbl1;
+
+              Nodetbl.iter
+                (fun s2 c2 ->
+                  [%debug_log "  s2=%a c2=%d" nups s2 c2];
+                  if
+                    (stability_low2 || chk_ev evidence_tbl2 names2 s2) &&
+                    c2 > !count2
+                  then begin
+                    cand2 := s2;
+                    count2 := c2
+                  end
+                ) cand_tbl2;
 
               let cand = ref None in
               if !cand2 != n2 then begin
