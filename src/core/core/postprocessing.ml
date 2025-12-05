@@ -8184,8 +8184,18 @@ end;
                     (not nd1#data#is_named || nd1#data#is_named_orig(* || B.is_def nd1#data#binding*)) &&
                     let _ = [%debug_log "@"] in
                     try
-                      let stmt1 = find_nearest_anc_stmt nd1 in
-                      let stmt2 = find_nearest_anc_stmt nd2 in
+                      let stmt1 =
+                        if nd1#data#is_statement then
+                          nd1
+                        else
+                          find_nearest_anc_stmt nd1
+                      in
+                      let stmt2 =
+                        if nd2#data#is_statement then
+                          nd2
+                        else
+                          find_nearest_anc_stmt nd2
+                      in
                       [%debug_log " stmt: %a-%a %a [%a]-[%a]"
                         nups stmt1 nups stmt2 labps stmt1 locps stmt1 locps stmt2];
                       let b0 =

@@ -1316,7 +1316,8 @@ class ['node_t, 'tree_t] c
     with Not_found ->
       let b =
         n1#data#eq n2#data ||
-        n1#data#is_compatible_with ?weak:(Some false) n2#data
+        n1#data#is_compatible_with ?weak:(Some false) n2#data ||
+        n1#data#is_named_orig && n2#data#is_named_orig && get_orig_name n1 = get_orig_name n2
       in
       [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
       Tbl2.add weak_node_eq_cache n1 n2 b;

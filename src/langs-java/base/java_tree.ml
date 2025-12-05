@@ -2673,13 +2673,17 @@ class translator options =
                       nd_ :: (flatten ~is_top:false next)
                     else begin
                       let nd__ = self#mknode (L.Statement (L.Statement.Else)) [next] in
+                      (*let nd__ = next in*)
+                      let true_loc = next#data#src_loc in
                       let loc__ =
                         try
-                          Loc._merge (take_loc()) next#data#src_loc
+                          Loc._merge (take_loc()) true_loc
                         with
-                          _ -> next#data#src_loc
+                          _ -> true_loc
                       in
                       nd__#data#set_loc loc__;
+
+                      (*self#reg_true_loc nd__ true_loc;*)
 
                       self#reg_virtual_node nd__;
 

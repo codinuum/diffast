@@ -1847,6 +1847,7 @@ module Statement = struct
     | If _, If _
     (*| FlattenedIf _, Switch | Switch, FlattenedIf _*)
     | ElseIf _, If _ | If _, ElseIf _
+    | Else, If _ | If _, Else
     | For, ForEnhanced | ForEnhanced, For
     | For, While | While, For
     | ForEnhanced, While | While, ForEnhanced
