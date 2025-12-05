@@ -2557,20 +2557,21 @@ class ['node_t, 'tree_t] c
              with Not_found -> false
           then begin
             [%debug_log "@"];
-            let rec get_sibl n =
+            let rec get_sibl lv n =
               let pn = n#initial_parent in
               let siba = pn#initial_children in
               if Array.length siba > 1 then
-                List.filter (fun x -> x != n) (Array.to_list siba)
+                (List.filter (fun x -> x != n) (Array.to_list siba), lv)
               else
-                get_sibl pn
+                get_sibl (lv+1) pn
             in
             (try
-              let nds1 = get_sibl nd1 in
-              let nds2 = get_sibl nd2 in
+              let nds1, lv1 = get_sibl 1 nd1 in
+              let nds2, lv2 = get_sibl 1 nd2 in
+              [%debug_log "lv1=%d lv2=%d" lv1 lv2];
               let s = _incr_score ~bonus_named:true ~bonus_named_more:true nds1 nds2 in
               if s >= 0.0 then
-                s
+                s /. (float (max lv1 lv2))
               else
                 0.0
             with _ -> 0.0),
