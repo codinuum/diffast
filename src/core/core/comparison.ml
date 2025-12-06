@@ -3552,8 +3552,13 @@ class ['node_t, 'tree_t] c
                 for i = nc - 1 downto 0 do
                   let cnd1 = nd1#initial_children.(i) in
                   let cnd2 = nd2#initial_children.(i) in
-                  if cnd1#data#subtree_equals cnd2#data then
+                  if
+                    cnd1#data#subtree_equals cnd2#data(* &&
+                    tree1#fast_whole_initial_subtree_size cnd1 > 2*)
+                  then begin
+                    [%debug_log "found: %a-%a" nups cnd1 nups cnd2];
                     raise Exit
+                  end
                 done;
                 false
               with
@@ -3650,7 +3655,8 @@ class ['node_t, 'tree_t] c
                 (fun c1 ->
                   Array.exists
                     (fun c2 ->
-                      c1#data#subtree_equals c2#data
+                      c1#data#subtree_equals c2#data(* &&
+                      tree1#fast_whole_initial_subtree_size c1 > 2*)
                     ) n2#initial_children
                 ) n1#initial_children
             in
@@ -4015,6 +4021,62 @@ class ['node_t, 'tree_t] c
             in
             add_cache false b ncd ncsim
           end
+
+          else if
+            let b =
+              List.for_all (fun x -> not x#data#is_boundary) [nd1old; nd2old; nd1new; nd2new] &&
+              not (is_cross_boundary nmapping nd1old nd2old) &&
+              is_cross_boundary nmapping nd1new nd2new &&
+              try
+                let bn1 = get_bn nd1new in
+                let bn2 = get_bn nd2new in
+                [%debug_log "bn1=%a" nps bn1];
+                [%debug_log "bn2=%a" nps bn2];
+                nmapping#mem_dom bn1 && nmapping#mem_cod bn2
+              with
+                _ -> false
+            in
+            [%debug_log "@CROSS-BOUNDARY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            (*if b then
+              nmapping#finalize_mapping nd1old nd2old;*)
+            b
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            let b =
+              List.for_all (fun x -> not x#data#is_boundary) [nd1old; nd2old; nd1new; nd2new] &&
+              is_cross_boundary nmapping nd1old nd2old &&
+              not (is_cross_boundary nmapping nd1new nd2new) &&
+              try
+                let bn1 = get_bn nd1old in
+                let bn2 = get_bn nd2old in
+                [%debug_log "bn1=%a" nps bn1];
+                [%debug_log "bn2=%a" nps bn2];
+                nmapping#mem_dom bn1 && nmapping#mem_cod bn2
+              with
+                _ -> false
+            in
+            [%debug_log "@CROSS-BOUNDARY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            (*if b then
+              nmapping#finalize_mapping nd1new nd2new;*)
+            b
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+
           else if
             ancsim_old > 1.0 && ancsim_new < 1.0 && subtree_sim_new = 1.0
               && all_in_no_seq() && boundary_mapped nmapping#find nd1old nd2old

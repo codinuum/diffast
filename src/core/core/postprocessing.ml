@@ -4845,6 +4845,7 @@ end;
                     | Not_found
                     | Otree.Parent_not_found _ -> false
                   in
+                  [%debug_log "cond1=%B cond2=%B" cond1 cond2];
 
                   let c0 = cond1 && cond2 in
 
@@ -8247,6 +8248,24 @@ end;
                         edits#is_crossing_with_untouched
                           ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
                           nmapping nd1 nd2
+                      in
+                      [%debug_log "b0=%B" b0];
+                      let b0 =
+                        if
+                          b0 &&
+                          not nd1#data#is_boundary && not nd2#data#is_boundary &&
+                          is_cross_boundary nmapping nd1 nd2 &&
+                          try
+                            let bn1 = get_bn nd1 in
+                            let bn2 = get_bn nd2 in
+                            [%debug_log "bn1=%a bn2=%a" nups bn1 nups bn2];
+                            nmapping#mem_dom bn1 && nmapping#mem_cod bn2
+                          with
+                            _ -> false
+                        then
+                          false
+                        else
+                          b0
                       in
                       [%debug_log "b0=%B" b0];
                       if b0 then begin
