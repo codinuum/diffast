@@ -4027,6 +4027,7 @@ class ['node_t, 'tree_t] c
               List.for_all (fun x -> not x#data#is_boundary) [nd1old; nd2old; nd1new; nd2new] &&
               not (is_cross_boundary nmapping nd1old nd2old) &&
               is_cross_boundary nmapping nd1new nd2new &&
+              subtree_sim_old > subtree_sim_new &&
               try
                 let bn1 = get_bn nd1new in
                 let bn2 = get_bn nd2new in
@@ -4054,6 +4055,7 @@ class ['node_t, 'tree_t] c
               List.for_all (fun x -> not x#data#is_boundary) [nd1old; nd2old; nd1new; nd2new] &&
               is_cross_boundary nmapping nd1old nd2old &&
               not (is_cross_boundary nmapping nd1new nd2new) &&
+              subtree_sim_old < subtree_sim_new &&
               try
                 let bn1 = get_bn nd1old in
                 let bn2 = get_bn nd2old in
