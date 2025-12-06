@@ -4913,6 +4913,42 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
     let tree2 = cenv#tree2 in
     let cmp n1 n2 = Stdlib.compare n1#gindex n2#gindex in
     let modified = Xset.create 0 in
+
+    let to_be_removed = Xset.create 0 in
+
+    let map_add map n1 n2 =
+      [%debug_log "%a-%a" nups n1 nups n2];
+      Nodetbl.add map n1 n2;
+      begin
+        try
+          let n1' = nmapping#find n1 in
+          if n1' != n2 then
+            Xset.add to_be_removed (n1, n1')
+        with _ -> ()
+      end;
+      begin
+        try
+          let n2' = nmapping#inv_find n2 in
+          if n2' != n1 then
+            Xset.add to_be_removed (n2', n2)
+        with _ -> ()
+      end
+    in
+
+    let has_mapping rt1 rt2 =
+      let b =
+        Misc.has_p_descendant
+          (fun n1 ->
+            try
+              let n1' = nmapping#find n1 in
+              tree2#initial_subtree_mem rt2 n1'
+            with _ -> false
+          ) rt1
+      in
+      [%debug_log "%a-%a --> %B" nups rt1 nups rt2 b];
+      b
+    in
+
     let extract_stmt_map iter =
       let map = Nodetbl.create 0 in
       iter cmp
@@ -4994,7 +5030,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       if
                         stmt2 != n2 &&
                         stmt2#data#_anonymized_label = n1#data#_anonymized_label &&
-                        not (nmapping#mem_cod stmt2)
+                        (not (nmapping#mem_cod stmt2) || has_mapping (nmapping#inv_find stmt2) n2)
                       then begin
                         [%debug_log "@"];
                         add_cand cand_tbl2 stmt2;
@@ -5043,7 +5079,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       if
                         stmt1 != n1 &&
                         stmt1#data#_anonymized_label = n2#data#_anonymized_label &&
-                        not (nmapping#mem_dom stmt1)
+                        (not (nmapping#mem_dom stmt1) || has_mapping n1 (nmapping#find stmt1))
                       then begin
                         [%debug_log "@"];
                         add_cand cand_tbl1 stmt1;
@@ -5071,14 +5107,14 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               [%debug_log "  stability_low2=%B" stability_low2];
 
               begin %debug_block
-                  List.iter
-                    (fun (i, etbl) ->
-                      [%debug_log "evidence_tbl%d:" i];
-                      Nodetbl.iter
-                        (fun s nm ->
-                          [%debug_log "  %a --> %s" nups s nm];
-                        ) etbl
-                    ) [1, evidence_tbl1; 2, evidence_tbl2]
+                List.iter
+                  (fun (i, etbl) ->
+                    [%debug_log "evidence_tbl%d:" i];
+                    Nodetbl.iter
+                      (fun s nm ->
+                        [%debug_log "  %a --> %s" nups s nm];
+                      ) etbl
+                  ) [1, evidence_tbl1; 2, evidence_tbl2]
               end;
 
               let chk_ev etbl names s =
@@ -5095,7 +5131,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 (fun s1 c1 ->
                   [%debug_log "  s1=%a c1=%d" nups s1 c1];
                   if
-                    (stability_low1 || chk_ev evidence_tbl1 names1 s1) &&
+                    (
+                     stability_low1
+                    ||
+                     chk_ev evidence_tbl1 names1 s1
+                    ) &&
                     c1 > !count1
                   then begin
                     cand1 := s1;
@@ -5107,7 +5147,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 (fun s2 c2 ->
                   [%debug_log "  s2=%a c2=%d" nups s2 c2];
                   if
-                    (stability_low2 || chk_ev evidence_tbl2 names2 s2) &&
+                    (
+                     stability_low2
+                    ||
+                     chk_ev evidence_tbl2 names2 s2
+                    ) &&
                     c2 > !count2
                   then begin
                     cand2 := s2;
@@ -5120,7 +5164,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 [%debug_log "  %a -> %a (%d)" nups n1 nups !cand2 !count2];
                 cand := Some (n1, !cand2)
               end;
-              if !cand1 != n1 && !count1 > !count2 then begin
+              if
+                !cand1 != n1 && !count1 > !count2
+              then begin
                 [%debug_log "  %a (%d) <- %a" nups !cand1 !count1 nups n2];
                 cand := Some (!cand1, n2);
                 Xset.add modified (!cand1)
@@ -5129,17 +5175,39 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 Xset.add modified (!cand2)
               end;
               match !cand with
-              | Some (x1, x2) -> Nodetbl.add map x1 x2
-              | None -> Nodetbl.add map n1 n2
+              | Some (x1, x2) -> map_add map x1 x2
+              | None -> map_add map n1 n2
             end
             else
-              Nodetbl.add map n1 n2
+              map_add map n1 n2
           end
         );
       map
     in
     let stmt_map = extract_stmt_map nmapping#iter_unsettled_sorted in
     let stmt_s_map = extract_stmt_map nmapping#iter_settled_sorted in
+
+    [%debug_log "to_be_removed: [%s]"
+       (String.concat ";"
+          (List.map (fun (x1, x2) ->
+            sprintf "%a-%a" nups x1 nups x2) (Xset.to_list to_be_removed)))];
+
+    if Xset.size to_be_removed > 0 then begin
+      Xset.iter
+        (fun (x1, x2) ->
+          List.iter
+            (fun map ->
+              try
+                let x1' = Nodetbl.find map x1 in
+                if x1' == x2 then begin
+                  Nodetbl.remove map x1;
+                  [%debug_log "removed: %a-%a" nups x1 nups x2]
+                end
+              with
+                _ -> ()
+            ) [stmt_map; stmt_s_map]
+        ) to_be_removed
+     end;
 
     let _fprintf ch fmt =
       Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt

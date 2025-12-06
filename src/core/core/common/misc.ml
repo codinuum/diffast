@@ -579,6 +579,21 @@ let is_cross_scope nmapping n1 n2 =
   b
 ]
 
+[%%capture_path
+let subtree_eq n1 n2 = (* based on rep *)
+  let b =
+    match n1#data#_digest with
+    | Some d1 -> begin
+        match n2#data#_digest with
+        | Some d2 -> d1 = d2
+        | None -> false
+    end
+    | None -> false
+  in
+  [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+  b
+]
+
 let inv_assq k l =
   let res_opt =
     List.fold_left

@@ -1257,6 +1257,7 @@ class ['node_t, 'tree_t] c
   val use_tbl2 = Hashtbl.create 0 (* bid -> node list *)
 
   val weak_node_eq_cache = (Tbl2.create() : ('node_t, 'node_t, bool) Tbl2.t)
+  val weak_subtree_eq_cache = (Tbl2.create() : ('node_t, 'node_t, bool) Tbl2.t)
 
   method private use_tbl_add tbl b n =
     try
@@ -1321,6 +1322,25 @@ class ['node_t, 'tree_t] c
       in
       [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
       Tbl2.add weak_node_eq_cache n1 n2 b;
+      b
+
+  method weak_subtree_eq rt1 rt2 =
+    try
+      Tbl2.find weak_subtree_eq_cache rt1 rt2
+    with Not_found ->
+      let nds1 = ref [] in
+      let nds2 = ref [] in
+      tree1#fast_scan_whole_initial_subtree rt1 (fun n -> nds1 := n :: !nds1);
+      tree2#fast_scan_whole_initial_subtree rt2 (fun n -> nds2 := n :: !nds2);
+      let b =
+        if List.length !nds1 = List.length !nds2 then begin
+          List.for_all2 (fun n1 n2 -> self#weak_node_eq n1 n2) !nds1 !nds2
+        end
+        else
+          false
+      in
+      [%debug_log "%a-%a -> %B" nps rt1 nps rt2 b];
+      Tbl2.add weak_subtree_eq_cache rt1 rt2 b;
       b
 
   method has_weak_non_trivial_value =

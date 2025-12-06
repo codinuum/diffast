@@ -105,3 +105,17 @@ let filter_inplace f (s : 'a t) =
         to_be_removed := x :: !to_be_removed
     ) s;
   List.iter (remove s) !to_be_removed
+
+let intersection (s0 : 'a t) (s1 : 'a t) =
+  let s' = create 0 in
+  iter
+    (fun x ->
+      if mem s1 x then
+        add s' x
+    ) s0;
+  s'
+
+let union (s0 : 'a t) (s1 : 'a t) =
+  let s' = copy s0 in
+  iter (add s') s1;
+  s'

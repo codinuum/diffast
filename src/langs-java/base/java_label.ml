@@ -1346,7 +1346,7 @@ module Primary = struct
     | SuperMethodReference ident            -> combo 23 [ident]
     | TypeSuperMethodReference(name, ident) -> combo 24 [name; ident]
     | TypeNewMethodReference name           -> combo 25 [name]
-    | AmbiguousName name                    -> combo 26 [name]
+    | AmbiguousName name                    -> combo (*26*)0 [name]
     | AmbiguousMethodInvocation name        -> combo 27 [name]
 
   let to_tag p =

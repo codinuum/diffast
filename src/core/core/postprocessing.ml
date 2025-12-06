@@ -2476,6 +2476,7 @@ end;
 
 
   let eliminate_odd_relabels
+      (cenv : (node_t, tree_t) Comparison.c)
       (tree1 : tree_t)
       (tree2 : tree_t)
       (nmapping : node_t Node_mapping.c)
@@ -2487,7 +2488,10 @@ end;
 
         [%debug_log "checking %a-%a" nups nd1 nups nd2];
 
-        if not (nd1#data#eq nd2#data) then begin
+        if
+          not (nd1#data#eq nd2#data) &&
+          nd1#data#to_rep <> nd2#data#to_rep
+        then begin
 
           [%debug_log " -> relabel"];
 
@@ -6299,7 +6303,7 @@ end;
      *)
     if not options#no_odd_relabel_elim_flag then begin
       Xprint.verbose options#verbose_flag "  eliminating odd relabels...";
-      eliminate_odd_relabels tree1 tree2 nmapping;
+      eliminate_odd_relabels cenv tree1 tree2 nmapping;
       Xprint.verbose options#verbose_flag "  odd relabels eliminated."
     end;
 
@@ -7847,7 +7851,7 @@ end;
           tsz > 1 &&
           not rt1#data#move_disallowed && not rt2#data#move_disallowed &&
           (
-           (let b = rt1#data#subtree_equals rt2#data in [%debug_log "equals=%B" b]; b) ||
+           (let b = subtree_eq rt1 rt2(*rt1#data#subtree_equals rt2#data*) in [%debug_log "equals=%B" b]; b) ||
            (let b =
              sz > 0 &&
              let d, _, _ = _get_move_density mid in

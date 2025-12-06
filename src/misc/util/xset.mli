@@ -37,3 +37,5 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 val filter : ('a -> bool) -> 'a t -> 'a t
 val filter_map : ('a -> 'b option) -> 'a t -> 'b t
 val filter_inplace : ('a -> bool) -> 'a t -> unit
+val intersection : 'a t -> 'a t -> 'a t
+val union : 'a t -> 'a t -> 'a t
