@@ -6080,6 +6080,181 @@ end;
 *)
     let sync_edits ?(check_conflicts=false) = sync_edits options ~check_conflicts cenv edits in
 
+    begin (* to handle extract/inline (experimental) *)
+      let deleted_name_tbl = Hashtbl.create 0 in
+      let inserted_name_tbl = Hashtbl.create 0 in
+
+      let name_count_tbl = Hashtbl.create 0 in
+      let incr_name_count nm =
+        try
+          let c = Hashtbl.find name_count_tbl nm in
+          Hashtbl.replace name_count_tbl nm (c+1)
+        with
+          Not_found -> Hashtbl.add name_count_tbl nm 1
+      in
+      let get_name_count nm =
+        try
+          Hashtbl.find name_count_tbl nm
+        with
+          Not_found -> 0
+      in
+
+      let removed_pairs = ref [] in
+
+      edits#iter
+        (function
+          | Edit.Delete(_, info, _) -> begin
+              let nd = Info.get_node info in
+              if nd#data#is_named_orig then begin
+                if nd#data#is_boundary then begin
+                  let nm = get_orig_name nd in
+                  [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
+                  Hashtbl.add deleted_name_tbl nm nd
+                end
+                else if nd#data#is_statement then begin
+                  let nm = get_orig_name nd in
+                  incr_name_count nm
+                end
+              end
+          end
+          | Edit.Insert(_, info, _) -> begin
+              let nd = Info.get_node info in
+              if nd#data#is_named_orig then begin
+                if nd#data#is_boundary then begin
+                  let nm = get_orig_name nd in
+                  [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
+                  Hashtbl.add inserted_name_tbl nm nd
+                end
+                else if nd#data#is_statement then begin
+                  let nm = get_orig_name nd in
+                  incr_name_count nm
+                end
+              end
+          end
+          | Edit.Relabel(_, (info1, _), (info2, _)) -> begin
+              let nd1 = Info.get_node info1 in
+              let nd2 = Info.get_node info2 in
+              if
+                nd1#data#is_named_orig && nd2#data#is_named_orig &&
+                nd1#data#is_statement && nd2#data#is_statement
+              then begin
+                let nm1 = get_orig_name nd1 in
+                let nm2 = get_orig_name nd2 in
+                incr_name_count nm1;
+                incr_name_count nm2
+              end
+          end
+          | _ -> ()
+        );
+      edits#iter_relabels
+        (function
+          | Edit.Relabel(_, (info1, _), (info2, _)) as rel -> begin
+              let _ = rel in
+              let nd1 = Info.get_node info1 in
+              let nd2 = Info.get_node info2 in
+              if
+                nd1#data#is_statement && nd1#data#is_named_orig &&
+                nd2#data#is_statement && nd2#data#is_named_orig &&
+                try
+                  nmapping#find (get_bn nd1) == (get_bn nd2)
+                with _ -> false
+              then begin
+                let nm1 = get_orig_name nd1 in
+                let nm2 = get_orig_name nd2 in
+                if nm1 <> nm2 then begin
+                  if
+                    Hashtbl.mem deleted_name_tbl nm1 ||
+                    Hashtbl.mem inserted_name_tbl nm2
+                  then begin
+                    [%debug_log "%s" (Edit.to_string rel)];
+                    [%debug_log "nm1=\"%s\" nm2=\"%s\"" nm1 nm2];
+                  end;
+                  begin (* inline *)
+                    try
+                      let bnd1 = Hashtbl.find deleted_name_tbl nm1 in
+                      if get_name_count nm1 > 1 then
+                        raise Exit;
+                      let blk2 =
+                        get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd2
+                      in
+                      [%debug_log "bnd1=%a" nps bnd1];
+                      [%debug_log "blk2=%a" nps blk2];
+                      nmapping#add_starting_pairs_for_glueing [(bnd1, blk2)];
+
+                      let bnd2 =
+                        if blk2#data#is_boundary then
+                          blk2
+                        else
+                          get_bn blk2
+                      in
+                      [%debug_log "bnd2=%a" nps bnd2];
+                      tree1#fast_scan_whole_initial_subtree bnd1
+                        (fun n1 ->
+                          try
+                            let n1' = nmapping#find n1 in
+                            if not (tree2#initial_subtree_mem bnd2 n1') then begin
+                              [%debug_log "disallowed mapping: %a-%a" nps n1 nps n1'];
+                              cenv#add_too_bad_pair n1 n1';
+                              if nmapping#remove n1 n1' then
+                                removed_pairs := (n1, n1') :: !removed_pairs;
+                            end
+                          with _ -> ()
+                        );
+
+                      [%debug_log "disallowed relabel: %a-%a" nps nd1 nps nd2];
+                      cenv#add_too_bad_pair nd1 nd2;
+                      if nmapping#remove nd1 nd2 then
+                        removed_pairs := (nd1, nd2) :: !removed_pairs;
+                    with
+                      _ -> ()
+                  end;
+                  begin (* extract *)
+                    try
+                      let bnd2 = Hashtbl.find inserted_name_tbl nm2 in
+                      if get_name_count nm2 > 1 then
+                        raise Exit;
+                      let blk1 =
+                        get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd1
+                      in
+                      [%debug_log "bnd2=%a" nps bnd2];
+                      [%debug_log "blk1=%a" nps blk1];
+                      nmapping#add_starting_pairs_for_glueing [(blk1, bnd2)];
+
+                      let bnd1 =
+                        if blk1#data#is_boundary then
+                          blk1
+                        else
+                          get_bn blk1
+                      in
+                      [%debug_log "bnd1=%a" nps bnd1];
+                      tree2#fast_scan_whole_initial_subtree bnd2
+                        (fun n2 ->
+                          try
+                            let n2' = nmapping#inv_find n2 in
+                            if not (tree1#initial_subtree_mem bnd1 n2') then begin
+                              [%debug_log "disallowed mapping: %a-%a" nps n2' nps n2];
+                              cenv#add_too_bad_pair n2' n2;
+                              if nmapping#remove n2' n2 then
+                                removed_pairs := (n2', n2) :: !removed_pairs;
+                            end
+                          with _ -> ()
+                        );
+
+                      [%debug_log "disallowed relabel: %a-%a" nps nd1 nps nd2];
+                      cenv#add_too_bad_pair nd1 nd2;
+                      if nmapping#remove nd1 nd2 then
+                        removed_pairs := (nd1, nd2) :: !removed_pairs;
+                    with
+                      _ -> ()
+                  end
+                end
+              end
+          end
+          | _ -> ()
+        );
+      sync_edits !removed_pairs []
+    end;
+
     if not simple then begin
       begin
         match lang#elaborate_edits with
@@ -11303,8 +11478,11 @@ end;
                       Not_found -> true
                   ) nd'#initial_children && !ok
               in
+              [%debug_log "cond0=%B cond1=%B" cond0 cond1];
               if
-                (cond0 || cond1) && (not options#no_moves_flag || not (is_crossing_with_untouched nd nd'))
+                not (cenv#is_too_bad_pair nd nd') &&
+                (cond0 || cond1) &&
+                (not options#no_moves_flag || not (is_crossing_with_untouched nd nd'))
               then begin
                 if not (nd#data#eq nd'#data) then begin
                   if relabel_allowed nd nd' then

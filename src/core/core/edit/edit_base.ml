@@ -4958,7 +4958,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               not (self#mem_mov12 n1 n2) &&
               (*n1#data#_anonymized_label = n2#data#_anonymized_label*)
               n1#data#relabel_allowed n2#data &&
-              (not n1#data#is_named && not n2#data#is_named || n1#data#get_name <> n2#data#get_name)
+              (
+               not n1#data#is_named || not n2#data#is_named
+              ||
+               n1#data#get_name <> n2#data#get_name
+              )
             then begin
               [%debug_log "%a-%a" nps n1 nps n2];
 
@@ -5165,7 +5169,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 cand := Some (n1, !cand2)
               end;
               if
-                !cand1 != n1 && !count1 > !count2
+                !cand1 != n1 && !count1 > !count2 &&
+                try not (Nodetbl.find map !cand1 == n2) with _ -> true
               then begin
                 [%debug_log "  %a (%d) <- %a" nups !cand1 !count1 nups n2];
                 cand := Some (!cand1, n2);

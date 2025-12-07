@@ -1187,6 +1187,13 @@ class ['node_t, 'tree_t] c
     Xset.add bad_pairs (n1, n2)
   method is_bad_pair n1 n2 = Xset.mem bad_pairs (n1, n2)
 
+  val too_bad_pairs = (Xset.create 0 : ('node_t * 'node_t) Xset.t)
+  method add_too_bad_pair n1 n2 =
+    [%debug_log "%a-%a" nups n1 nups n2];
+    self#add_bad_pair n1 n2;
+    Xset.add too_bad_pairs (n1, n2)
+  method is_too_bad_pair n1 n2 = Xset.mem too_bad_pairs (n1, n2)
+
   val subtree_matches = Nodetbl.create 0
   method subtree_matches = subtree_matches
 
@@ -5596,11 +5603,21 @@ class ['node_t, 'tree_t] c
 
                     let selected =
                       if under_permutation_hub then
-                        let score_f x y = (self#get_adjacency_score x y, crossing_score x y) in
+                        let score_f x y =
+                          if self#is_too_bad_pair x y then
+                            (0.0, Stdlib.min_int)
+                          else
+                            (self#get_adjacency_score x y, crossing_score x y)
+                        in
                         let cmpr = new SMP.ComparatorFloatInt.c score_f a1 a2 in
                         SMP.get_stable_matches cmpr a1 a2
                       else
-                        let score_f x y = (crossing_score x y, self#get_adjacency_score x y) in
+                        let score_f x y =
+                          if self#is_too_bad_pair x y then
+                            (Stdlib.min_int, 0.0)
+                          else
+                            (crossing_score x y, self#get_adjacency_score x y)
+                        in
                         let cmpr = new SMP.ComparatorIntFloat.c score_f a1 a2 in
                         SMP.get_stable_matches cmpr a1 a2
                     in

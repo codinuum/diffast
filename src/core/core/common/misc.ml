@@ -418,7 +418,9 @@ let get_p_ancestor ?(moveon=fun _ -> true) pred nd =
 
 
 let get_stmt n = get_p_ancestor (fun x -> x#data#is_statement) n
-let get_block n = get_p_ancestor (fun x -> x#data#is_block) n
+let get_block n =
+  let moveon x = not x#data#is_boundary in
+  get_p_ancestor ~moveon (fun x -> x#data#is_block) n
 
 
 [%%capture_path

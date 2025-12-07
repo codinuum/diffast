@@ -484,12 +484,9 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     let doma = Array.of_seq dom in
     Array.fast_sort cmp doma;
     Array.iter
-      (fun u1 ->
-        try
-          let u2 = self#find u1 in
-          f u1 u2
-        with
-          Not_found -> assert false
+      (fun n1 ->
+        let n2 = self#find n1 in
+        f n1 n2
       ) doma
 
   method iter_sorted cmp f =
