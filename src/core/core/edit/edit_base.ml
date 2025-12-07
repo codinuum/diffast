@@ -5115,13 +5115,19 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               let cand1 = ref n1 in
               let cand2 = ref n2 in
 
-              let stability_thresh = 0.5 in
+              let stability_thresh_low = 0.5 in
+              let stability_thresh_high = 0.9 in
 
-              let stability_low1 = stability1 < stability_thresh in
-              let stability_low2 = stability2 < stability_thresh in
+              let stability_low1 = stability1 < stability_thresh_low in
+              let stability_low2 = stability2 < stability_thresh_low in
+
+              let stability_high1 = stability1 > stability_thresh_high in
+              let stability_high2 = stability2 > stability_thresh_high in
 
               [%debug_log "  stability_low1=%B" stability_low1];
               [%debug_log "  stability_low2=%B" stability_low2];
+              [%debug_log "  stability_high1=%B" stability_high1];
+              [%debug_log "  stability_high2=%B" stability_high2];
 
               begin %debug_block
                 List.iter
@@ -5144,6 +5150,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 b
               in
 
+              let get_nsibs x =
+                try
+                  x#initial_parent#initial_nchildren - 1
+                with _ -> 0
+              in
+
               Nodetbl.iter
                 (fun s1 c1 ->
                   [%debug_log "  s1=%a c1=%d" nups s1 c1];
@@ -5154,6 +5166,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                      is_def_stmt s1
                     ||
                      chk_ev evidence_tbl1 names1 s1
+                    ||
+                     not stability_high1 &&
+                     tree1#initial_subtree_mem s1 n1 &&
+                     get_nsibs n1 = 0
                     ) &&
                     c1 > !count1
                   then begin
@@ -5172,6 +5188,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                      is_def_stmt s2
                     ||
                      chk_ev evidence_tbl2 names2 s2
+                    ||
+                     not stability_high2 &&
+                     tree2#initial_subtree_mem s2 n2 &&
+                     get_nsibs n2 = 0
                     ) &&
                     c2 > !count2
                   then begin
