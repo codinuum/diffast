@@ -4966,15 +4966,26 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             then begin
               [%debug_log "%a-%a" nps n1 nps n2];
 
+              let is_def n =
+                let b = Comparison.is_def n in
+                [%debug_log "%a --> %B" nups n b];
+                b
+              in
+
+              let def_stmts = Xset.create 0 in
+
               let cand_tbl1 = Nodetbl.create 0 in
               let cand_tbl2 = Nodetbl.create 0 in
-              let add_cand tbl n =
+              let add_cand ?(isdef=false) tbl n =
+                if isdef then
+                  Xset.add def_stmts n;
                 try
                   let c = Nodetbl.find tbl n in
-                  Nodetbl.replace tbl n (c+1)
+                  Nodetbl.replace tbl n (c + 1)
                 with
                   Not_found -> Nodetbl.add tbl n 1
               in
+              let is_def_stmt = Xset.mem def_stmts in
               let skip_flag = ref false in
               let map_count = ref 0 in
               let node_count = ref 0 in
@@ -5037,7 +5048,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                         (not (nmapping#mem_cod stmt2) || has_mapping (nmapping#inv_find stmt2) n2)
                       then begin
                         [%debug_log "@"];
-                        add_cand cand_tbl2 stmt2;
+                        let isdef = is_def x2 in
+                        add_cand ~isdef cand_tbl2 stmt2;
                         match get_rename_pat x1 x2 with
                         | Some (_, nm) -> Nodetbl.add evidence_tbl2 stmt2 nm
                         | None -> ()
@@ -5086,7 +5098,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                         (not (nmapping#mem_dom stmt1) || has_mapping n1 (nmapping#find stmt1))
                       then begin
                         [%debug_log "@"];
-                        add_cand cand_tbl1 stmt1;
+                        let isdef = is_def x1 in
+                        add_cand ~isdef cand_tbl1 stmt1;
                         match get_rename_pat x1 x2 with
                         | Some (nm, _) -> Nodetbl.add evidence_tbl1 stmt1 nm
                         | None -> ()
@@ -5138,6 +5151,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     (
                      stability_low1
                     ||
+                     is_def_stmt s1
+                    ||
                      chk_ev evidence_tbl1 names1 s1
                     ) &&
                     c1 > !count1
@@ -5153,6 +5168,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                   if
                     (
                      stability_low2
+                    ||
+                     is_def_stmt s2
                     ||
                      chk_ev evidence_tbl2 names2 s2
                     ) &&
