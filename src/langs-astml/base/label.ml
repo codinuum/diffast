@@ -923,6 +923,9 @@ let is_phantom (*lab*)_ = false (* not yet *)
 
 let is_special (*lab*)_ = false (* not yet *)
 
+let get_nparams _ = raise Not_found
+let get_nargs _ = raise Not_found
+
 
 module CCX = struct
 

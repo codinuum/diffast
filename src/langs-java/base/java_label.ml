@@ -63,6 +63,7 @@ let xmldec = XML.decode_string
 let escaped_dollar_pat = Str.regexp_string "&#36;"
 let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
 
+let deco_pat = Str.regexp {|^.+#\([0-9]+\)$|}
 let undeco_pat = Str.regexp "#[0-9]+"
 let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
 let get_uqn x = Xlist.last (String.split_on_char '.' x)
@@ -4028,7 +4029,9 @@ let is_invocation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _)
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   )
 
   | Statement (
     Statement.Expression (
@@ -4037,7 +4040,9 @@ let is_invocation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _), _))
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   ), _))
 
   | ThisInvocation
   | SuperInvocation
@@ -4079,7 +4084,9 @@ let is_invocation_or_instance_creation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _)
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   )
 
   | Statement (
     Statement.Expression (
@@ -4091,7 +4098,9 @@ let is_invocation_or_instance_creation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _), _))
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   ), _))
 
   | ThisInvocation
   | SuperInvocation
@@ -4401,6 +4410,74 @@ let has_non_trivial_tid lab =
 
 let get_signature = function
   | Method(_, s) | Constructor(_, s) -> s
+  | _ -> raise Not_found
+
+let get_nparams = function
+  | Method(_, s) | Constructor(_, s) -> begin
+      let count = ref 0 in
+      let in_paren_flag = ref false in
+      let refty_flag = ref false in
+      begin
+        try
+          String.iter
+            (fun c ->
+              if !in_paren_flag then begin
+                if !refty_flag then begin
+                  if c = ';' then begin
+                    incr count;
+                    refty_flag := false
+                  end
+                  else if c = ')' then
+                    raise Exit
+                end
+                else begin
+                  if c = 'L' then
+                    refty_flag := true
+                  else if c = ')' then
+                    raise Exit
+                  else
+                    incr count
+                end
+              end
+              else begin
+                if c = '(' then
+                  in_paren_flag := true
+              end
+            ) s;
+        with Exit -> ()
+      end;
+      !count
+  end
+  | _ -> raise Not_found
+
+let get_nargs = function
+  | Primary (
+    Primary.PrimaryMethodInvocation n
+  | Primary.SimpleMethodInvocation n
+  | Primary.SuperMethodInvocation n
+  | Primary.ClassSuperMethodInvocation n
+  | Primary.TypeMethodInvocation(_, n)
+  | Primary.AmbiguousMethodInvocation n
+   )
+
+  | Statement (
+    Statement.Expression (
+    Expression.Primary (
+    Primary.PrimaryMethodInvocation n
+  | Primary.SimpleMethodInvocation n
+  | Primary.SuperMethodInvocation n
+  | Primary.ClassSuperMethodInvocation n
+  | Primary.TypeMethodInvocation(_, n)
+  | Primary.AmbiguousMethodInvocation n
+   ), _)) -> begin
+     if Str.string_match deco_pat n 0 then
+       let i = Str.matched_group 1 n in
+       try
+         int_of_string i
+       with _ -> raise Not_found
+     else
+       raise Not_found
+   end
   | _ -> raise Not_found
 
 let getlab nd = (Obj.obj nd#data#_label : t)

@@ -1606,6 +1606,10 @@ let is_phantom = function
 
 let is_special _ = false
 
+let get_nparams _ = raise Not_found
+let get_nargs _ = raise Not_found
+
+
 open Astml.Attr
 
 let of_elem_data =

@@ -2635,3 +2635,6 @@ let is_container_unit = function
     -> true
 
   | _ -> false
+
+let get_nparams _ = raise Not_found
+let get_nargs _ = raise Not_found

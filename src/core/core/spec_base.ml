@@ -100,6 +100,9 @@ class type node_data_t_shared = object ('self)
   method get_orig_name      : string
   method get_stripped_name  : string
 
+  method get_nparams : int
+  method get_nargs   : int
+
   method _stripped_label    : Obj.t
   method _stripped_orig_label : Obj.t
 

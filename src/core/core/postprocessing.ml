@@ -6093,10 +6093,29 @@ end;
           Not_found -> Hashtbl.add name_count_tbl nm 1
       in
       let get_name_count nm =
-        try
-          Hashtbl.find name_count_tbl nm
-        with
-          Not_found -> 0
+        let c =
+          try
+            Hashtbl.find name_count_tbl nm
+          with
+            Not_found -> 0
+        in
+        [%debug_log "\"%s\" -> %d" nm c];
+        c
+      in
+
+      let get_deco_name nd =
+        let name =
+          (get_orig_name nd) ^
+          (
+           try
+             sprintf "#%d" nd#data#get_nparams
+           with _ ->
+             try
+               sprintf "#%d" nd#data#get_nargs
+             with _ -> ""
+          )
+        in
+        name
       in
 
       let removed_pairs = ref [] in
@@ -6107,12 +6126,12 @@ end;
               let nd = Info.get_node info in
               if nd#data#is_named_orig then begin
                 if nd#data#is_boundary then begin
-                  let nm = get_orig_name nd in
+                  let nm = get_deco_name nd in
                   [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
                   Hashtbl.add deleted_name_tbl nm nd
                 end
                 else if nd#data#is_statement then begin
-                  let nm = get_orig_name nd in
+                  let nm = get_deco_name nd in
                   incr_name_count nm
                 end
               end
@@ -6121,12 +6140,12 @@ end;
               let nd = Info.get_node info in
               if nd#data#is_named_orig then begin
                 if nd#data#is_boundary then begin
-                  let nm = get_orig_name nd in
+                  let nm = get_deco_name nd in
                   [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
                   Hashtbl.add inserted_name_tbl nm nd
                 end
                 else if nd#data#is_statement then begin
-                  let nm = get_orig_name nd in
+                  let nm = get_deco_name nd in
                   incr_name_count nm
                 end
               end
@@ -6138,8 +6157,8 @@ end;
                 nd1#data#is_named_orig && nd2#data#is_named_orig &&
                 nd1#data#is_statement && nd2#data#is_statement
               then begin
-                let nm1 = get_orig_name nd1 in
-                let nm2 = get_orig_name nd2 in
+                let nm1 = get_deco_name nd1 in
+                let nm2 = get_deco_name nd2 in
                 incr_name_count nm1;
                 incr_name_count nm2
               end
@@ -6159,8 +6178,8 @@ end;
                   nmapping#find (get_bn nd1) == (get_bn nd2)
                 with _ -> false
               then begin
-                let nm1 = get_orig_name nd1 in
-                let nm2 = get_orig_name nd2 in
+                let nm1 = get_deco_name nd1 in
+                let nm2 = get_deco_name nd2 in
                 if nm1 <> nm2 then begin
                   if
                     Hashtbl.mem deleted_name_tbl nm1 ||

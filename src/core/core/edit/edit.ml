@@ -3066,6 +3066,7 @@ let rectify_renames_d
     (fun ?(strict=false) n1 n2 ->
       [%debug_log "is_possible_rename: strict=%B %a-%a" strict nups n1 nups n2];
       let b =
+        (*not (cenv#is_too_bad_pair n1 n2) &&*)
         not (Xset.mem local_bad_pairs (n1, n2)) &&
         is_possible_rename ?strict:(Some strict) n1 n2 &&
         (

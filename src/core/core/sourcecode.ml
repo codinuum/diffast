@@ -585,6 +585,9 @@ module Tree (L : Spec.LABEL_T) = struct
         | None -> self#get_name
       method get_stripped_name = L.get_name ~strip:true lab
 
+      method get_nparams = L.get_nparams lab
+      method get_nargs = L.get_nargs lab
+
       method get_value = L.get_value lab
       method has_value = L.has_value lab
       method has_non_trivial_value = L.has_non_trivial_value lab

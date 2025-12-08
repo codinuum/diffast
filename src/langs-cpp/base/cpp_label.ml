@@ -2395,6 +2395,9 @@ let is_common = function
       -> true
   | _ -> false
 
+let get_nparams _ = raise Not_found
+let get_nargs _ = raise Not_found
+
 
 open Astml.Attr
 

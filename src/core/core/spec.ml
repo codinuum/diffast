@@ -399,14 +399,20 @@ module type LABEL_T = sig
   val anonymize          : ?more:bool -> t -> t
   val anonymize2         : t -> t
   val anonymize3         : t -> t
+
   val get_ident_use      : t -> string
 
   val get_category       : t -> string
   val get_name           : ?strip:bool -> t -> string
+
+  val get_nparams : t -> int
+  val get_nargs   : t -> int
+
   val get_value          : t -> string
   val has_value          : t -> bool
   val has_non_trivial_value : t -> bool
   val has_non_trivial_tid   : t -> bool
+
   val cannot_be_keyroot  : node_t -> bool
 
   val is_phantom         : t -> bool
