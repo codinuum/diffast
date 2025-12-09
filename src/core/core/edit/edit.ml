@@ -387,6 +387,31 @@ let generate_compatible_edits
           matches;
       end;
 
+      let matches =
+        List.filter
+          (fun (n1, n2) ->
+            (try
+              let n1' = nmapping#find n1 in
+              not (n1' != n2 && nmapping#is_final_mapping n1 n1')
+            with _ -> true) &&
+            (try
+              let n2' = nmapping#inv_find n2 in
+              not (n2' != n1 && nmapping#is_final_mapping n2' n2)
+            with _ -> true)
+          ) matches
+      in
+
+      begin %debug_block
+        [%debug_log "matches (filtered):"];
+        List.iter
+          (fun (n1, n2) -> [%debug_log "%a-%a" nups n1 nups n2])
+          matches;
+        [%debug_log "matches (gindex) (filtered):"];
+        List.iter
+          (fun (n1, n2) -> [%debug_log "%a-%a" GI.ps n1#gindex GI.ps n2#gindex])
+          matches;
+      end;
+
       List.iter
         (fun (n1, n2) ->
           [%debug_log "%a-%a" nups n1 nups n2];
@@ -3035,17 +3060,7 @@ let rectify_renames_d
     ) !to_be_mapped;
 
   begin
-    let get_siblings n =
-      try
-        Array.fold_right
-          (fun c nl ->
-            if c != n then
-              c::nl
-            else
-              nl
-          ) n#initial_parent#initial_children []
-      with _ -> []
-    in
+    let get_siblings = Misc.get_siblings in
     List.iter
       (fun (n1, n2) ->
         [%debug_log "compatible pair: %a-%a" nps n1 nps n2];

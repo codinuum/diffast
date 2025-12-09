@@ -6081,30 +6081,33 @@ end;
 *)
     let sync_edits ?(check_conflicts=false) = sync_edits options ~check_conflicts cenv edits in
 
-    begin (* to handle extract/inline (experimental) *)
+    begin (* to handle Extract/Inline (experimental) *)
       let deleted_name_tbl = Hashtbl.create 0 in
       let inserted_name_tbl = Hashtbl.create 0 in
 
-      let name_count_tbl = Hashtbl.create 0 in
-      let incr_name_count nm =
+      let name_ref_tbl1 = Hashtbl.create 0 in
+      let name_ref_tbl2 = Hashtbl.create 0 in
+      let add_name_ref tbl nm stmt =
         try
-          let c = Hashtbl.find name_count_tbl nm in
-          Hashtbl.replace name_count_tbl nm (c+1)
+          let stmtl = Hashtbl.find tbl nm in
+          Hashtbl.replace tbl nm (stmt::stmtl)
         with
-          Not_found -> Hashtbl.add name_count_tbl nm 1
+          Not_found -> Hashtbl.add tbl nm [stmt]
       in
-      let get_name_count nm =
-        let c =
+      let get_name_refs tbl nm =
+        let stmtl =
           try
-            Hashtbl.find name_count_tbl nm
+            Hashtbl.find tbl nm
           with
-            Not_found -> 0
+            Not_found -> []
         in
-        [%debug_log "\"%s\" -> %d" nm c];
-        c
+        [%debug_log "\"%s\" -> [%a]" nm nsps stmtl];
+        stmtl
       in
+      let get_name_count tbl nm = List.length (get_name_refs tbl nm) in
 
       let removed_pairs = ref [] in
+      let added_pairs = ref [] in
 
       edits#iter
         (function
@@ -6118,7 +6121,7 @@ end;
                 end
                 else if nd#data#is_statement then begin
                   let nm = get_deco_name nd in
-                  incr_name_count nm
+                  add_name_ref name_ref_tbl1 nm nd
                 end
               end
           end
@@ -6132,7 +6135,7 @@ end;
                 end
                 else if nd#data#is_statement then begin
                   let nm = get_deco_name nd in
-                  incr_name_count nm
+                  add_name_ref name_ref_tbl2 nm nd
                 end
               end
           end
@@ -6145,8 +6148,8 @@ end;
               then begin
                 let nm1 = get_deco_name nd1 in
                 let nm2 = get_deco_name nd2 in
-                incr_name_count nm1;
-                incr_name_count nm2
+                add_name_ref name_ref_tbl1 nm1 nd1;
+                add_name_ref name_ref_tbl2 nm2 nd2
               end
           end
           | _ -> ()
@@ -6177,7 +6180,7 @@ end;
                   begin (* inline *)
                     try
                       let bnd1 = Hashtbl.find deleted_name_tbl nm1 in
-                      if get_name_count nm1 > 1 then
+                      if get_name_count name_ref_tbl1 nm1 > 1 then
                         raise Exit;
                       let blk2 =
                         get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd2
@@ -6213,10 +6216,10 @@ end;
                     with
                       _ -> ()
                   end;
-                  begin (* extract *)
+                  begin (* Extract *)
                     try
                       let bnd2 = Hashtbl.find inserted_name_tbl nm2 in
-                      if get_name_count nm2 > 1 then
+                      if get_name_count name_ref_tbl2 nm2 > 1 then
                         raise Exit;
                       let blk1 =
                         get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd1
@@ -6257,7 +6260,218 @@ end;
           end
           | _ -> ()
         );
-      sync_edits !removed_pairs []
+
+      let getmems tree nd =
+        let m = ref [] in
+        tree#fast_scan_whole_initial_subtree nd (fun n -> m := n::!m);
+        !m
+      in
+      let add_mapping added_nodes1 added_nodes2 n1 n2 =
+        [%debug_log "adding %a-%a" nups n1 nups n2];
+        begin
+          try
+            let n1' = nmapping#find n1 in
+            if n1' != n2 then begin
+              cenv#add_too_bad_pair n1 n1';
+              [%debug_log "removing %a-%a" nups n1 nups n1'];
+              if nmapping#remove n1 n1' then
+                removed_pairs := (n1, n1') :: !removed_pairs
+            end
+          with _ -> ()
+        end;
+        begin
+          try
+            let n2' = nmapping#inv_find n2 in
+            if n2' != n1 then begin
+              cenv#add_too_bad_pair n2' n2;
+              [%debug_log "removing %a-%a" nups n2' nups n2];
+              if nmapping#remove n2' n2 then
+                removed_pairs := (n2', n2) :: !removed_pairs
+            end
+          with _ -> ()
+        end;
+        let _ = nmapping#add_settled n1 n2 in
+        nmapping#finalize_mapping n1 n2;
+        added_pairs := (n1, n2) :: !added_pairs;
+        Xset.add added_nodes1 n1;
+        Xset.add added_nodes2 n2
+      in
+
+      begin
+        Hashtbl.iter (* more Extracts *)
+          (fun nm bnd ->
+            let base_boundaries = Xset.create 0 in
+            List.iter
+              (fun stmt ->
+                if
+                  try
+                    get_siblings stmt = [] &&
+                    not stmt#initial_parent#data#is_block
+                  with _ -> false
+                then begin
+                  try
+                    let bn = get_bn stmt in
+                    let bn' = nmapping#inv_find bn in
+                    if
+                      bn'#data#eq bn#data &&
+                      get_orig_name bn = get_orig_name stmt
+                    then begin
+                      [%debug_log "Extract found: from %a to %a" nups bn' nups bnd];
+                      Xset.add base_boundaries bn'
+                    end
+                  with _ -> ()
+                end
+              ) (get_name_refs name_ref_tbl2 nm);
+
+            let added_nodes1 = Xset.create 0 in
+            let added_nodes2 = Xset.create 0 in
+            let add_mapping = add_mapping added_nodes1 added_nodes2 in
+            match Xset.to_list base_boundaries with
+            | [bn'] -> begin
+                nmapping#add_starting_pairs_for_glueing [(bn', bnd)];
+
+                let filt x = x#data#is_statement in
+                List.iter
+                  (fun (r1, r2) ->
+                    List.iter2 add_mapping (getmems tree1 r1) (getmems tree2 r2)
+                  ) (cenv#get_matched_uniq_subtree_root_pairs ~filt bn' bnd);
+
+                tree1#fast_scan_whole_initial_subtree bn'
+                  (fun n1 ->
+                    if not (Xset.mem added_nodes1 n1) && n1#data#is_statement then begin
+                      match n1#data#_digest with
+                      | Some d -> begin
+                          try
+                            match cenv#multiple_subtree_matches#find d with
+                            | [], _, _ | _, [], _ -> ()
+                            | nml1, nml2, _ -> begin
+                                let cand_list = ref [] in
+                                begin
+                                  try
+                                    let nl1 = List.assq n1 nml1 in
+                                    List.iter
+                                      (fun (n2, nl2) ->
+                                        if tree2#initial_subtree_mem bnd n2 then begin
+                                          [%debug_log "cand: [%a] - [%a]" nsps nl1 nsps nl2];
+                                          cand_list := (nl1, nl2) :: !cand_list
+                                        end
+                                        (*else begin
+                                          List.iter2
+                                            (fun n1 n2 ->
+                                              cenv#add_too_bad_pair n1 n2;
+                                              [%debug_log "removing %a-%a" nups n1 nups n2];
+                                              if nmapping#remove n1 n2 then
+                                                removed_pairs := (n1, n2) :: !removed_pairs
+                                            ) nl1 nl2
+                                        end*)
+                                      ) nml2
+                                  with _ -> ()
+                                end;
+                                match !cand_list with
+                                | [nl1, nl2] -> begin
+                                    [%debug_log "cand: [%a] - [%a]" nsps nl1 nsps nl2];
+                                    List.iter2 add_mapping nl1 nl2
+                                end
+                                | _ -> ()
+                            end
+                          with _ -> ()
+                      end
+                      | None -> ()
+                    end
+                  )
+            end
+            | _ -> ()
+          ) inserted_name_tbl
+      end;
+
+      begin
+        Hashtbl.iter (* more Inlines *)
+          (fun nm bnd ->
+            let base_boundaries = Xset.create 0 in
+            List.iter
+              (fun stmt ->
+                if
+                  try
+                    get_siblings stmt = [] &&
+                    not stmt#initial_parent#data#is_block
+                  with _ -> false
+                then begin
+                  try
+                    let bn = get_bn stmt in
+                    let bn' = nmapping#find bn in
+                    if
+                      bn'#data#eq bn#data &&
+                      get_orig_name bn = get_orig_name stmt
+                    then begin
+                      [%debug_log "Inline found: from %a to %a" nups bnd nups bn'];
+                      Xset.add base_boundaries bn'
+                    end
+                  with _ -> ()
+                end
+              ) (get_name_refs name_ref_tbl1 nm);
+
+            let added_nodes1 = Xset.create 0 in
+            let added_nodes2 = Xset.create 0 in
+            let add_mapping = add_mapping added_nodes1 added_nodes2 in
+            match Xset.to_list base_boundaries with
+            | [bn'] -> begin
+                nmapping#add_starting_pairs_for_glueing [(bnd, bn')];
+
+                let filt x = x#data#is_statement in
+                List.iter
+                  (fun (r1, r2) ->
+                    List.iter2 add_mapping (getmems tree1 r1) (getmems tree2 r2)
+                  ) (cenv#get_matched_uniq_subtree_root_pairs ~filt bnd bn');
+
+                tree2#fast_scan_whole_initial_subtree bn'
+                  (fun n2 ->
+                    if not (Xset.mem added_nodes2 n2) && n2#data#is_statement then begin
+                      match n2#data#_digest with
+                      | Some d -> begin
+                          try
+                            match cenv#multiple_subtree_matches#find d with
+                            | [], _, _ | _, [], _ -> ()
+                            | nml1, nml2, _ -> begin
+                                let cand_list = ref [] in
+                                begin
+                                  try
+                                    let nl2 = List.assq n2 nml2 in
+                                    List.iter
+                                      (fun (n1, nl1) ->
+                                        if tree1#initial_subtree_mem bnd n1 then begin
+                                          [%debug_log "cand: [%a] - [%a]" nsps nl1 nsps nl2];
+                                          cand_list := (nl1, nl2) :: !cand_list
+                                        end
+                                        (*else begin
+                                          List.iter2
+                                            (fun n1 n2 ->
+                                              cenv#add_too_bad_pair n1 n2;
+                                              [%debug_log "removing %a-%a" nups n1 nups n2];
+                                              if nmapping#remove n1 n2 then
+                                                removed_pairs := (n1, n2) :: !removed_pairs
+                                            ) nl1 nl2
+                                        end*)
+                                      ) nml1
+                                  with _ -> ()
+                                end;
+                                match !cand_list with
+                                | [nl1, nl2] -> begin
+                                    [%debug_log "cand: [%a] - [%a]" nsps nl1 nsps nl2];
+                                    List.iter2 add_mapping nl1 nl2
+                                end
+                                | _ -> ()
+                            end
+                          with _ -> ()
+                      end
+                      | None -> ()
+                    end
+                  )
+            end
+            | _ -> ()
+          ) deleted_name_tbl
+      end;
+
+      sync_edits !removed_pairs !added_pairs
     end;
 
     if not simple then begin

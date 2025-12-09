@@ -541,6 +541,17 @@ let is_ancestor a n =
   b
 ]
 
+let get_siblings n =
+  try
+    Array.fold_right
+      (fun c nl ->
+        if c != n then
+          c::nl
+        else
+          nl
+      ) n#initial_parent#initial_children []
+  with _ -> []
+
 let get_scope_node nd = get_p_ancestor (fun x -> x#data#is_scope_creating) nd
 
 [%%capture_path
