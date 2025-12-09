@@ -860,10 +860,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           else begin
             pr_nth_child 1;
             if nchildren > 2 then begin
-              pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
+              (*pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
               pr_selected ~fail_on_error ~head:pad1 L.is_else children;
-
-              let else_part = children.(nchildren - 1) in
+              let else_part = children.(last_idx) in
               let lab = getlab else_part in
               if not (L.is_elseif lab || L.is_else lab) then begin
                 spc ~blk_style 1; pr_string "else";
@@ -873,7 +872,30 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                 else
                   pr_break 1 pb#indent;
                 pr_node ~fail_on_error else_part
-              end
+              end*)
+
+              let last_idx = nchildren - 1 in
+              for i = 2 to last_idx do
+                let childi = children.(i) in
+                if i < last_idx then begin
+                  pad1();
+                  pr_string "else "
+                end
+                else begin
+                  let labi = getlab childi in
+                  if L.is_elseif labi || L.is_else labi then begin
+                    pad1()
+                  end
+                  else begin
+                    spc ~blk_style 1; pr_string "else";
+                    if L.is_block labi || L.is_if labi then
+                      pad 1
+                    else
+                      pr_break 1 pb#indent
+                  end
+                end;
+                pr_node ~fail_on_error childi
+              done;
 
             end
           end
