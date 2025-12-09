@@ -337,12 +337,15 @@ class ['node_t] multiple_subtree_matches options = object
     let dtbl2 = Hashtbl.create 0 in (* root node -> digest *)
     let bns1 = Xset.create 0 in
     let bns2 = Xset.create 0 in
+    let excluded1 = Xset.create 0 in
+    let excluded2 = Xset.create 0 in
 
     let add_bn bns rt =
       try
         Xset.add bns (get_bn rt)
       with _ -> ()
     in
+
     Hashtbl.iter
       (fun d (ndmems1, ndmems2, _) ->
         if not (is_inner d) then begin
@@ -353,13 +356,25 @@ class ['node_t] multiple_subtree_matches options = object
                 Hashtbl.add ntbl rt nds;
                 add_bn bns1 rt
               end
+              else if not (nmapping#mem_dom rt) then begin
+                Hashtbl.add dtbl1 rt d;
+                Hashtbl.add ntbl rt nds;
+                List.iter (fun x -> if nmapping#mem_dom x then Xset.add excluded1 x) nds;
+                add_bn bns1 rt
+              end
             ) ndmems1;
           List.iter
             (fun (rt, nds) ->
               if List.for_all (fun n -> not (nmapping#mem_cod n)) nds then begin
                 Hashtbl.add dtbl2 rt d;
                 Hashtbl.add ntbl rt nds;
-                add_bn bns1 rt
+                add_bn bns2 rt
+              end
+              else if not (nmapping#mem_cod rt) then begin
+                Hashtbl.add dtbl2 rt d;
+                Hashtbl.add ntbl rt nds;
+                List.iter (fun x -> if nmapping#mem_cod x then Xset.add excluded2 x) nds;
+                add_bn bns2 rt
               end
             ) ndmems2
         end
@@ -400,8 +415,14 @@ class ['node_t] multiple_subtree_matches options = object
 
     let cmp nd1 nd2 = Stdlib.compare nd1#gindex nd2#gindex in
 
-    let roota1 = Array.of_list (List.fast_sort cmp roots1) in
-    let roota2 = Array.of_list (List.fast_sort cmp roots2) in
+    let sorted_roots1 = List.fast_sort cmp roots1 in
+    let sorted_roots2 = List.fast_sort cmp roots2 in
+
+    [%debug_log "sorted_roots1: [%a]" nsps sorted_roots1];
+    [%debug_log "sorted_roots2: [%a]" nsps sorted_roots2];
+
+    let roota1 = Array.of_list sorted_roots1 in
+    let roota2 = Array.of_list sorted_roots2 in
 
     let da1 = Array.map (fun nd -> Hashtbl.find dtbl1 nd) roota1 in
     let da2 = Array.map (fun nd -> Hashtbl.find dtbl2 nd) roota2 in
@@ -495,13 +516,21 @@ class ['node_t] multiple_subtree_matches options = object
             let nds2 = Hashtbl.find ntbl nd2 in
             incr count;
 
+            let complete_flag = ref true in
+
             List.iter2
               (fun n1 n2 ->
-                let _ = nmapping#add_settled ~stable:true n1 n2 in
-                added_pairs := (n1, n2) :: !added_pairs
+                if Xset.mem excluded1 n1 || Xset.mem excluded2 n2 then
+                  complete_flag := false
+                else
+                  let _ = nmapping#add_settled ~stable:true n1 n2 in
+                  added_pairs := (n1, n2) :: !added_pairs
               ) nds1 nds2;
 
-            nmapping#add_settled_roots nd1 nd2
+            [%debug_log "%a-%a: complete_flag=%B" nups nd1 nups nd2 !complete_flag];
+
+            if !complete_flag then
+              nmapping#add_settled_roots nd1 nd2
           with
             Not_found -> ()
       ) matched;
@@ -529,7 +558,7 @@ class ['a] pairs = object
 
 end
 
-[%%capture_path
+(*[%%capture_path*)
 let get_orig_name n =
   let orig_name =
     let name = try n#data#get_name with _ -> "" in
@@ -542,9 +571,24 @@ let get_orig_name n =
       with
         _ -> name
   in
-  [%debug_log "%s -> \"%s\"" n#data#to_string orig_name];
+  (*[%debug_log "%s -> \"%s\"" n#data#to_string orig_name];*)
   orig_name
-]
+(*]*)
+
+let get_deco_name nd =
+  let name =
+    (get_orig_name nd) ^
+    (
+     try
+       sprintf "#%d" nd#data#get_nparams
+     with _ ->
+       try
+         sprintf "#%d" nd#data#get_nargs
+       with _ -> ""
+    )
+  in
+  name
+
 
 let get_stripped_name n = n#data#get_stripped_name
 

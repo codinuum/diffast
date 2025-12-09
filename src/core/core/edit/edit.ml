@@ -3015,7 +3015,10 @@ let rectify_renames_d
       let ncands1 = List.length cands1 in
       let ncands2 = List.length cands2 in
       [%debug_log "ncands1=%d ncands2=%d" ncands1 ncands2];
-      if ncands1 > cands_thresh || ncands2 > cands_thresh then begin
+      if ncands1 = 1 && ncands2 = 1 then begin
+        compatible_pairs := [List.hd cands1, List.hd cands2] @ !compatible_pairs
+      end
+      else if ncands1 > cands_thresh || ncands2 > cands_thresh then begin
         let get_ofs n = n#data#src_loc.Loc.start_offset in
         let cmp n0 n1 = Stdlib.compare (get_ofs n0) (get_ofs n1) in
         let sorted_cands1 = List.fast_sort cmp cands1 in
@@ -3030,6 +3033,61 @@ let rectify_renames_d
       else
         compatible_pairs := (combine_node_lists cenv nmapping cands1 cands2) @ !compatible_pairs
     ) !to_be_mapped;
+
+  begin
+    let get_siblings n =
+      try
+        Array.fold_right
+          (fun c nl ->
+            if c != n then
+              c::nl
+            else
+              nl
+          ) n#initial_parent#initial_children []
+      with _ -> []
+    in
+    List.iter
+      (fun (n1, n2) ->
+        [%debug_log "compatible pair: %a-%a" nps n1 nps n2];
+        if
+          not n1#data#is_statement && not n2#data#is_statement &&
+          Misc.is_cross_boundary nmapping n1 n2
+        then
+          try
+            let bn1 = Comparison.get_bn n1 in
+            let bn2 = Comparison.get_bn n2 in
+            if Comparison.get_orig_name bn1 = Comparison.get_orig_name bn2 then begin
+              let stmt1 = Misc.get_stmt n1 in
+              let stmt2 = Misc.get_stmt n2 in
+              [%debug_log "stmt1: %a" nps stmt1];
+              [%debug_log "stmt2: %a" nps stmt2];
+              if
+                stmt1#data#is_named_orig && stmt2#data#is_named_orig &&
+                stmt1#data#relabel_allowed stmt2#data &&
+                Comparison.get_orig_name stmt1 = Comparison.get_orig_name stmt2
+              ||
+                stmt1#data#subtree_equals stmt2#data
+              then begin
+                try
+                  let pstmt2 = stmt2#initial_parent in
+                  let sibl1 = get_siblings stmt1 in
+                  if
+                    List.exists
+                      (fun sib1 ->
+                        let sib1' = nmapping#find sib1 in
+                        sib1'#initial_parent == pstmt2
+                      ) sibl1
+                  then begin
+                    [%debug_log "derived compatible pair: %a-%a" nps stmt1 nps stmt2];
+                    compatible_pairs := (stmt1, stmt2) :: !compatible_pairs
+                  end
+                with
+                  _ -> ()
+              end
+            end
+          with _ -> ()
+      ) !compatible_pairs
+  end;
 
   begin %debug_block
     List.iter

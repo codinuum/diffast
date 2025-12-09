@@ -51,6 +51,7 @@ module F (Label : Spec.LABEL_T) = struct
   type tree_t = Spec.tree_t
 
   let get_orig_name = Comparison.get_orig_name
+  let get_deco_name = Comparison.get_deco_name
 
   let is_ghost_node = Triple.is_ghost_ast_node
 
@@ -6103,21 +6104,6 @@ end;
         c
       in
 
-      let get_deco_name nd =
-        let name =
-          (get_orig_name nd) ^
-          (
-           try
-             sprintf "#%d" nd#data#get_nparams
-           with _ ->
-             try
-               sprintf "#%d" nd#data#get_nargs
-             with _ -> ""
-          )
-        in
-        name
-      in
-
       let removed_pairs = ref [] in
 
       edits#iter
@@ -8644,6 +8630,9 @@ end;
                             Hashtbl.add xtbl mid (nd1, [mov])
                           end
                       end;
+
+                      let scope_moved_flag = ref false in
+
                       if nmapping#is_final_mapping nd1 nd2 then begin
                         [%debug_log "to be excluded: %a (final mapping)" MID.ps mid];
                         Xset.add xset mid
@@ -8736,7 +8725,10 @@ end;
                             let def1 = get_def_node tree1 nd1 in
                             let def2 = get_def_node tree2 nd2 in
                             [%debug_log "def1=%a def2=%a" nups def1 nups def2];
-                            nmapping#find def1 == def2
+                            let b = nmapping#find def1 == def2 in
+                            if b && is_local_def def1 && is_local_def def2 then
+                              scope_moved_flag := true;
+                            b
                           with
                             _ -> false
                         (*||
@@ -8761,7 +8753,7 @@ end;
                         with
                           _ -> false
                       then begin
-                        if sz = 1 && is_cross_boundary nmapping nd1 nd2 then
+                        if sz = 1 && not !scope_moved_flag && is_cross_boundary nmapping nd1 nd2 then
                           [%debug_log "single cross boundary move: %a" MID.ps mid]
                         else if
                           sz = 1 &&

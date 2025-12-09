@@ -4949,6 +4949,9 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       b
     in
 
+    let get_orig_name = Comparison.get_orig_name in
+    let get_deco_name = Comparison.get_deco_name in
+
     let extract_stmt_map iter =
       let map = Nodetbl.create 0 in
       iter cmp
@@ -5170,6 +5173,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                      not stability_high1 &&
                      tree1#initial_subtree_mem s1 n1 &&
                      get_nsibs n1 = 0
+                    ||
+                     try
+                       get_orig_name n1 = get_orig_name n2 &&
+                       get_deco_name n1 = get_deco_name (get_bn s1)
+                     with _ -> false
                     ) &&
                     c1 > !count1
                   then begin
@@ -5192,6 +5200,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                      not stability_high2 &&
                      tree2#initial_subtree_mem s2 n2 &&
                      get_nsibs n2 = 0
+                    ||
+                     try
+                       get_orig_name n1 = get_orig_name n2 &&
+                       get_deco_name n2 = get_deco_name (get_bn s2)
+                     with _ -> false
                     ) &&
                     c2 > !count2
                   then begin
