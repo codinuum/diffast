@@ -932,7 +932,7 @@ module F (Label : Spec.LABEL_T) = struct
                   | Found -> ok1 := true
                   | _ ->
                       if
-                        n1#data#is_statement || n1#data#is_op
+                        n1#data#is_statement || n1#data#is_op || n1#data#is_literal
                       then
                         ok1 := true
                 end;
@@ -954,7 +954,7 @@ module F (Label : Spec.LABEL_T) = struct
                   | Found -> ok2 := true
                   |  _ ->
                       if
-                        n2#data#is_statement || n2#data#is_op
+                        n2#data#is_statement || n2#data#is_op || n2#data#is_literal
                       then
                         ok2 := true
                 end;
@@ -974,7 +974,7 @@ module F (Label : Spec.LABEL_T) = struct
                   end
                   | _ -> ()
                 end;
-                [%debug_log "ok1=%B ok1=%B" !ok1 !ok2];
+                [%debug_log "ok1=%B ok2=%B" !ok1 !ok2];
                 if not !ok1 || not !ok2 then begin
                   [%debug_log "to be removed: %a -> %a" MID.ps m MID.ps pm];
                   to_be_removed := m :: !to_be_removed

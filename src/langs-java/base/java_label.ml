@@ -3359,6 +3359,19 @@ let relabel_allowed (lab1, lab2) =
 
     | StaticInitializer, InstanceInitializer | InstanceInitializer, StaticInitializer
 
+    | SwitchBlockStatementGroup, Statement Statement.If _
+    | Statement Statement.If _, SwitchBlockStatementGroup
+    | SwitchBlockStatementGroup, Statement Statement.ElseIf _
+    | Statement Statement.ElseIf _, SwitchBlockStatementGroup
+    | SwitchBlockStatementGroup, Statement Statement.Else
+    | Statement Statement.Else, SwitchBlockStatementGroup
+
+    | SLconstant _, SLdefault | SLdefault, SLconstant _
+    | SLconstant _, Expression _ | Expression _, SLconstant _
+    | SLdefault, Expression _ | Expression _, SLdefault
+    | SLconstant _, Primary _ | Primary _, SLconstant _
+    | SLdefault, Primary _ | Primary _, SLdefault
+
       -> true
 
     | l1, l2 -> anonymize2 l1 = anonymize2 l2
