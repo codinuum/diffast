@@ -51,6 +51,7 @@ module F (Label : Spec.LABEL_T) = struct
   type tree_t = Spec.tree_t
 
   let get_orig_name = Comparison.get_orig_name
+  let get_deco_name_ = Comparison.get_deco_name_
   let get_deco_name = Comparison.get_deco_name
 
   let is_ghost_node = Triple.is_ghost_ast_node
@@ -78,7 +79,7 @@ module F (Label : Spec.LABEL_T) = struct
 
   let mkinfo = Info.make
 
-  let _is_map (*tree1*)_ (*tree2*)_ nmapping n1 n2 =
+  let _is_map nmapping n1 n2 =
     let b =
       try nmapping#find n1 == n2 with _ -> false
     in
@@ -2843,7 +2844,21 @@ end;
             end
             | nl1, nl2 -> begin
                 [%debug_log "{%a} {%a}" nsps nl1 nsps nl2];
-                true
+                List.for_all
+                  (fun n1 ->
+                    List.for_all
+                      (fun n2 ->
+                        if
+                          _is_map nmapping n1 n2 &&
+                          n1#data#relabel_allowed n2#data
+                        then begin
+                          [%debug_log "relabel found: %a-%a" nps n1 nps n2];
+                          false
+                        end
+                        else
+                          true
+                      ) nl2
+                  ) nl1
             end
           with _ -> true
         in
@@ -6122,7 +6137,10 @@ end;
         [%debug_log "\"%s\" -> [%a]" nm nsps stmtl];
         stmtl
       in
-      let get_name_count tbl nm = List.length (get_name_refs tbl nm) in
+      let get_name_count ?(filt=fun _ -> true) tbl nm =
+        let rl = get_name_refs tbl nm in
+        List.length (List.filter filt rl)
+      in
 
       let removed_pairs = ref [] in
       let added_pairs = ref [] in
@@ -6133,13 +6151,16 @@ end;
               let nd = Info.get_node info in
               if nd#data#is_named_orig then begin
                 if nd#data#is_boundary then begin
-                  let nm = get_deco_name nd in
-                  [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
-                  Hashtbl.add deleted_name_tbl nm nd
+                  let nm, deco_flag = get_deco_name_ nd in
+                  if deco_flag then begin
+                    [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
+                    Hashtbl.add deleted_name_tbl nm nd
+                  end
                 end
-                else if nd#data#is_named_orig && nd#data#is_statement then begin
-                  let nm = get_deco_name nd in
-                  add_name_ref name_ref_tbl1 nm nd
+                else if nd#data#is_named_orig(* && nd#data#is_statement*) then begin
+                  let nm, deco_flag = get_deco_name_ nd in
+                  if deco_flag then
+                    add_name_ref name_ref_tbl1 nm nd
                 end
               end
           end
@@ -6147,13 +6168,16 @@ end;
               let nd = Info.get_node info in
               if nd#data#is_named_orig then begin
                 if nd#data#is_boundary then begin
-                  let nm = get_deco_name nd in
-                  [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
-                  Hashtbl.add inserted_name_tbl nm nd
+                  let nm, deco_flag = get_deco_name_ nd in
+                  if deco_flag then begin
+                    [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
+                    Hashtbl.add inserted_name_tbl nm nd
+                  end
                 end
-                else if nd#data#is_named_orig && nd#data#is_statement then begin
-                  let nm = get_deco_name nd in
-                  add_name_ref name_ref_tbl2 nm nd
+                else if nd#data#is_named_orig(* && nd#data#is_statement*) then begin
+                  let nm, deco_flag = get_deco_name_ nd in
+                  if deco_flag then
+                    add_name_ref name_ref_tbl2 nm nd
                 end
               end
           end
@@ -6161,13 +6185,17 @@ end;
               let nd1 = Info.get_node info1 in
               let nd2 = Info.get_node info2 in
               if
-                nd1#data#is_named_orig && nd2#data#is_named_orig &&
-                nd1#data#is_statement && nd2#data#is_statement
+                nd1#data#is_named_orig && nd2#data#is_named_orig(* &&
+                nd1#data#is_statement && nd2#data#is_statement*)
               then begin
-                let nm1 = get_deco_name nd1 in
-                let nm2 = get_deco_name nd2 in
-                add_name_ref name_ref_tbl1 nm1 nd1;
-                add_name_ref name_ref_tbl2 nm2 nd2
+                let nm1, deco_flag1 = get_deco_name_ nd1 in
+                if deco_flag1 then begin
+                  add_name_ref name_ref_tbl1 nm1 nd1;
+                end;
+                let nm2, deco_flag2 = get_deco_name_ nd2 in
+                if deco_flag2 then begin
+                  add_name_ref name_ref_tbl2 nm2 nd2
+                end
               end
           end
           | _ -> ()
@@ -6179,15 +6207,15 @@ end;
               let nd1 = Info.get_node info1 in
               let nd2 = Info.get_node info2 in
               if
-                nd1#data#is_statement && nd1#data#is_named_orig &&
-                nd2#data#is_statement && nd2#data#is_named_orig &&
+                nd1#data#is_named_orig && nd2#data#is_named_orig &&
+                (*nd1#data#is_statement && nd2#data#is_statement*)
                 try
                   nmapping#find (get_bn nd1) == (get_bn nd2)
                 with _ -> false
               then begin
-                let nm1 = get_deco_name nd1 in
-                let nm2 = get_deco_name nd2 in
-                if nm1 <> nm2 then begin
+                let nm1, deco_flag1 = get_deco_name_ nd1 in
+                let nm2, deco_flag2 = get_deco_name_ nd2 in
+                if (deco_flag1 || deco_flag2) && nm1 <> nm2 then begin
                   if
                     Hashtbl.mem deleted_name_tbl nm1 ||
                     Hashtbl.mem inserted_name_tbl nm2
@@ -6195,11 +6223,12 @@ end;
                     [%debug_log "%s" (Edit.to_string rel)];
                     [%debug_log "nm1=\"%s\" nm2=\"%s\"" nm1 nm2];
                   end;
-                  begin (* inline *)
+                  begin (* Inline *)
                     try
-                      let bnd1 = Hashtbl.find deleted_name_tbl nm1 in
-                      if get_name_count name_ref_tbl1 nm1 > 1 then
+                      (*let filt = nmapping#mem_cod in*)
+                      if get_name_count(* ~filt*) name_ref_tbl1 nm1 > 1 then
                         raise Exit;
+                      let bnd1 = Hashtbl.find deleted_name_tbl nm1 in
                       let blk2 =
                         get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd2
                       in
@@ -6236,9 +6265,10 @@ end;
                   end;
                   begin (* Extract *)
                     try
-                      let bnd2 = Hashtbl.find inserted_name_tbl nm2 in
-                      if get_name_count name_ref_tbl2 nm2 > 1 then
+                      (*let filt = nmapping#mem_cod in*)
+                      if get_name_count(* ~filt*) name_ref_tbl2 nm2 > 1 then
                         raise Exit;
+                      let bnd2 = Hashtbl.find inserted_name_tbl nm2 in
                       let blk1 =
                         get_p_ancestor (fun x -> x#data#is_block || x#data#is_boundary) nd1
                       in
@@ -7562,7 +7592,7 @@ end;
 
     [%debug_log "weak=%B size_limit=%d" weak size_limit];
 
-    let is_map = _is_map tree1 tree2 nmapping in
+    let is_map = _is_map nmapping in
     let is_stable_map n1 n2 =
       let b =
         (try nmapping#find n1 == n2 with _ -> false) &&
@@ -11087,7 +11117,7 @@ end;
                         | Edit.Move(id, _, _, _) -> !id
                         | _ -> raise Not_found
                       in
-                      let is_map = _is_map tree1 tree2 nmapping in
+                      let is_map = _is_map nmapping in
                       try
                         let sn1 = find_nearest_anc_stmt n1 in
                         let sn2 = find_nearest_anc_stmt n2 in
@@ -11251,7 +11281,7 @@ end;
                               nmapping#mem_dom p1 && nmapping#mem_cod p2
                               (*not
                                 (
-                                 _is_map tree1 tree2 nmapping p1 p2 ||
+                                 _is_map nmapping p1 p2 ||
                                  nmapping#mem_dom p1 ||
                                  nmapping#mem_cod p2
                                 )*)

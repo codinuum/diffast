@@ -575,19 +575,22 @@ let get_orig_name n =
   orig_name
 (*]*)
 
-let get_deco_name nd =
-  let name =
-    (get_orig_name nd) ^
-    (
-     try
-       sprintf "#%d" nd#data#get_nparams
-     with _ ->
-       try
-         sprintf "#%d" nd#data#get_nargs
-       with _ -> ""
-    )
+let get_deco_name_ nd =
+  let suffix =
+    try
+      sprintf "#%d" nd#data#get_nparams
+    with _ ->
+      try
+        sprintf "#%d" nd#data#get_nargs
+      with _ -> ""
   in
-  name
+  let orig_name = get_orig_name nd in
+  if suffix = "" then
+    orig_name, false
+  else
+    orig_name ^ suffix, true
+
+let get_deco_name nd = fst (get_deco_name_ nd)
 
 
 let get_stripped_name n = n#data#get_stripped_name
@@ -4425,7 +4428,12 @@ class ['node_t, 'tree_t] c
             in
             add_cache false b ncd ncsim
           end
-          else if ancsim_new = 0.0 && ancsim_old > 0.5 then begin
+          else if
+            ancsim_new = 0.0 &&
+            not (has_p_descendant nmapping#mem_dom nd1new) &&
+            not (has_p_descendant nmapping#mem_cod nd2new) &&
+            ancsim_old > 0.5
+          then begin
             [%debug_log "@"];
             let b, ncd, ncsim =
               action_old None None false;
@@ -4433,7 +4441,12 @@ class ['node_t, 'tree_t] c
             in
             add_cache false b ncd ncsim
           end
-          else if ancsim_old = 0.0 && ancsim_new > 0.5 then begin
+          else if
+            ancsim_old = 0.0 &&
+            not (has_p_descendant nmapping#mem_dom nd1old) &&
+            not (has_p_descendant nmapping#mem_cod nd2old) &&
+            ancsim_new > 0.5
+          then begin
             [%debug_log "@"];
             let b, ncd, ncsim =
               action_new None None false;
