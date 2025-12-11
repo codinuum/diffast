@@ -3850,6 +3850,87 @@ class ['node_t, 'tree_t] c
             b
           in
 
+          let _chk_extract_var nd1 nd2 =
+            let moveon x =
+              not x#data#is_block &&
+              (x == nd1 || x == nd2 || not x#data#is_statement)
+            in
+            let b =
+              has_p_descendant ~moveon
+                (fun x2 ->
+                  try
+                    let def2 = get_def_node tree2 x2 in
+                    [%debug_log "x2=%a def2=%a" nups x2 nups def2];
+                    is_local_def def2 && not (nmapping#mem_cod def2) &&
+                    has_p_descendant ~moveon
+                      (fun y2 ->
+                        try
+                          let y2' = nmapping#inv_find y2 in
+                          if tree1#is_initial_ancestor nd1 y2' then begin
+                            [%debug_log "found: %a<-%a" nups y2' nups y2];
+                            true
+                          end
+                          else
+                            false
+                        with _ -> false
+                      ) def2
+                  with _ -> false
+                ) nd2
+            in
+            [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
+            b
+          in
+          let _chk_inline_var nd1 nd2 =
+            let moveon x =
+              not x#data#is_block &&
+              (x == nd1 || x == nd2 || not x#data#is_statement)
+            in
+            let b =
+              has_p_descendant ~moveon
+                (fun x1 ->
+                  try
+                    let def1 = get_def_node tree1 x1 in
+                    [%debug_log "x1=%a def1=%a" nups x1 nups def1];
+                    is_local_def def1 && not (nmapping#mem_dom def1) &&
+                    has_p_descendant ~moveon
+                      (fun y1 ->
+                        try
+                          let y1' = nmapping#find y1 in
+                          if tree2#is_initial_ancestor nd2 y1' then begin
+                            [%debug_log "found: %a->%a" nups y1 nups y1'];
+                            true
+                          end
+                          else
+                            false
+                        with _ -> false
+                      ) def1
+                  with _ -> false
+                ) nd1
+            in
+            [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
+            b
+          in
+          let chk_extract_var_cache = Hashtbl.create 0 in
+          let chk_extract_var nd1 nd2 =
+            try
+              Hashtbl.find chk_extract_var_cache (nd1, nd2)
+            with
+              Not_found ->
+                let b = _chk_extract_var nd1 nd2 in
+                Hashtbl.add chk_extract_var_cache (nd1, nd2) b;
+                b
+          in
+          let chk_inline_var_cache = Hashtbl.create 0 in
+          let chk_inline_var nd1 nd2 =
+            try
+              Hashtbl.find chk_inline_var_cache (nd1, nd2)
+            with
+              Not_found ->
+                let b = _chk_inline_var nd1 nd2 in
+                Hashtbl.add chk_inline_var_cache (nd1, nd2) b;
+                b
+          in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -3941,6 +4022,7 @@ class ['node_t, 'tree_t] c
             add_cache false b ncd ncsim
           end
           else if
+            let b =
             (subtree_sim_old > subtree_sim_new || name_matches_old() && not (name_matches_new())) &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
@@ -4005,8 +4087,11 @@ class ['node_t, 'tree_t] c
                 with _ -> false)
               )
             )
+            in
+            [%debug_log "@EXTRACT/INLINE BOUNDARY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
           then begin
-            [%debug_log "@EXTRACT/INLINE"];
             nmapping#finalize_mapping nd1old nd2old;
             let b, ncd, ncsim =
               action_old None None false;
@@ -4015,6 +4100,7 @@ class ['node_t, 'tree_t] c
             add_cache false b ncd ncsim
           end
           else if
+            let b =
             (subtree_sim_new > subtree_sim_old || name_matches_new() && not (name_matches_old())) &&
             List.for_all (fun x -> x#data#is_statement) [nd1old; nd2old; nd1new; nd2new] &&
             (
@@ -4079,8 +4165,54 @@ class ['node_t, 'tree_t] c
                with _ -> false)
               )
             )
+            in
+            [%debug_log "@EXTRACT/INLINE BOUNDARY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
           then begin
-            [%debug_log "@EXTRACT/INLINE"];
+            nmapping#finalize_mapping nd1new nd2new;
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+
+          else if
+            let b =
+              nd1old#data#is_statement && nd2old#data#is_statement &&
+              nd1old#data#_anonymized_label = nd2old#data#_anonymized_label &&
+              (
+               chk_extract_var nd1old nd2old && not (chk_extract_var nd1new nd2new)
+              ||
+               chk_inline_var nd1old nd2old && not (chk_inline_var nd1new nd2new)
+              )
+            in
+            [%debug_log "@EXTRACT/INLINE VARRIABLE %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
+          then begin
+            nmapping#finalize_mapping nd1old nd2old;
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            let b =
+              nd1new#data#is_statement && nd2new#data#is_statement &&
+              nd1new#data#_anonymized_label = nd2new#data#_anonymized_label &&
+              (
+               chk_extract_var nd1new nd2new && not (chk_extract_var nd1old nd2old)
+              ||
+               chk_inline_var nd1new nd2new && not (chk_inline_var nd1old nd2old)
+              )
+            in
+            [%debug_log "@EXTRACT/INLINE VARRIABLE %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
+          then begin
             nmapping#finalize_mapping nd1new nd2new;
             let b, ncd, ncsim =
               action_new None None false;
