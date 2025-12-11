@@ -6137,7 +6137,7 @@ end;
                   [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
                   Hashtbl.add deleted_name_tbl nm nd
                 end
-                else if nd#data#is_statement then begin
+                else if nd#data#is_named_orig && nd#data#is_statement then begin
                   let nm = get_deco_name nd in
                   add_name_ref name_ref_tbl1 nm nd
                 end
@@ -6151,7 +6151,7 @@ end;
                   [%debug_log "@@@ \"%s\" -> %a" nm nps nd];
                   Hashtbl.add inserted_name_tbl nm nd
                 end
-                else if nd#data#is_statement then begin
+                else if nd#data#is_named_orig && nd#data#is_statement then begin
                   let nm = get_deco_name nd in
                   add_name_ref name_ref_tbl2 nm nd
                 end
