@@ -5733,6 +5733,7 @@ end;
                | Some d1, Some d2 -> d1 > d2
                | None, Some _ -> padj2 = Some true
                | _ when begin
+                   padj2 = Some true &&
                    not nd1#data#is_named_orig && not nd2#data#is_named_orig &&
                    let sim_old = cenv#get_similarity_score (nmapping#inv_find nd2) nd2 in
                    let sim_new = cenv#get_similarity_score nd1 nd2 in
@@ -5741,7 +5742,7 @@ end;
                    [%debug_log "sim_old=%f sim_new=%f sim_ratio=%f" sim_old sim_new sim_ratio];
                    sim_ratio < 1.5
                end ->
-                 padj2 = Some true
+                 true
                (*| _ when not nd1#data#has_non_trivial_value && not nd2#data#has_non_trivial_value ->
                    padj2 = Some true!!!NG!!!*)
                | _ -> false
@@ -5752,6 +5753,7 @@ end;
                | Some d1, Some d2 -> d1 < d2
                | Some _, None -> padj1 = Some true
                | _ when begin
+                   padj1 = Some true &&
                    not nd1#data#is_named_orig && not nd2#data#is_named_orig &&
                    let sim_old = cenv#get_similarity_score nd1 (nmapping#find nd1) in
                    let sim_new = cenv#get_similarity_score nd1 nd2 in
@@ -5760,7 +5762,7 @@ end;
                    [%debug_log "sim_old=%f sim_new=%f sim_ratio=%f" sim_old sim_new sim_ratio];
                    sim_ratio < 1.5
                end ->
-                 padj1 = Some true
+                 true
                (*| _ when not nd1#data#has_non_trivial_value && not nd2#data#has_non_trivial_value ->
                    padj1 = Some true!!!NG!!!*)
                | _ -> false

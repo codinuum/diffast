@@ -2628,18 +2628,31 @@ class ['node_t, 'tree_t] c
              with Not_found -> false
           then begin
             [%debug_log "@"];
-            let rec get_sibl lv n =
+            let rec get_sibl ?(context=3) lv n =
               let pn = n#initial_parent in
               let siba = pn#initial_children in
               if Array.length siba > 1 then
-                (List.filter (fun x -> x != n) (Array.to_list siba), lv)
+                let pos = n#initial_pos in
+                let last_idx = pn#initial_nchildren - 1 in
+                let st = max 0 (pos - context) in
+                let ed = min last_idx (pos + context) in
+                [%debug_log "lv=%d st=%d ed=%d" lv st ed];
+                let l = ref [] in
+                for i = ed downto pos + 1 do
+                  l := siba.(i) :: !l
+                done;
+                for i = pos - 1 downto st do
+                  l := siba.(i) :: !l
+                done;
+                !l, lv
               else
-                get_sibl (lv+1) pn
+                get_sibl ~context (lv+1) pn
             in
             (try
-              let nds1, lv1 = get_sibl 1 nd1 in
-              let nds2, lv2 = get_sibl 1 nd2 in
-              [%debug_log "lv1=%d lv2=%d" lv1 lv2];
+              let context = 3 in
+              let nds1, lv1 = get_sibl ~context 1 nd1 in
+              let nds2, lv2 = get_sibl ~context 1 nd2 in
+              [%debug_log "context=%d lv1=%d lv2=%d" context lv1 lv2];
               let s = _incr_score ~bonus_named:true ~bonus_named_more:true nds1 nds2 in
               if s >= 0.0 then
                 s /. (float (max lv1 lv2))
