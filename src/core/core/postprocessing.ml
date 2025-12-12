@@ -8859,6 +8859,21 @@ end;
             [%debug_log "non_xxx_count=%d/%d=%f (thresh=%f)" !non_xxx_count !total r thresh];
             r < thresh*)
           in (* cond *)
+
+          let cond =
+            cond &&
+            not
+              (
+               rt1#initial_nchildren = 0 &&
+               try
+                 let art1, art2 = cenv#find_nearest_mapped_ancestor_pair nmapping#find rt1 rt2 in
+                 [%debug_log "nearest mapped ancestor pair: %a-%a" nups art1 nups art2];
+                 cenv#has_uniq_match_in_subtrees art1 art2 rt1 rt2
+               with
+                 _ -> true
+              )
+          in
+
           [%debug_log "cond=%B" cond];
           if cond then begin
 

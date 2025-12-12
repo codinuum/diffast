@@ -1714,6 +1714,26 @@ class ['node_t, 'tree_t] c
     [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
     b
 
+  method has_uniq_match_in_subtrees rt1 rt2 n1 n2 =
+    let b =
+      n1#data#eq n2#data &&
+      try
+        match self#multiple_node_matches#find n1#data#_label with
+        | _, [] | [], _ -> false
+        | [x1], [x2] -> x1 == n1 && x2 == n2
+        | xl1, xl2 -> begin
+            let filt1 x1 = tree1#is_initial_ancestor rt1 x1 in
+            let filt2 x2 = tree2#is_initial_ancestor rt2 x2 in
+            match List.filter filt1 xl1, List.filter filt2 xl2 with
+            | [x1], [x2] -> x1 == n1 && x2 == n2
+            | _ -> false
+        end
+      with
+        _ -> false
+    in
+    [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
+    b
+
   method has_uniq_subtree_match n1 n2 =
     let b =
       self#in_subtree_matches n1 n2 ||
