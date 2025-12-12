@@ -5764,8 +5764,50 @@ class ['node_t, 'tree_t] c
                 check nd1 nd2;
                 ignore (nmapping#add_unsettled nd1 nd2);
                 added_pairs := (nd1, nd2) :: !added_pairs;
-                multiple_node_matches#add_uniq_match nd1 nd2
+                multiple_node_matches#add_uniq_match nd1 nd2;
                 (* multiple_node_matches#remove _lab *)
+
+                let to_be_added = ref [] in
+                let rec chk_ancs lv n1 n2 =
+                  [%debug_log "lv=%d %a-%a" lv nps n1 nps n2];
+                  if
+                    not (nmapping#mem_dom n1) && not (nmapping#mem_cod n2) &&
+                    n1#data#eq n2#data
+                  then begin
+                    to_be_added := (n1, n2) :: !to_be_added;
+                    try
+                      if
+                        not n1#data#is_statement && not n2#data#is_statement &&
+                        not nd1#data#is_boundary && not nd2#data#is_boundary
+                      then
+                        let pn1 = n1#initial_parent in
+                        let pn2 = n2#initial_parent in
+                        chk_ancs (lv+1) pn1 pn2
+                    with _ -> ()
+                  end
+                in
+                if
+                  not nd1#data#is_statement && not nd2#data#is_statement &&
+                  not nd1#data#is_boundary && not nd2#data#is_boundary &&
+                  not (is_def nd1) && not (is_def nd2) &&
+                  (
+                   nd1#data#is_named_orig && nd2#data#is_named_orig
+                  ||
+                   nd1#data#has_non_trivial_value && nd2#data#has_non_trivial_value
+                  )
+                then begin
+                  try
+                    chk_ancs 1 nd1#initial_parent nd2#initial_parent
+                  with _ -> ()
+                end;
+                match !to_be_added with
+                | (n1, n2)::_ when n1#data#is_statement -> begin
+                    incr count;
+                    ignore (nmapping#add_unsettled n1 n2);
+                    added_pairs := (n1, n2) :: !added_pairs
+                end
+                | _ -> ()
+
               end
           end
           | nd1::_, _::_ -> begin

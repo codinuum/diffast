@@ -4957,7 +4957,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       iter cmp
         (fun n1 n2 ->
           if tree1#is_statement n1 && tree2#is_statement n2 then begin
-            [%debug_log "%a-%a" nps n1 nps n2];
+            (*[%debug_log "%a-%a" nps n1 nps n2];*)
             if
               not (self#mem_mov12 n1 n2) &&
               (*n1#data#_anonymized_label = n2#data#_anonymized_label*)
