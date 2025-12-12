@@ -4162,7 +4162,10 @@ let is_binary_add = function
   | _ -> false
 
 let is_block = function
-  | Block _ -> true
+  | Block _
+  (*| MethodBody _
+  | ConstructorBody _*)
+    -> true
   | _ -> false
 
 let get_ident_use = function

@@ -171,7 +171,7 @@ class type [ 'node ] tree_t_shared = object ('self)
   method dump_subtree_for_delta_ch : 'node -> 'node list -> Xchannel.out_channel -> unit
   method unparse_ch                : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> OutChannel.t -> unit
   method extra_namespaces          : (string * string) list (* for subtrees in delta *)
-
+  method is_statement              : 'node -> bool
 end (* of class type tree_t_shared *)
 
 

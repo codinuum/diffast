@@ -762,6 +762,8 @@ module Tree (L : Spec.LABEL_T) = struct
       t#setup_initial_children;
       t
 
+    method is_statement (nd : node_t) = nd#data#is_statement
+
     method extra_namespaces = ([] : (string * string) list)
 
     method unparse_subtree_ch :

@@ -132,6 +132,17 @@ class c options root is_whole = object
   method! unparse_subtree_ch ?(no_boxing=false) ?(no_header=false) ?(fail_on_error=true) =
     make_unparser (Java_unparsing.unparse ~no_boxing ~no_header ~fail_on_error)
 
+  method! is_statement nd =
+    let lab = getlab nd in
+    match lab with
+    | L.Class _ | L.Interface _ | L.Enum _ | L.AnnotationType _ | L.Record _ -> begin
+        try
+          match getlab nd#initial_parent with
+          | L.MethodBody _ | L.ConstructorBody _ -> true
+          | _ -> false
+        with _ -> false
+    end
+    | _ -> nd#data#is_statement
 end
 
 let of_xnode options =
