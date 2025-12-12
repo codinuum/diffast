@@ -8294,7 +8294,7 @@ end;
           tsz > 1 &&
           not rt1#data#move_disallowed && not rt2#data#move_disallowed &&
           (
-           (let b = subtree_eq rt1 rt2(*rt1#data#subtree_equals rt2#data*) in [%debug_log "equals=%B" b]; b) ||
+           (let b = subtree_rep_eq rt1 rt2 in [%debug_log "equals=%B" b]; b) ||
            (let b =
              sz > 0 &&
              let d, _, _ = _get_move_density mid in
@@ -8823,7 +8823,7 @@ end;
                    in
                    let b =
                      if
-                       nd1#data#is_statement && subtree_eq nd1 nd2
+                       nd1#data#is_statement && subtree_rep_eq nd1 nd2
                      then
                        false
                      else

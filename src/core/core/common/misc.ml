@@ -593,7 +593,7 @@ let is_cross_scope nmapping n1 n2 =
 ]
 
 [%%capture_path
-let subtree_eq n1 n2 = (* based on rep *)
+let subtree_rep_eq n1 n2 = (* based on rep *)
   let b =
     match n1#data#_digest with
     | Some d1 -> begin
