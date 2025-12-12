@@ -8821,6 +8821,14 @@ end;
                         nmapping nd1 nd2
                    )
                    in
+                   let b =
+                     if
+                       nd1#data#is_statement && subtree_eq nd1 nd2
+                     then
+                       false
+                     else
+                       b
+                   in
                    [%debug_log "%a-%a -> %B" nps nd1 nps nd2 b];
                    b
                 end
@@ -11087,14 +11095,19 @@ end;
           let is_unnamed_or_changed_pair n1 n2 =
             let b =
             (not
-               ((n1#data#eq n2#data(* ||
-               match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
-               | Some o1, Some o2 -> o1 = o2
-               | _ -> false*)
-               ) &&
-                (n1#data#is_named_orig && n2#data#is_named_orig ||
-                cenv#has_non_trivial_value n1 && cenv#has_non_trivial_value n2)
-               )) ||
+               (
+                (n1#data#eq n2#data(* ||
+                 match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
+                 | Some o1, Some o2 -> o1 = o2
+                 | _ -> false*)
+                ) &&
+                (
+                 n1#data#is_named_orig && n2#data#is_named_orig
+                ||
+                 cenv#has_non_trivial_value n1 && cenv#has_non_trivial_value n2
+                )
+               )
+            ) ||
             n1#data#move_disallowed || n2#data#move_disallowed ||
             n1#data#is_common || n2#data#is_common
             in
