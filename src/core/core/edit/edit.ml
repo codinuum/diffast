@@ -2936,17 +2936,36 @@ let rectify_renames_d
             try
               let pn1 = n1#initial_parent in
               let pn2 = n2#initial_parent in
-              if nmapping#find pn1 == pn2 then
-                let ppn1 = pn1#initial_parent in
-                let ppn2 = pn2#initial_parent in
-                if nmapping#find ppn1 == ppn2 && ppn1#data#subtree_equals ppn2#data then begin
-                  let d = ppn1#data#_digest in
-                  try
-                    let pl = Hashtbl.find xnd_tbl d in
-                    Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
-                  with Not_found ->
-                    Hashtbl.add xnd_tbl d [(n1, n2)]
+              try
+                if nmapping#find pn1 == pn2 then
+                  let ppn1 = pn1#initial_parent in
+                  let ppn2 = pn2#initial_parent in
+                  if nmapping#find ppn1 == ppn2 && ppn1#data#subtree_equals ppn2#data then begin
+                    let d = ppn1#data#_digest in
+                    try
+                      let pl = Hashtbl.find xnd_tbl d in
+                      Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
+                    with Not_found ->
+                      Hashtbl.add xnd_tbl d [(n1, n2)]
+                  end
+              with _ -> begin
+                if
+                  conflicting_use_mapping_count1 = 0 &&
+                  conflicting_use_mapping_count2 = 0 &&
+                  pn1#data#_anonymized_label = pn2#data#_anonymized_label
+                then begin
+                  let ppn1 = pn1#initial_parent in
+                  let ppn2 = pn2#initial_parent in
+                  if ppn1#data#_anonymized_label = ppn2#data#_anonymized_label then begin
+                    let d = ppn1#data#_digest in
+                    try
+                      let pl = Hashtbl.find xnd_tbl d in
+                      Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
+                    with Not_found ->
+                      Hashtbl.add xnd_tbl d [(n1, n2)]
+                  end
                 end
+              end
             with _ -> ()
           ) !use_renames1 !use_renames2;
         begin %debug_block

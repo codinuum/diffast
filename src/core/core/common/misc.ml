@@ -560,10 +560,11 @@ let is_scope_compatible nmapping n1 n2 =
     try
       let a1 = get_scope_node n1 in
       let a2 = get_scope_node n2 in
+      [%debug_log "a1=%a a2=%a" nps a1 nps a2];
       try
         let a1_ = nmapping#find a1 in
         [%debug_log "%a -> %a" nups a1 nups a1_];
-        a1_ != a2 && (is_ancestor a1_ a2 || is_ancestor a2 a1_)
+        a1_ == a2 ||(* a1_ != a2 && *)(is_ancestor a1_ a2 || is_ancestor a2 a1_)
       with Not_found -> begin
         try
           let _a2 = nmapping#inv_find a2 in

@@ -9079,8 +9079,7 @@ end;
                           in*)
                           (stmt_deleted() || stmt_inserted()) &&
                           (
-                           stmt_deleted() && stmt_inserted()(* && not (stmt_eq())*) ||
-                           not (
+                           if
                              not (is_use nd1 && is_use nd2) ||
                              try
                                let def1 = get_def_node tree1 nd1 in
@@ -9088,7 +9087,10 @@ end;
                                is_local_def def1 && is_local_def def2 &&
                                nmapping#find def1 == def2
                              with _ -> false
-                           )
+                           then
+                             false
+                           else
+                             stmt_deleted() && stmt_inserted()(* && not (stmt_eq())*)
                           )
                         then
                           [%debug_log "single cross statement move: %a" MID.ps mid]

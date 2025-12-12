@@ -2341,6 +2341,10 @@ let anonymize ?(more=false) = function
 
   | Type ty                        -> Type (Type.anonymize ty)
   | Primary p                      -> Primary (Primary.anonymize ~more p)
+
+  | Expression (Expression.BinaryOperator BinaryOperator.Neq) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Eq)
+
   | Expression (Primary p)         -> Primary (Primary.anonymize ~more p)
 (*  | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary (Primary.anonymize ~more p)*)
   | Expression e                   -> Expression (Expression.anonymize ~more e)
