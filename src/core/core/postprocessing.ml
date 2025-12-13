@@ -6844,8 +6844,10 @@ end;
                 let def2 = get_def_node tree2 n2 in
                 [%debug_log "def1=%a" nps def1];
                 [%debug_log "def2=%a" nps def2];
-                is_local_def def1 && is_local_def def2 &&
-                not (nmapping#mem_dom def1) && not (nmapping#mem_cod def2)
+                (is_local_def def1 || is_local_def def2) &&
+                try
+                  nmapping#find def1 != def2
+                with _ -> true
               with _ -> false
             then begin
               [%debug_log " -> binding broken"];
