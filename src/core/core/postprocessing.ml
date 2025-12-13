@@ -6838,6 +6838,19 @@ end;
               [%debug_log " -> relabel not allowed"];
               add_odd (n1, n2)
             end
+            else if
+              try
+                let def1 = get_def_node tree1 n1 in
+                let def2 = get_def_node tree2 n2 in
+                [%debug_log "def1=%a" nps def1];
+                [%debug_log "def2=%a" nps def2];
+                is_local_def def1 && is_local_def def2 &&
+                not (nmapping#mem_dom def1) && not (nmapping#mem_cod def2)
+              with _ -> false
+            then begin
+              [%debug_log " -> binding broken"];
+              add_odd (n1, n2)
+            end
             else
               try
                 match edits#find_mov12 n1 n2 with
@@ -8725,6 +8738,8 @@ end;
                        let pnd1 = nd1#initial_parent in
                        let pnd2 = nd2#initial_parent in
                        pnd1#data#is_named_orig && pnd2#data#is_named_orig &&
+                       (*get_orig_name nd1 = get_orig_name pnd1 && (* e.g. Java:TypeMethodInvocation *)
+                         get_orig_name nd2 = get_orig_name pnd2 &&*)
                        pnd1#data#eq pnd2#data &&
                        nmapping#find pnd1 == pnd2
                      with _ -> false)
