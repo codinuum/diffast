@@ -3211,7 +3211,7 @@ end;
                 (fun c1 ->
                   Array.exists
                     (fun c2 ->
-                      cenv#has_uniq_subtree_match c1 c2
+                      cenv#is_uniq_subtree_match c1 c2
                     ) nd2#initial_children
                 ) nd1#initial_children
             then begin
@@ -8835,7 +8835,8 @@ end;
                    in
                    let b =
                      if
-                       nd1#data#is_statement && subtree_rep_eq nd1 nd2
+                       nd1#data#is_statement && subtree_rep_eq nd1 nd2 ||
+                       cenv#is_uniq_subtree_match nd1 nd2
                      then
                        false
                      else

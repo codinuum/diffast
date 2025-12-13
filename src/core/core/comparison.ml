@@ -1482,7 +1482,7 @@ class ['node_t, 'tree_t] c
         in
         if check_uniq then
           let extra =
-            if nd1#data#is_op && self#has_uniq_subtree_match nd1 nd2 then begin
+            if nd1#data#is_op && self#is_uniq_subtree_match nd1 nd2 then begin
               let x = self#subtree_p_size tree1 (fun n -> n#data#is_named_orig) nd1 in
               [%debug_log "%a -> %d" nps nd1 x];
               x
@@ -1734,7 +1734,7 @@ class ['node_t, 'tree_t] c
     [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
     b
 
-  method has_uniq_subtree_match n1 n2 =
+  method is_uniq_subtree_match n1 n2 =
     let b =
       self#in_subtree_matches n1 n2 ||
       n1#data#subtree_equals n2#data &&
@@ -1914,7 +1914,7 @@ class ['node_t, 'tree_t] c
         let lm =
           if flat then begin
             let rename_pat_flag = ref false in
-            (*if self#has_uniq_subtree_match n1 n2 then
+            (*if self#is_uniq_subtree_match n1 n2 then
               1.1
             else *)if n1#data#eq n2#data then
               if has_uniq_match n1 n2 then

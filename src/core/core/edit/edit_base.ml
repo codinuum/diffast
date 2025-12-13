@@ -4111,7 +4111,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               nd1#data#is_statement && nd2#data#is_statement &&
               not (has_def_child nd1) && not (has_def_child nd2) &&
               nd1#data#subtree_equals nd2#data
-              (*cenv#has_uniq_subtree_match nd1 nd2*)
+              (*cenv#is_uniq_subtree_match nd1 nd2*)
             then begin
               [%debug_log "exactly matched stmt: %a-%a" nps nd1 nps nd2];
               Xset.add exactly_matched_stmts1 nd1;
