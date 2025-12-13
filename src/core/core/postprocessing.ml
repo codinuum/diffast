@@ -7574,7 +7574,7 @@ end;
     (*[%debug_log "%a-%a -> %f" nps nd1 nps nd2 sim];*)
     sim
 
-  let find_nearest_anc_stmt = Sourcecode.find_nearest_p_ancestor_node (fun n -> n#data#is_statement)
+  let find_nearest_anc_stmt = Sourcecode.find_nearest_anc_stmt
 
   type upairs_kind =
     | LocalVariableInliningOrExtraction
@@ -8653,7 +8653,19 @@ end;
                     ) &&
                     (nd1#data#has_value || nd1#data#is_named) &&
                     (not nd1#data#has_value || nd1#data#has_non_trivial_value) &&
-                    (not nd1#data#is_named || nd1#data#is_named_orig(* || B.is_def nd1#data#binding*)) &&
+                    (
+                     not nd1#data#is_named
+                    ||
+                     nd1#data#is_named_orig ||
+                     (try
+                       let pnd1 = nd1#initial_parent in
+                       let pnd2 = nd2#initial_parent in
+                       pnd1#data#is_named_orig && pnd2#data#is_named_orig &&
+                       pnd1#data#eq pnd2#data &&
+                       nmapping#find pnd1 == pnd2
+                     with _ -> false)
+                      (* || B.is_def nd1#data#binding*)
+                    ) &&
                     let _ = [%debug_log "@"] in
                     try
                       let stmt1 =
@@ -11363,7 +11375,9 @@ end;
             b
           in
           let is_bad_pair n1 n2 =
-              is_unnamed_or_changed_pair n1 n2 || is_uncertain_pair n1 n2 || is_unstable_pair n1 n2
+            is_unnamed_or_changed_pair n1 n2 ||
+            is_uncertain_pair n1 n2 ||
+            is_unstable_pair n1 n2
           in
           decompose_moves cenv tree1 tree2 ~weak:true is_bad_pair options edits nmapping 16
         end

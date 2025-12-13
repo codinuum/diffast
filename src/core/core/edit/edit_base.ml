@@ -5241,31 +5241,37 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             try
               let pn1 = n1#initial_parent in
               let pn2 = n2#initial_parent in
-              if
-                pn1#data#is_statement && pn2#data#is_statement &&
-                pn1#data#_anonymized_label = pn2#data#_anonymized_label &&
-                not (nmapping#mem_dom pn1) && not (nmapping#mem_cod pn2) &&
-                not (Misc.is_cross_boundary nmapping pn1 pn2) &&
-                let c = ref 0 in
-                try
-                  tree1#fast_scan_whole_initial_subtree n1
-                    (fun n ->
-                      try
-                        if
-                          let n' = nmapping#find n in
-                          n' == n2 || tree2#is_initial_ancestor n2 n'
-                        then
-                          incr c
-                        else
-                          raise Exit
-                      with _ -> raise Exit
-                    );
-                  !c > 2
-                with Exit -> false
-              then begin
-                [%debug_log "%a-%a" nps pn1 nps pn2];
-                map_add map pn1 pn2
-              end
+              if pn1#data#is_statement || pn2#data#is_statement then
+                let an1 = Sourcecode.find_nearest_anc_stmt n1 in
+                let an2 = Sourcecode.find_nearest_anc_stmt n2 in
+                if
+                  an1#data#_anonymized_label = an2#data#_anonymized_label &&
+                  not (nmapping#mem_dom an1) && not (nmapping#mem_cod an2) &&
+                  not (Misc.is_cross_boundary nmapping an1 an2) &&
+                  let c = ref 0 in
+                  [%debug_log "cand: %a-%a" nps an1 nps an2];
+                  try
+                    tree1#fast_scan_whole_initial_subtree n1
+                      (fun n ->
+                        [%debug_log "n=%a" nps n];
+                        try
+                          if
+                            let n' = nmapping#find n in
+                            n' == n2 || tree2#is_initial_ancestor n2 n'
+                          then begin
+                            incr c;
+                            [%debug_log "c=%d" !c]
+                          end
+                          else
+                            raise Exit
+                        with _ ->(* raise Exit*)()
+                      );
+                    !c > 2
+                  with Exit -> false
+                then begin
+                  [%debug_log "%a-%a" nps an1 nps an2];
+                  map_add map an1 an2
+                end
             with
               _ -> ()
           end

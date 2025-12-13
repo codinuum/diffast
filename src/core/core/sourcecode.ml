@@ -2036,6 +2036,9 @@ let find_nearest_p_ancestor_node ?(moveon_=fun _ -> true) pred nd =
   a
 ]
 
+let find_nearest_anc_stmt nd =
+  find_nearest_p_ancestor_node (fun n -> n#data#is_statement) nd
+
 [%%capture_path
 let find_nearest_mapped_ancestor_node ?(moveon_=fun _ -> true) is_mapped nd =
   let rec scan n =
