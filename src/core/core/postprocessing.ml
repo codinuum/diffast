@@ -1509,12 +1509,32 @@ module F (Label : Spec.LABEL_T) = struct
         (try
           let an1' = nmapping#find an1 in
           [%debug_log "%a->%a" nups an1 nups an1'];
-          an1' != an2
-        with _ -> false) ||
+          an1' != an2 &&
+          let b =
+            if an1'#data#is_statement && an2#data#is_statement then
+              not (tree2#is_initial_ancestor an1' an2) &&
+              (an1'#initial_parent != an2#initial_parent || an1'#initial_parent#initial_nchildren > 2)
+            else
+              true
+          in
+          if not b then
+            [%debug_log "!!!!!!!!!!"];
+          b
+        with _ -> false) &&
         (try
           let an2' = nmapping#inv_find an2 in
           [%debug_log "%a<-%a" nups an2' nups an2];
-          an2' != an1
+          an2' != an1 &&
+          let b =
+            if an2'#data#is_statement && an1#data#is_statement then
+              not (tree1#is_initial_ancestor an2' an1) &&
+              (an2'#initial_parent != an1#initial_parent || an2'#initial_parent#initial_nchildren > 2)
+            else
+              true
+          in
+          if not b then
+            [%debug_log "!!!!!!!!!!"];
+          b
         with _ -> false)
       with
         _ -> false
@@ -8767,7 +8787,7 @@ end;
                         (
                          stmt1 == rt1 && stmt2 == rt2 ||
                          is_stable_map stmt1 stmt2 ||
-                         is_map stmt1 stmt2 &&
+                         (is_map stmt1 stmt2 || stmt1 == rt1 || stmt2 == rt2) &&
                          try is_map stmt1#initial_parent stmt2#initial_parent with _ -> false
                         ) &&
                         (
@@ -11202,7 +11222,7 @@ end;
             let b =
             (not
                (
-                (n1#data#eq n2#data(* ||
+                (n1#data#eq n2#data || n1#data#is_compatible_with ?weak:None n2#data(* ||
                  match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
                  | Some o1, Some o2 -> o1 = o2
                  | _ -> false*)
