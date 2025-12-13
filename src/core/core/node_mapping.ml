@@ -1283,7 +1283,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     Nodetbl.iter f reptbl
 
   method private cache_rep_for_crossing is_move () : unit =
-    [%debug_log "mapping:\n%s" self#to_string_gid];
+    (*[%debug_log "mapping:\n%s" self#to_string_gid];*)
     let last_g1 = ref GI.unknown in
     let last_g2 = ref GI.unknown in
     let last_lg1 = ref GI.unknown in
@@ -1303,21 +1303,21 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
               is_mov <> !last_is_mov &&
               (lg1 <> !last_lg1 || lg2 <> !last_lg2)
             then begin
-              [%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+              (*[%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
               Nodetbl.add reptbl n1 n2;
             end
             else if
               n1#data#is_boundary && n2#data#is_boundary &&
               n1#data#is_order_insensitive && n2#data#is_order_insensitive
             then begin
-              [%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+              (*[%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
               Nodetbl.add reptbl n1 n2;
             end
-            else
-              [%debug_log "(%a-%a %a)" GI.ps g1 GI.ps g2 nps n1]
+            (*else
+              [%debug_log "(%a-%a %a)" GI.ps g1 GI.ps g2 nps n1]*)
           end
           else begin
-            [%debug_log " %a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+            (*[%debug_log " %a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
             Nodetbl.add reptbl n1 n2;
           end;
           last_g1 := g1;
