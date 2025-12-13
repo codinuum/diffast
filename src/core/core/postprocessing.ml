@@ -7837,7 +7837,7 @@ end;
     let dels = Xset.create 0 in
     let inss = Xset.create 0 in
     let movs = Xset.create 0 in
-    let npairs = Xset.create 0 in
+    let npairs = Hashtbl.create 0 in
 
     let boundary_cond n1 n2 =
       let b =
@@ -8167,7 +8167,7 @@ end;
              ) ds1;
            [%debug_log "defined names1: [%s]" (name_tbl_to_str name_tbl1)];
            (Hashtbl.length name_tbl1 > 0) &&
-           let us2 =
+           let ns2 =
              let chk_parent =
                try
                  let prt1 = rt1#initial_parent in
@@ -8178,13 +8178,22 @@ end;
                        [%debug_log "%a(%s) vs %a(%s)"
                          nups prt1 prt1#data#label nups px px#data#label];
 
-                       if is_ins px && node_eq prt1 px && not (is_crossing prt1 px) then begin
+                       if
+                         (
+                          is_ins px && node_eq prt1 px
+                         ) &&
+                         (
+                          not (is_crossing prt1 px)
+                         ||
+                          not (cenv#is_scope_breaking_mapping ?subtree:None nmapping prt1 px)
+                         )
+                       then begin
 
                          [%debug_log "!!!!! adding to npairs: %a [%s] - %a [%s]"
                            nups prt1 (Loc.to_string prt1#data#src_loc)
                            nups px (Loc.to_string px#data#src_loc)];
 
-                         Xset.add npairs ((prt1, px), LocalVariableInliningOrExtraction)
+                         Hashtbl.add npairs (prt1, px) LocalVariableInliningOrExtraction
                        end
                      with
                        _ -> ()
@@ -8193,10 +8202,33 @@ end;
                with
                  _ -> fun _ -> ()
              in
+             (*let is_whole_subtree_inserted n =
+               let b =
+                 try
+                   tree2#fast_scan_whole_initial_subtree n
+                     (fun x ->
+                       if nmapping#mem_cod x then
+                         raise Exit
+                     );
+                   true
+                 with Exit -> false
+               in
+               [%debug_log "%a --> %B" nups n b];
+               b
+             in*)
              get_p_descendants
                (fun x ->
                  let b =
-                   x#data#is_named_orig && is_ins x(* && is_use x*) && chk_bid name_tbl1 x
+                   x#data#is_named_orig &&
+                   is_ins x(* && is_use x*) &&
+                   chk_bid name_tbl1 x(* &&
+                   not
+                     (
+                      try
+                        let stmt = get_stmt x in
+                        is_whole_subtree_inserted stmt
+                      with _ -> false
+                     )*)
                  in
                  if b then begin
                    [%debug_log "found: %a %s [%s]" nps x x#data#label (Loc.to_string x#data#src_loc)];
@@ -8205,7 +8237,7 @@ end;
                  b
                ) bn2
            in
-           us2 <> []
+           List.filter (fun x -> is_use x) ns2 <> []
            (*has_p_descendant
              (fun x ->
                let b =
@@ -8235,7 +8267,7 @@ end;
              ) ds2;
            [%debug_log "defined names2: [%s]" (name_tbl_to_str name_tbl2)];
            (Hashtbl.length name_tbl2 > 0) &&
-           let us1 =
+           let ns1 =
              let chk_parent =
                try
                  let prt2 = rt2#initial_parent in
@@ -8244,13 +8276,22 @@ end;
                      try
                        let px = x#initial_parent in
                        [%debug_log "%a(%s) vs %a(%s)" nups px px#data#label nups prt2 prt2#data#label];
-                       if is_del px && node_eq prt2 px && not (is_crossing px prt2) then begin
+                       if
+                         (
+                          is_del px && node_eq prt2 px
+                         ) &&
+                         (
+                          not (is_crossing px prt2)
+                         ||
+                          not (cenv#is_scope_breaking_mapping ?subtree:None nmapping px prt2)
+                         )
+                       then begin
 
                          [%debug_log "!!!!! adding to npairs: %a [%s] - %a [%s]"
                            nups px (Loc.to_string px#data#src_loc)
                            nups prt2 (Loc.to_string prt2#data#src_loc)];
 
-                         Xset.add npairs ((px, prt2), LocalVariableInliningOrExtraction)
+                         Hashtbl.add npairs (px, prt2) LocalVariableInliningOrExtraction
                        end
                      with
                        _ -> ()
@@ -8259,10 +8300,33 @@ end;
                with
                  _ -> fun _ -> ()
              in
+             (*let is_whole_subtree_deleted n =
+               let b =
+                 try
+                   tree1#fast_scan_whole_initial_subtree n
+                     (fun x ->
+                       if nmapping#mem_dom x then
+                         raise Exit
+                     );
+                   true
+                 with Exit -> false
+               in
+               [%debug_log "%a --> %B" nups n b];
+               b
+             in*)
              get_p_descendants
                (fun x ->
                  let b =
-                   x#data#is_named_orig && is_del x(* && is_use x*) && chk_bid name_tbl2 x
+                   x#data#is_named_orig &&
+                   is_del x(* && is_use x*) &&
+                   chk_bid name_tbl2 x(* &&
+                   not
+                     (
+                      try
+                        let stmt = get_stmt x in
+                        is_whole_subtree_deleted stmt
+                      with _ -> false
+                     )*)
                  in
                  if b then begin
                    [%debug_log "found: %a %s [%s]" nps x x#data#label (Loc.to_string x#data#src_loc)];
@@ -8271,7 +8335,7 @@ end;
                  b
                ) bn1
            in
-           us1 <> []
+           List.filter (fun x -> is_use x) ns1 <> []
            (*has_p_descendant
              (fun x ->
                let b =
@@ -8743,7 +8807,7 @@ end;
                                         let pn' = n'#initial_parent in
                                         if not (nmapping#mem_cod pn') then begin
                                           [%debug_log "!!! upair cand: %a-%a" nups nd1 nups n'];
-                                          Xset.add npairs ((nd1, n'), StableContext)
+                                          Hashtbl.add npairs (nd1, n') StableContext
                                         end
                                     with
                                       _ -> ()
@@ -8761,7 +8825,7 @@ end;
                                         let pn' = n'#initial_parent in
                                         if not (nmapping#mem_dom pn') then begin
                                           [%debug_log "!!! upair cand: %a-%a" nups n' nups nd2];
-                                          Xset.add npairs ((n', nd2), StableContext)
+                                          Hashtbl.add npairs (n', nd2) StableContext
                                         end
                                     with
                                       _ -> ()
@@ -8774,12 +8838,12 @@ end;
                                   [%debug_log "!!! upair cand: %a-%a %a [%a]-[%a]" nups pnd1 nups pnd1'
                                     labps pnd1 locps pnd1 locps pnd1'];
 
-                                  Xset.add npairs ((pnd1, pnd1'), StableContext)
+                                  Hashtbl.add npairs (pnd1, pnd1') StableContext
                                 end;
                                 (*if is_stable_map pnd2' pnd2 then begin
                                   [%debug_log "!!! upair cand: %a-%a %a [%a]-[%a]" nups pnd2' nups pnd2
                                     labps pnd2' locps pnd2' locps pnd2];
-                                  Xset.add npairs ((pnd2', pnd2), StableContext)
+                                  Hashtbl.add npairs (pnd2', pnd2) StableContext
                                 end*)
                               end
                             end
@@ -11055,25 +11119,35 @@ end;
           ) movs0
       end;
 
-      let npairs0 =
-        Xset.filter_map
-          (fun (upair, kind) ->
+      let _ =
+        Hashtbl.filter_map_inplace
+          (fun npair kind ->
             match kind with
-            | LocalVariableInliningOrExtraction -> Some upair
+            | LocalVariableInliningOrExtraction -> Some kind
             | _ -> None
           ) npairs0
       in
-      let nnpairs0 = Xset.length npairs0 in
+      let nnpairs0 = Hashtbl.length npairs0 in
       if nnpairs0 > 0 then begin
+
         begin %debug_block
           [%debug_log "!!!!! %d starting pair(s) for glueing from decompose_moves:" nnpairs0];
-          Xset.iter
-            (fun (n1, n2) ->
+          Hashtbl.iter
+            (fun (n1, n2) _ ->
               [%debug_log "%a-%a" nups n1 nups n2]
             ) npairs0
         end;
 
-        nmapping#set_starting_pairs_for_glueing (Xset.to_list npairs0);
+        let npairl0 =
+          Hashtbl.fold
+            (fun (n1, n2) _ l ->
+              nmapping#finalize_mapping n1 n2;
+              try
+                (n1#initial_parent, n2#initial_parent) :: l
+              with _ -> l
+            ) npairs0 []
+        in
+        nmapping#set_starting_pairs_for_glueing npairl0;
 
         let removed_pairs, added_pairs, _ =
           glue_deletes_and_inserts options cenv tree1 tree2
@@ -11544,21 +11618,21 @@ end;
              (Xset.to_list starting_pairs))
       in
 
-      let npairs =
-        Xset.filter_map
-          (fun (upair, kind) ->
+      let _ =
+        Hashtbl.filter_map_inplace
+          (fun npair kind ->
             match kind with
-            | StableContext -> Some upair
+            | StableContext -> Some kind
             | _ -> None
           ) npairs
       in
-      let nnpairs = Xset.length npairs in
+      let nnpairs = Hashtbl.length npairs in
       let starting_pair_list =
         if nnpairs > 0 then begin
           [%debug_log "!!!!!! %d starting pair(s) for glueing from decompose_moves:" nnpairs];
           let l = ref starting_pair_list in
-          Xset.iter
-            (fun ((n1, n2) as np) ->
+          Hashtbl.iter
+            (fun ((n1, n2) as np) _ ->
               let _ = n1 in
               let _ = n2 in
               [%debug_log "%a-%a" nups n1 nups n2];
