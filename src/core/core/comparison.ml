@@ -1361,6 +1361,10 @@ class ['node_t, 'tree_t] c
   method size_of_mapping_comparison_cache = Tbl1.length mapping_comparison_cache
   method mapping_comparison_cache_hit_count = mapping_comparison_cache_hit_count
 
+  method invalidate_mapping_comparison_cache () =
+    [%debug_log "@"];
+    Tbl1.clear mapping_comparison_cache
+
   method cache_path = cache_path
   method set_cache_path p = cache_path <- p
 
@@ -2204,6 +2208,8 @@ class ['node_t, 'tree_t] c
 
           [%debug_log "weight=%f extra_denom=%d bonus_named=%B bonus_named_more=%B"
             weight extra_denom bonus_named bonus_named_more];
+          [%debug_log "check_uniq=%B exact_only=%B"
+             check_uniq exact_only];
 
           let len1 = List.length nds1 in
           let len2 = List.length nds2 in
@@ -2545,7 +2551,9 @@ class ['node_t, 'tree_t] c
 
         let anc_weight = 0.5 in
 
-        let score_anc = _incr_score ~weight:anc_weight ~bonus_named:true ancs1 ancs2 in
+        let score_anc =
+          _incr_score ~weight:anc_weight ~bonus_named:true ancs1 ancs2
+        in
 
         let score_anc =
           match ancs1, ancs2 with
@@ -2703,9 +2711,7 @@ class ['node_t, 'tree_t] c
           in
           if
             nd1#data#is_statement || nd2#data#is_statement ||
-            try
-              not (is_use nd1) || not (is_use nd2)
-            with _ -> true
+            not (is_use nd1) || not (is_use nd2)
           then
             0.0
           else
@@ -2745,8 +2751,39 @@ class ['node_t, 'tree_t] c
               _ -> 0.0
         in
 
+        (* score for op *)
+        let op_weight = 0.1 in
+
+        let score_op =
+          let get_ancs n =
+            let nl = ref [] in
+            begin
+              try
+                let cur = ref n#initial_parent in
+                nl := !cur :: !nl;
+                while not (!cur)#data#is_statement do
+                  cur := (!cur)#initial_parent;
+                  nl := !cur :: !nl
+                done
+              with _ -> ()
+            end;
+            List.rev !nl
+          in
+          if nd1#data#is_op && nd2#data#is_op then begin
+            let nds1 = get_ancs nd1 in
+            let nds2 = get_ancs nd2 in
+            if List.length nds1 > 1 && List.length nds2 > 1 then
+              _incr_score ~weight:op_weight ~bonus_named:true nds1 nds2
+            else
+              0.0
+          end
+          else
+            0.0
+        in
+
         let total_score =
-          !score +. score_anc +. score_desc +. score_siblings +. score_parent +. score_stmt
+          !score +. score_anc +. score_desc +. score_siblings +. score_parent
+            +. score_stmt +. score_op
         in
 
         begin %debug_block
@@ -2758,6 +2795,8 @@ class ['node_t, 'tree_t] c
           [%debug_log "score_parent=%f" score_parent];
           let head = if score_stmt > 0.0 then "!" else "" in
           [%debug_log "score_stmt=%s%f" head score_stmt];
+          let head = if score_op > 0.0 then "!" else "" in
+          [%debug_log "score_op=%s%f" head score_op];
           [%debug_log "total score: %a-%a -> %f" nups nd1 nups nd2 total_score];
           [%debug_log "ref_npairs: [%s]"
             (Xlist.to_string

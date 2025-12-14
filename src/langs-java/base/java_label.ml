@@ -2346,6 +2346,24 @@ let anonymize ?(more=false) = function
 
   | Expression (Expression.BinaryOperator BinaryOperator.Neq) ->
       Expression (Expression.BinaryOperator BinaryOperator.Eq)
+  (*| Expression
+      (Expression.BinaryOperator (BinaryOperator.(Gt|Ge|Le))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Lt)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Sub))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Add)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Div|Mod))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Mul)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(ShiftR|ShiftRU))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.ShiftL)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(BitOr|BitXor))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.BitAnd)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Or))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.And)*)
 
   | Expression (Primary p)         -> Primary (Primary.anonymize ~more p)
 (*  | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary (Primary.anonymize ~more p)*)

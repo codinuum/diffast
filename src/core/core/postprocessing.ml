@@ -5604,7 +5604,7 @@ end;
                       dnc := d;
                       force := frc
                     );
-                  [%debug_log "force=%B" !force];
+                  [%debug_log "force=%B b=%B" !force !b];
                   !b, !dnc,
                   if !force then None else
                   if tree2#is_initial_ancestor n2 nd2 || tree2#is_initial_ancestor nd2 n2 then
@@ -5634,7 +5634,7 @@ end;
                         cenv#get_adjacency_score pnd1 pnd2
                   in
                   [%debug_log "padj1=%B" padj1];
-                  if not padj1 then begin
+                  if not padj1 && (pnd1#data#is_statement || pnd2#data#is_statement) then begin
                     try
                       if anc_each_other2 (get_stmt nd2) (get_stmt n2) then
                         stmt_cond1 := false
@@ -5688,7 +5688,7 @@ end;
                       dnc := d;
                       force := frc
                     );
-                  [%debug_log "force=%B" !force];
+                  [%debug_log "force=%B b=%B" !force !b];
                   !b, !dnc,
                   if !force then None else
                   if tree1#is_initial_ancestor n1 nd1 || tree1#is_initial_ancestor nd1 n1 then
@@ -5718,7 +5718,7 @@ end;
                         cenv#get_adjacency_score pnd1 pnd2
                   in
                   [%debug_log "padj2=%B" padj2];
-                  if not padj2 then begin
+                  if not padj2 && (pnd1#data#is_statement || pnd2#data#is_statement) then begin
                     try
                       if anc_each_other1 (get_stmt nd1) (get_stmt n1) then
                         stmt_cond2 := false
@@ -5746,8 +5746,9 @@ end;
               | Some b -> string_of_bool b
               | None -> "-"
             in
-            [%debug_log "can_add1=%B can_add2=%B dnc1:%s dnc2:%s padj1=%s padj2=%s"
-              can_add1 can_add2 (dnc_to_str dnc1) (dnc_to_str dnc2)
+            [%debug_log "%a-%a: can_add1=%B can_add2=%B dnc1:%s dnc2:%s padj1=%s padj2=%s"
+               nups nd1 nups nd2
+               can_add1 can_add2 (dnc_to_str dnc1) (dnc_to_str dnc2)
                (padj_to_str padj1) (padj_to_str padj2)];
             [%debug_log "stmt_cond1=%B stmt_cond2=%B" !stmt_cond1 !stmt_cond2]
           end;

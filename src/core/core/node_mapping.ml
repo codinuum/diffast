@@ -353,6 +353,17 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
 
   val mutable starting_pairs_for_glueing = ([] : ('node_t * 'node_t) list)
 
+  (*val mutable mod_callbacks = []
+
+  method add_mod_callback f =
+    mod_callbacks <- f :: mod_callbacks
+
+  method call_mod_callbacks () =
+    List.iter (fun f -> f()) mod_callbacks
+
+  initializer
+    self#add_mod_callback cenv#invalidate_mapping_comparison_cache*)
+
   method clear_starting_pairs_for_glueing =
     [%debug_log "@"];
     starting_pairs_for_glueing <- []
@@ -533,6 +544,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     let conflict = add map rev_map s_map rev_s_map nd1 nd2 in
     self#clear_crossing_or_incompatible_matches_count_cache;
     self#clear_reptbl();
+    (*self#call_mod_callbacks();*)
     conflict
 
 
@@ -555,6 +567,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     in
     self#clear_crossing_or_incompatible_matches_count_cache;
     self#clear_reptbl();
+    (*self#call_mod_callbacks();*)
     conflict
 
 
@@ -755,6 +768,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
         self#clear_reptbl();
         self#unlock_node nd1;
         self#unlock_node nd2;
+        (*self#call_mod_callbacks();*)
         true
       end
       else
@@ -794,7 +808,8 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
               _ -> ()
           ) ca1;
         self#clear_crossing_or_incompatible_matches_count_cache;
-        self#clear_reptbl()
+        self#clear_reptbl();
+        (*self#call_mod_callbacks();*)
       end
     with
       Not_found -> ()
