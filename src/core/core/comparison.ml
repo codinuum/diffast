@@ -1193,7 +1193,10 @@ class ['node_t, 'tree_t] c
                 (fun x1 ->
                   try
                     let x2 = nmapping#find x1 in
-                    if self#_is_scope_breaking_mapping nmapping x1 x2 then
+                    if
+                      self#_is_scope_breaking_mapping nmapping x1 x2 &&
+                      tree2#is_initial_ancestor n2 x2
+                    then
                       raise Exit
                   with
                   | Failure _ | Not_found -> ()

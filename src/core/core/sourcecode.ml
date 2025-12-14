@@ -603,6 +603,7 @@ module Tree (L : Spec.LABEL_T) = struct
       method is_block = L.is_block lab
       method is_primary = L.is_primary lab
       method is_op = L.is_op lab
+      method is_parameter = L.is_parameter lab
 
       method is_scope_creating = L.is_scope_creating lab
 

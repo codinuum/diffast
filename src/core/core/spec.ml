@@ -76,6 +76,7 @@ class type node_data_t = object ('self)
   method is_block          : bool
   method is_primary        : bool
   method is_op             : bool
+  method is_parameter      : bool
 
   method is_scope_creating : bool
 
@@ -426,6 +427,7 @@ module type LABEL_T = sig
   val is_block           : t -> bool
   val is_primary         : t -> bool
   val is_op              : t -> bool
+  val is_parameter       : t -> bool
 
   val is_scope_creating : t -> bool
 

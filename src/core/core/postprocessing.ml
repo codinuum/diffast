@@ -1475,7 +1475,8 @@ module F (Label : Spec.LABEL_T) = struct
     [%debug_log "%a-%a" nups nd1 nups nd2];
 
     let weak_equal =
-      nd1#data#eq nd2#data ||
+      nd1#data#eq nd2#data
+    ||
       nd1#data#has_non_trivial_tid && nd2#data#has_non_trivial_tid &&
       (
        nd1#data#anonymized_label = nd2#data#anonymized_label ||
@@ -6910,6 +6911,11 @@ end;
                     if
                       permu_cond &&
                       (*not (check_relabel options tree1 tree2 n1 n2 nmapping)*)
+                      not
+                        (
+                         n1#data#_anonymized_label = n2#data#_anonymized_label &&
+                         get_orig_name n1 = get_orig_name n2
+                        ) &&
                       is_odd_relabel ~exact:true tree1 tree2 nmapping n1 n2
                     then begin
 

@@ -1415,6 +1415,8 @@ module Primary = struct
     | SimpleMethodInvocation x1, TypeMethodInvocation(_, x2)
     | TypeMethodInvocation(_, x2), SimpleMethodInvocation x1 when weak -> x1 = x2
 
+    | lab1, lab2 when lab1 = lab2 -> true
+
     | _ -> false
 
   let common_methods =
@@ -3224,6 +3226,8 @@ let is_compatible ?(weak=false) lab1 lab2 =
       weak -> true (* invalid when dumping delta *)
   | ClassBody _, EnumBody _ | EnumBody _, ClassBody _ when weak -> true
   | EnumBody _, InterfaceBody _ | InterfaceBody _, EnumBody _ when weak -> true
+
+  | lab1, lab2 when lab1 = lab2 -> true
 
   | _ -> false
 

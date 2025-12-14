@@ -2460,6 +2460,35 @@ let rectify_renames_d
       Not_found -> Nodetbl.add tbl def [use]
   in
 
+  let get_bn = Comparison.get_bn in
+  let get_orig_name = Comparison.get_orig_name in
+  let is_extract_or_inline def1 def2 n1 n2 =
+    let b =
+      def1#data#is_parameter && def2#data#is_parameter &&
+      try
+        let bdef1 = get_bn def1 in
+        let bdef2 = get_bn def2 in
+        [%debug_log "bdef1=%a" nps bdef1];
+        [%debug_log "bdef2=%a" nps bdef2];
+        let bdef_name = get_orig_name bdef1 in
+        [%debug_log "bdef_name=\"%s\"" bdef_name];
+        bdef_name = get_orig_name bdef2 &&
+        let tree1 = cenv#tree1 in
+        let tree2 = cenv#tree2 in
+        (
+         tree1#is_initial_ancestor bdef1 n1 && not (tree2#is_initial_ancestor bdef2 n2) &&
+         Misc.has_p_ancestor (fun x -> x#data#is_boundary && get_orig_name x = bdef_name) n2
+        ||
+         not (tree1#is_initial_ancestor bdef1 n1) && tree2#is_initial_ancestor bdef2 n2 &&
+         Misc.has_p_ancestor (fun x -> x#data#is_boundary && get_orig_name x = bdef_name) n1
+        )
+      with
+        _ -> false
+    in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
+  in
+
   (*edits#iter_relabels
     (function
       | Relabel(_, (info1, _), (info2, _)) -> begin
@@ -2678,9 +2707,12 @@ let rectify_renames_d
               incr use_rename_count
             end
             else begin
+              let eoi_flag = is_extract_or_inline def1 def2 use1 use1' in
+              let eoi_mark = if eoi_flag then " (Extract/Inline)" else "" in
               [%debug_log "use mapping1: %a-%a" nps use1 nps use1'];
-              [%debug_log "            : %a-%a" BID.ps bid1 BID.ps bid1'];
-              conflicting_mapping_list1 := (use1, use1') :: !conflicting_mapping_list1
+              [%debug_log "            : %a-%a%s" BID.ps bid1 BID.ps bid1' eoi_mark];
+              if not eoi_flag then
+                conflicting_mapping_list1 := (use1, use1') :: !conflicting_mapping_list1
             end
           with Not_found -> begin
             [%debug_log "use delete: %a" nps use1];
