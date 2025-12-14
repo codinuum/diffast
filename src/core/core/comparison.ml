@@ -5061,9 +5061,44 @@ class ['node_t, 'tree_t] c
               nd2old#initial_parent == nd2new#initial_parent &&
               abs (nd1old#initial_pos - nd1new#initial_pos) <= 1 &&
               abs (nd2old#initial_pos - nd2new#initial_pos) <= 1
-            then
-              check_label_match ~ncross_used:false
-
+            then begin
+              [%debug_log "@"];
+              (*check_label_match ~ncross_used:false*)
+              let lmatch_old = self#eval_label_match nd1old nd2old in
+              let lmatch_new = self#eval_label_match nd1new nd2new in
+              [%debug_log "  label match: %d --> %d" lmatch_old lmatch_new];
+              let b =
+                if override then
+                  if lmatch_new = lmatch_old then begin
+                    if subtree_sim_new > subtree_sim_old then begin
+                      action_new None None false;
+                      true
+                    end
+                    else begin
+                      action_old None None false;
+                      false
+                    end
+                  end
+                  else if lmatch_new > lmatch_old then begin
+                    action_new None None false;
+                    true
+                  end
+                  else begin
+                    action_old None None false;
+                    false
+                  end
+                else
+                  if lmatch_new > lmatch_old then begin
+                    action_new None None false;
+                    true
+                  end
+                  else begin
+                    action_old None None false;
+                    false
+                  end
+              in
+              add_cache false b None None
+            end
             else if
               try
                 get_orig_name nd1old <> get_orig_name nd2old &&
