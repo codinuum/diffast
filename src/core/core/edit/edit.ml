@@ -2708,9 +2708,11 @@ let rectify_renames_d
             end
             else begin
               let eoi_flag = is_extract_or_inline def1 def2 use1 use1' in
-              let eoi_mark = if eoi_flag then " (Extract/Inline)" else "" in
-              [%debug_log "use mapping1: %a-%a" nps use1 nps use1'];
-              [%debug_log "            : %a-%a%s" BID.ps bid1 BID.ps bid1' eoi_mark];
+              begin %debug_block
+                let eoi_mark = if eoi_flag then " (Extract/Inline)" else "" in
+                [%debug_log "use mapping1: %a-%a" nps use1 nps use1'];
+                [%debug_log "            : %a-%a%s" BID.ps bid1 BID.ps bid1' eoi_mark];
+              end;
               if not eoi_flag then
                 conflicting_mapping_list1 := (use1, use1') :: !conflicting_mapping_list1
             end
