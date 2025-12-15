@@ -3922,14 +3922,29 @@ class ['node_t, 'tree_t] c
                 (fun x2 ->
                   try
                     let def2 = get_def_node tree2 x2 in
-                    [%debug_log "x2=%a def2=%a" nups x2 nups def2];
+                    [%debug_log "x2=%a def2=%a" nps x2 nps def2];
                     is_local_def def2 && not (nmapping#mem_cod def2) &&
                     has_p_descendant ~moveon
                       (fun y2 ->
                         try
                           let y2' = nmapping#inv_find y2 in
-                          if tree1#is_initial_ancestor nd1 y2' then begin
-                            [%debug_log "found: %a<-%a" nups y2' nups y2];
+                          if
+                            tree1#is_initial_ancestor nd1 y2' &&
+                            (
+                             y2'#data#eq y2#data
+                            ||
+                             y2#initial_nchildren > 0 &&
+                             has_p_descendant ~moveon
+                               (fun yy2 ->
+                                 try
+                                   let yy2' = nmapping#inv_find yy2 in
+                                   tree1#is_initial_ancestor y2' yy2' &&
+                                   yy2'#data#eq yy2#data
+                                 with _ -> false
+                               ) y2
+                            )
+                          then begin
+                            [%debug_log "found: %a <- %a" nps y2' nps y2];
                             true
                           end
                           else
@@ -3952,14 +3967,29 @@ class ['node_t, 'tree_t] c
                 (fun x1 ->
                   try
                     let def1 = get_def_node tree1 x1 in
-                    [%debug_log "x1=%a def1=%a" nups x1 nups def1];
+                    [%debug_log "x1=%a def1=%a" nps x1 nps def1];
                     is_local_def def1 && not (nmapping#mem_dom def1) &&
                     has_p_descendant ~moveon
                       (fun y1 ->
                         try
                           let y1' = nmapping#find y1 in
-                          if tree2#is_initial_ancestor nd2 y1' then begin
-                            [%debug_log "found: %a->%a" nups y1 nups y1'];
+                          if
+                            tree2#is_initial_ancestor nd2 y1' &&
+                            (
+                             y1'#data#eq y1#data
+                            ||
+                             y1#initial_nchildren > 0 &&
+                             has_p_descendant ~moveon
+                               (fun yy1 ->
+                                 try
+                                   let yy1' = nmapping#find yy1 in
+                                   tree2#is_initial_ancestor y1' yy1' &&
+                                   yy1'#data#eq yy1#data
+                                 with _ -> false
+                               ) y1
+                            )
+                          then begin
+                            [%debug_log "found: %a -> %a" nps y1 nps y1'];
                             true
                           end
                           else
