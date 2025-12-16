@@ -3933,7 +3933,8 @@ class ['node_t, 'tree_t] c
                         try
                           let y2' = nmapping#inv_find y2 in
                           if
-                            tree1#is_initial_ancestor nd1 y2' &&
+                            get_stmt y2' == nd1 &&
+                            (*tree1#is_initial_ancestor nd1 y2' &&*)
                             (
                              y2'#data#eq y2#data
                             ||
@@ -3978,7 +3979,8 @@ class ['node_t, 'tree_t] c
                         try
                           let y1' = nmapping#find y1 in
                           if
-                            tree2#is_initial_ancestor nd2 y1' &&
+                            get_stmt y1' == nd2 &&
+                            (*tree2#is_initial_ancestor nd2 y1' &&*)
                             (
                              y1'#data#eq y1#data
                             ||
