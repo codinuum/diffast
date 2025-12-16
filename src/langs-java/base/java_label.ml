@@ -1713,7 +1713,7 @@ module Statement = struct
     | Expression(se, tid) -> Expression(Expression.anonymize ~more se, anonymize_tid ~more tid)
     | If _          -> If null_tid(*(anonymize_tid ~more tid)*)
     (*| FlattenedIf tid     -> FlattenedIf null_tid(*(anonymize_tid ~more tid)*)*)
-    | ElseIf _      -> ElseIf null_tid(*(anonymize_tid ~more tid)*)
+    | ElseIf _      -> (*Else*)If null_tid(*(anonymize_tid ~more tid)*)
     | stmt          -> stmt
 
   let to_simple_string = function

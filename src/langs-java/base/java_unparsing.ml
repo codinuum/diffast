@@ -860,7 +860,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           else begin
             pr_nth_child 1;
             if nchildren > 2 then begin
-              (*pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
+              let last_idx = nchildren - 1 in
+
+              pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
               pr_selected ~fail_on_error ~head:pad1 L.is_else children;
               let else_part = children.(last_idx) in
               let lab = getlab else_part in
@@ -872,10 +874,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                 else
                   pr_break 1 pb#indent;
                 pr_node ~fail_on_error else_part
-              end*)
+              end
 
-              let last_idx = nchildren - 1 in
-              for i = 2 to last_idx do
+              (*for i = 2 to last_idx do
                 let childi = children.(i) in
                 if i < last_idx then begin
                   pad1();
@@ -895,7 +896,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                   end
                 end;
                 pr_node ~fail_on_error childi
-              done;
+              done;*)
 
             end
           end

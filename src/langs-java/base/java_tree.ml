@@ -661,6 +661,7 @@ class translator options =
   method huge_array_list = huge_array_list
   method reg_huge_array orig nd = huge_array_list <- (orig, nd) :: huge_array_list
 
+
   val true_category_tbl = Hashtbl.create 0
   method true_category_tbl = true_category_tbl
   method reg_true_category nd cat =
@@ -676,6 +677,13 @@ class translator options =
   val virtual_nodes = Xset.create 0
   method virtual_nodes = virtual_nodes
   method reg_virtual_node nd = Xset.add virtual_nodes nd
+
+  val final_label_tbl = Hashtbl.create 0
+  method final_label_tbl = final_label_tbl
+  method reg_final_label nd lab =
+    [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#label (L.to_string lab)];
+    Hashtbl.add final_label_tbl nd (Obj.repr lab)
+
 
   method set_bindings (tree : Spec.tree_t) =
 
@@ -2659,13 +2667,16 @@ class translator options =
                   assert false
               else (* not is_top *)
                 if L.is_if lab0 then
-                  let lab_ =
+                  let lab_ = lab0 in
+                  let final_lab =
                     match lab0 with
-                    | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.(*Else*)If tid0)
+                    | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.ElseIf tid0)
                     | _ -> assert false
                   in
                   if nchildren0 = 3 then begin
                     let next = nd0#children.(2) in
+                    let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1]) in
+                    let nd_ = self#_mknode ~ordinal_tbl_opt lab_ (Array.sub nd0#children 0 2) in
                     let loc_ =
                       try
                         Loc._merge (take_loc()) nd0#children.(1)#data#src_loc
@@ -2673,9 +2684,9 @@ class translator options =
                         _ -> Loc._merge nd0#data#src_loc nd0#children.(1)#data#src_loc
                     in
                     [%debug_log "loc_=%s" (Loc.to_string loc_)];
-                    let nd_ = self#_mknode lab_ (Array.sub nd0#children 0 2) in
                     nd_#data#set_loc loc_;
 
+                    self#reg_final_label nd_ final_lab;
                     self#reg_true_category nd_ (L.get_category lab0);
                     self#reg_true_loc nd_ nd0#data#src_loc;
 
@@ -2683,7 +2694,8 @@ class translator options =
                     if L.is_if (getlab next) then
                       nd_ :: (flatten ~is_top:false next)
                     else begin
-                      let nd__ = self#mknode (L.Statement (L.Statement.Else)) [next] in
+                      let ordinal_tbl_opt = Some (new ordinal_tbl [1]) in
+                      let nd__ = self#mknode ~ordinal_tbl_opt (L.Statement (L.Statement.Else)) [next] in
                       (*let nd__ = next in*)
                       let true_loc = next#data#src_loc in
                       let loc__ =
@@ -2703,7 +2715,8 @@ class translator options =
                     end
                   end
                   else begin
-                    let nd_ = self#_mknode lab_ nd0#children in
+                    let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1]) in
+                    let nd_ = self#_mknode ~ordinal_tbl_opt lab_ nd0#children in
                     let loc_ =
                       try
                         Loc._merge (take_loc()) nd0#data#src_loc
@@ -2712,6 +2725,7 @@ class translator options =
                     in
                     nd_#data#set_loc loc_;
 
+                    self#reg_final_label nd_ final_lab;
                     self#reg_true_category nd_ (L.get_category lab0);
                     self#reg_true_loc nd_ nd0#data#src_loc;
 
@@ -3983,6 +3997,7 @@ let of_compilation_unit options cu =
   tree#set_true_category_tbl trans#true_category_tbl;
   tree#set_true_loc_tbl trans#true_loc_tbl;
   tree#set_virtual_nodes trans#virtual_nodes;
+  tree#set_final_label_tbl trans#final_label_tbl;
 
   tree#set_true_parent_tbl trans#true_parent_tbl;
   tree#set_true_children_tbl trans#true_children_tbl;

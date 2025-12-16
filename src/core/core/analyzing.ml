@@ -1590,6 +1590,9 @@ end;
       Xprint.verbose options#verbose_flag "fixing up edit sequences...";
       Postprocessing.fixup_edits options lang cenv tree1 tree2 pruned edits nmapping pre_nmapping;
 
+      tree1#setup_final_labels();
+      tree2#setup_final_labels();
+
       let dchange = Filename.concat cache_path Stat.changes_file_name in
       let edits_copy = edits#copy in
       edits_copy#ungroup tree1 tree2;

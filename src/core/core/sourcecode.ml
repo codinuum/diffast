@@ -867,6 +867,15 @@ module Tree (L : Spec.LABEL_T) = struct
     method is_virtual_node nd = Xset.mem virtual_nodes nd
     method set_virtual_nodes set = virtual_nodes <- set
 
+    val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
+    method set_final_label_tbl tbl = final_label_tbl <- tbl
+    method setup_final_labels () =
+      Hashtbl.iter
+        (fun nd lab ->
+          [%debug_log "%s -> %s\n" nd#data#label (L.to_string (Obj.obj lab : L.t))];
+          nd#data#relab ?orig:None lab
+        ) final_label_tbl
+
 
     val mutable true_parent_tbl = (Hashtbl.create 0 : (UID.t, node_t) Hashtbl.t)
     method set_true_parent_tbl tbl = true_parent_tbl <- tbl
