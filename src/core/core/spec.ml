@@ -135,6 +135,7 @@ class type tree_t = object ('self)
   method set_virtual_nodes : node_t Xset.t -> unit
 
   method set_final_label_tbl : (node_t, Obj.t) Hashtbl.t -> unit
+  method has_final_label : node_t -> bool
   method setup_final_labels : unit -> unit
 
 

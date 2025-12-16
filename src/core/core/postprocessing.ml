@@ -6089,7 +6089,10 @@ end;
         [%debug_log "scanning %a" nups nd];
         try
           let nd' = nmapping#find nd in
-          if not (nd#data#eq nd'#data) then begin
+          if
+            not (nd#data#eq nd'#data) ||
+            tree1#has_final_label nd <> tree2#has_final_label nd'
+          then begin
             let rel = Edit.make_relabel nd nd' in
             [%debug_log "%s" (Edit.to_string rel)];
             edits#add_edit rel

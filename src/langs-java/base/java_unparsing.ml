@@ -860,10 +860,11 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           else begin
             pr_nth_child 1;
             if nchildren > 2 then begin
-              let last_idx = nchildren - 1 in
-
               pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
               pr_selected ~fail_on_error ~head:pad1 L.is_else children;
+
+              let last_idx = nchildren - 1 in
+
               let else_part = children.(last_idx) in
               let lab = getlab else_part in
               if not (L.is_elseif lab || L.is_else lab) then begin
@@ -911,11 +912,8 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
       | L.Statement.ElseIf _ ->
           if
             try
-              L.is_if (getlab node#parent)
-            with _ ->
-              try
-                L.is_if (getlab node#initial_parent)
-              with _ -> false
+              L.is_if (getlab node#initial_parent)
+            with _ -> true
           then
             pr_string "else if ("
           else

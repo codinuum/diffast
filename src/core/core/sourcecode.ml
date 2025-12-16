@@ -869,6 +869,7 @@ module Tree (L : Spec.LABEL_T) = struct
 
     val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
     method set_final_label_tbl tbl = final_label_tbl <- tbl
+    method has_final_label nd = Hashtbl.mem final_label_tbl nd
     method setup_final_labels () =
       Hashtbl.iter
         (fun nd lab ->
