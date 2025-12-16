@@ -4311,6 +4311,8 @@ let is_scope_creating lab =
   is_class_or_interface lab ||
   is_method lab ||
   is_methodbody lab ||
+  is_ctor lab ||
+  is_ctorbody lab ||
   is_for lab ||
   is_block lab ||
   is_try lab ||

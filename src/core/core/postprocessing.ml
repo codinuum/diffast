@@ -9037,7 +9037,7 @@ end;
                           end
                       end;
 
-                      let scope_moved_flag = ref false in
+                      let local_scope_moved_flag = ref false in
 
                       if nmapping#is_final_mapping nd1 nd2 then begin
                         [%debug_log "to be excluded: %a (final mapping)" MID.ps mid];
@@ -9130,10 +9130,12 @@ end;
                           try
                             let def1 = get_def_node tree1 nd1 in
                             let def2 = get_def_node tree2 nd2 in
-                            [%debug_log "def1=%a def2=%a" nups def1 nups def2];
+                            [%debug_log "def1=%a def2=%a" nps def1 nps def2];
                             let b = nmapping#find def1 == def2 in
-                            if b && is_local_def def1 && is_local_def def2 then
-                              scope_moved_flag := true;
+                            if b && is_local_def def1 && is_local_def def2 then begin
+                              [%debug_log "local scope moved"];
+                              local_scope_moved_flag := true
+                            end;
                             b
                           with
                             _ -> false
@@ -9159,7 +9161,11 @@ end;
                         with
                           _ -> false
                       then begin
-                        if sz = 1 && not !scope_moved_flag && is_cross_boundary nmapping nd1 nd2 then
+                        if
+                          sz = 1 &&
+                          not !local_scope_moved_flag &&
+                          is_cross_boundary nmapping nd1 nd2
+                        then
                           [%debug_log "single cross boundary move: %a" MID.ps mid]
                         else if
                           sz = 1 &&

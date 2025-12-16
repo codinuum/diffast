@@ -385,14 +385,18 @@ class visitor options bid_gen static_vdtors tree = object (self)
 
   method! scanner_body_before_subscan nd =
     let lab = getlab nd in
-    if L.is_scope_creating lab then
+    if L.is_scope_creating lab then begin
+      [%debug_log "%s" nd#data#to_string];
       stack#push nd
+    end
 
   method! scanner_body_after_subscan nd =
     let lab = getlab nd in
 
-    if L.is_scope_creating lab then
-      stack#pop;
+    if L.is_scope_creating lab then begin
+      [%debug_log "%s" nd#data#to_string];
+      stack#pop
+    end;
 
     if L.is_import_single lab then begin
       nd#data#set_scope_node tree#root
