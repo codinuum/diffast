@@ -2006,6 +2006,9 @@ class ['node_t, 'tree_t] c
     let a1 = Array.of_list (list_rev0 l1) in
     let a2 = Array.of_list (list_rev0 l2) in
 
+    [%debug_log "a1: [%s]" (Xarray.to_string (fun (n, _) -> UID.to_string n#uid) ";" a1)];
+    [%debug_log "a2: [%s]" (Xarray.to_string (fun (n, _) -> UID.to_string n#uid) ";" a2)];
+
     let anon1 = Array.map (fun (n, _) -> n#data#_anonymized3_label) a1 in
     let anon2 = Array.map (fun (n, _) -> n#data#_anonymized3_label) a2 in
 
@@ -2402,7 +2405,9 @@ class ['node_t, 'tree_t] c
                     doit (lv+1) rest
                   else if not (filt1 anc1 && filt2 anc2) then
                     doit (lv+1) rest
-                  else if weq anc1 anc2 then
+                  else if
+                    weq anc1 anc2 && anc1#initial_nchildren > 1 && anc2#initial_nchildren > 1
+                  then
                     finish idx1 idx2 anc1 anc2 ipos1 ipos2
                   else
                     doit (lv+1) rest
@@ -2787,8 +2792,7 @@ class ['node_t, 'tree_t] c
         in
 
         begin %debug_block
-          [%debug_log "score for descendants: %f" score_desc];
-          [%debug_log "score=%f" !score];
+          [%debug_log "score for L/R descendants: %f" !score];
           [%debug_log "score_anc=%f" score_anc];
           [%debug_log "score_desc=%f" score_desc];
           [%debug_log "score_siblings=%f" score_siblings];
