@@ -392,17 +392,17 @@ class ['node_t] multiple_subtree_matches options = object
       (fun bn1 ->
         Xset.iter
           (fun bn2 ->
-              if is_map bn1 bn2 then begin
-                if not (Hashtbl.mem dtbl1 bn1) && not (Hashtbl.mem dtbl2 bn2) then begin
-                  let d = gen_dummy_digest() in
-                  [%debug_log "!!!!! boundary: %s [%s] - %s [%s] d=%s"
-                    bn1#data#to_string (Loc.to_string bn1#data#src_loc)
-                    bn2#data#to_string (Loc.to_string bn2#data#src_loc)
-                    d];
-                  Hashtbl.add dtbl1 bn1 d;
-                  Hashtbl.add dtbl2 bn2 d;
-                end
+            if is_map bn1 bn2 then begin
+              if not (Hashtbl.mem dtbl1 bn1) && not (Hashtbl.mem dtbl2 bn2) then begin
+                let d = gen_dummy_digest() in
+                [%debug_log "!!!!! boundary: %s [%s] - %s [%s] d=%s"
+                   bn1#data#to_string (Loc.to_string bn1#data#src_loc)
+                   bn2#data#to_string (Loc.to_string bn2#data#src_loc)
+                   d];
+                Hashtbl.add dtbl1 bn1 d;
+                Hashtbl.add dtbl2 bn2 d;
               end
+            end
           ) bns2
       ) bns1;
 
@@ -518,16 +518,24 @@ class ['node_t] multiple_subtree_matches options = object
 
             let complete_flag = ref true in
 
+            let to_be_added = ref [] in
+
             List.iter2
               (fun n1 n2 ->
                 if Xset.mem excluded1 n1 || Xset.mem excluded2 n2 then
                   complete_flag := false
                 else
-                  let _ = nmapping#add_settled ~stable:true n1 n2 in
-                  added_pairs := (n1, n2) :: !added_pairs
+                  to_be_added := (n1, n2) :: !to_be_added
               ) nds1 nds2;
 
             [%debug_log "%a-%a: complete_flag=%B" nups nd1 nups nd2 !complete_flag];
+
+            List.iter
+              (fun (n1, n2) ->
+                let stable = !complete_flag in
+                let _ = nmapping#add_settled ~stable n1 n2 in
+                added_pairs := (n1, n2) :: !added_pairs
+              ) !to_be_added;
 
             if !complete_flag then
               nmapping#add_settled_roots nd1 nd2

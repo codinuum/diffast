@@ -4837,6 +4837,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       ?(mask=[])
       ?(incompatible_only=false)
       ?(weak=true)
+      ?(cross_boundary_check=false)
       (nmapping : 'node_t Node_mapping.c)
       nd1 nd2
       =
@@ -4862,6 +4863,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           nmapping#iter_crossing_or_incompatible_mapping_rep is_move
     in
     let flag = ref false in
+    let cross_boundary_flag = ref true in
     try
       iter nd1 nd2
         (fun n1 n2 ->
@@ -4876,7 +4878,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
             if self#mem_mov12 n1 n2 then begin
               [%debug_log "mem_mov12 %a %a --> true" nups n1 nups n2];
-              flag := true
+              flag := true;
+              if
+                cross_boundary_check &&
+                !cross_boundary_flag &&
+                not (Misc.is_cross_boundary nmapping n1 n2)
+              then
+                cross_boundary_flag := false
             end
             else begin
               [%debug_log "mem_mov12 %a %a --> false" nups n1 nups n2];
@@ -4894,7 +4902,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
           end
         );
-      let b = weak && !flag in
+      [%debug_log "flag=%B cross_boundary_flag=%B" !flag !cross_boundary_flag];
+      let b = weak && !flag && (not cross_boundary_check || not !cross_boundary_flag) in
       [%debug_log "%B" b];
       b
     with

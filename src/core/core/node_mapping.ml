@@ -442,17 +442,23 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
   method stable_pairs = stable_pairs
   method set_stable_pairs ps = stable_pairs <- ps
   method is_stable_pair n1 n2 =
+    let b =
     try
       let ns = Nodetbl.find_all stable_pairs n1 in
       List.memq n2 ns
     with
       Not_found -> false
+    in
+    [%debug_log "%a-%a -> %B" nups n1 nups n2 b];
+    b
 
   method add_stable_pair n1 n2 =
     try
       let n1' = Nodetbl.find stable_pairs n1 in
-      if n1' != n2 then
+      if n1' != n2 then begin
+        [%debug_log "adding %a-%a" nups n1 nups n2];
         Nodetbl.add stable_pairs n1 n2
+      end
     with
       Not_found -> Nodetbl.add stable_pairs n1 n2
 

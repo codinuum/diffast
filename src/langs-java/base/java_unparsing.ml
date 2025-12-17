@@ -912,8 +912,23 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
       | L.Statement.ElseIf _ ->
           if
             try
-              L.is_if (getlab node#initial_parent)
-            with _ -> true
+              let parent =
+                try
+                  let pn = node#initial_parent in
+                  if Array.memq node pn#initial_children then
+                    pn
+                  else
+                    raise Not_found
+                with _ ->
+                  let pn = node#parent in
+                  if Array.memq node pn#initial_children then
+                    pn
+                  else
+                    raise Not_found
+              in
+              L.is_if (getlab parent)
+            with
+              _ -> true
           then
             pr_string "else if ("
           else

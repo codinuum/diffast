@@ -2538,12 +2538,14 @@ end;
       ?(mask=[])
       ?(incompatible_only=false)
       ?(weak=false)
+      ?(cross_boundary_check=false)
       =
     edits#is_crossing_with_untouched
       ?full_scan:(Some full_scan)
       ?mask:(Some mask)
       ?incompatible_only:(Some incompatible_only)
       ?weak:(Some weak)
+      ?cross_boundary_check:(Some cross_boundary_check)
       nmapping
 
 
@@ -7299,6 +7301,7 @@ end;
                   let is_mov1 =
                     edits#is_crossing_with_untouched
                       ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
+                      ?cross_boundary_check:None
                       nmapping
                   in
                   let is_mov2 n1 n2 = is_mov1 n2 n1 in
@@ -8190,6 +8193,7 @@ end;
             let b =
               edits#is_crossing_with_untouched
                 ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
+                ?cross_boundary_check:None
                 nmapping n1 n2
             in
             [%debug_log "%a %a -> %B" nps n1 nps n2 b];
@@ -8814,6 +8818,7 @@ end;
                         ) &&
                         edits#is_crossing_with_untouched
                           ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
+                          ?cross_boundary_check:None
                           nmapping nd1 nd2
                       in
                       [%debug_log "b0=%B" b0];
@@ -8943,6 +8948,7 @@ end;
                       ) &&
                       edits#is_crossing_with_untouched
                         ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
+                        ?cross_boundary_check:None
                         nmapping nd1 nd2
                    )
                    in
@@ -10321,6 +10327,7 @@ end;
                     not
                       (edits#is_crossing_with_untouched
                          ?full_scan:None ?mask:None ?incompatible_only:None ?weak:None
+                         ?cross_boundary_check:None
                          nmapping (Info.get_node info1) (Info.get_node info2))
                   then
                     [%debug_log "is this a move? %s" (Edit.to_string mov)]
@@ -11215,6 +11222,7 @@ end;
           edits#is_crossing_with_untouched
             ?full_scan:None
             ?mask:None ?incompatible_only:None ?weak:None
+            ?cross_boundary_check:None
             nmapping n1 n2,
           None
         in
@@ -11701,7 +11709,12 @@ end;
 
       nmapping#set_starting_pairs_for_glueing starting_pair_list;
       let is_move n1 n2 =
-        edits#mem_mov12 n1 n2 || is_crossing_with_untouched ~weak:true n1 n2(* ||
+        edits#mem_mov12 n1 n2 ||
+        let cross_boundary_check =
+          let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
+          not (is_cross_boundary ~filt nmapping n1 n2)
+        in
+        is_crossing_with_untouched ~weak:true ~cross_boundary_check n1 n2(* ||
         let ca1 = n1#initial_parent#initial_children in
         let ca2 = n2#initial_parent#initial_children in
         let nc1 = Array.length ca1 in
