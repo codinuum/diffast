@@ -503,11 +503,12 @@ let count_p_descendant ?(limit=0) ?(moveon=fun _ -> true) pred nd =
     Exit -> !c
 
 [%%capture_path
-let is_cross_boundary nmapping n1 n2 =
+let is_cross_boundary ?(filt=fun _ _ -> true) nmapping n1 n2 =
   let b =
     try
       let a1 = get_p_ancestor (fun x -> x#data#is_boundary) n1 in
       let a2 = get_p_ancestor (fun x -> x#data#is_boundary) n2 in
+      filt a1 a2 &&
       not (try nmapping#find a1 == a2 with _ -> false)
     with
       _ -> false

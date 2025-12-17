@@ -5613,17 +5613,18 @@ end;
                   let pnd1 = nd1#initial_parent in
                   let pnd2 = nd2#initial_parent in
                   let p2 = n2#initial_parent in
+                  let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
                   let padj1 =
                     if pnd2#data#eq p2#data && anc_each_other2 pnd2 p2 then
                       false
                     else if
-                      is_cross_boundary nmapping pnd1 p2 &&
-                      not (is_cross_boundary nmapping pnd1 pnd2)
+                      is_cross_boundary ~filt nmapping pnd1 p2 &&
+                      not (is_cross_boundary ~filt nmapping pnd1 pnd2)
                     then
                       true
                     else if
-                      is_cross_boundary nmapping pnd1 pnd2 &&
-                      not (is_cross_boundary nmapping pnd1 p2)
+                      is_cross_boundary ~filt nmapping pnd1 pnd2 &&
+                      not (is_cross_boundary ~filt nmapping pnd1 p2)
                     then
                       false
                     else
@@ -5697,17 +5698,18 @@ end;
                   let pnd2 = nd2#initial_parent in
                   let pnd1 = nd1#initial_parent in
                   let p1 = n1#initial_parent in
+                  let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
                   let padj2 =
                     if pnd1#data#eq p1#data && anc_each_other1 pnd1 p1 then
                       false
                     else if
-                      is_cross_boundary nmapping p1 pnd2 &&
-                      not (is_cross_boundary nmapping pnd1 pnd2)
+                      is_cross_boundary ~filt nmapping p1 pnd2 &&
+                      not (is_cross_boundary ~filt nmapping pnd1 pnd2)
                     then
                       true
                     else if
-                      is_cross_boundary nmapping pnd1 pnd2 &&
-                      not (is_cross_boundary nmapping p1 pnd2)
+                      is_cross_boundary ~filt nmapping pnd1 pnd2 &&
+                      not (is_cross_boundary ~filt nmapping p1 pnd2)
                     then
                       false
                     else
