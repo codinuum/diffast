@@ -6292,8 +6292,7 @@ end;
                         else
                           get_bn blk2
                       in
-                      let nm2, deco_flag2 = get_deco_name_ bnd2 in
-                      [%debug_log "bnd2=%a nm2=%s deco_flag2=%B" nps bnd2 nm2 deco_flag2];
+                      [%debug_log "bnd2=%a" nps bnd2];
                       tree1#fast_scan_whole_initial_subtree bnd1
                         (fun n1 ->
                           try
@@ -6306,7 +6305,6 @@ end;
                             end
                           with _ -> ()
                         );
-
                       [%debug_log "disallowed relabel: %a-%a" nps nd1 nps nd2];
                       cenv#add_too_bad_pair nd1 nd2;
                       if nmapping#remove nd1 nd2 then
