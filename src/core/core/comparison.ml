@@ -4329,6 +4329,49 @@ class ['node_t, 'tree_t] c
 
           else if
             let b =
+              (
+               nd1old == nd1new && nd1old#data#is_op
+              ||
+               nd2old == nd2new && nd2old#data#is_op
+              ) &&
+              (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
+              subtree_sim_old > subtree_sim_new && ancsim_old > ancsim_new
+            in
+            [%debug_log "@NO-ADJACENCY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            let b =
+              (
+               nd1old == nd1new && nd1old#data#is_op
+              ||
+               nd2old == nd2new && nd2old#data#is_op
+              ) &&
+              (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
+              subtree_sim_new > subtree_sim_old && ancsim_new > ancsim_old
+            in
+            [%debug_log "@NO-ADJACENCY %a-%a vs %a-%a -> %B"
+               nups nd1old nups nd2old nups nd1new nups nd2new b];
+            b
+          then begin
+            [%debug_log "@"];
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+
+          else if
+            let b =
               List.for_all (fun x -> not x#data#is_boundary) [nd1old; nd2old; nd1new; nd2new] &&
               not (is_cross_boundary nmapping nd1old nd2old) &&
               is_cross_boundary nmapping nd1new nd2new &&

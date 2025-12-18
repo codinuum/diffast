@@ -1935,6 +1935,9 @@ let rectify_renames_u
       try
         let bi1 = get_bid n1 in
         let bi2 = get_bid n2 in
+        let scope1 = Misc.get_scope_node n1 in
+        let scope2 = Misc.get_scope_node n2 in
+        nmapping#mem_dom scope1 && nmapping#mem_cod scope2 &&
         Hashtbl.find rename_tbl1 bi1 <> bi2
       with
         Not_found -> false

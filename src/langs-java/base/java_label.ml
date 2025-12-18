@@ -4022,6 +4022,7 @@ let is_op = function
     Expression.BinaryOperator _ |
     Expression.Instanceof |
     Expression.AssignmentOperator _ |
+    Expression.Cond |
     Expression.Cast)
       -> true
   | _ -> false
