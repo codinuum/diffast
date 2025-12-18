@@ -6409,7 +6409,8 @@ end;
                     let bn' = nmapping#inv_find bn in
                     if
                       bn'#data#eq bn#data &&
-                      get_orig_name bn = get_orig_name stmt
+                      get_orig_name bn = get_orig_name stmt &&
+                      not (is_cross_boundary nmapping bn' bnd)
                     then begin
                       [%debug_log "Extract found: from %a to %a" nups bn' nups bnd];
                       Xset.add base_boundaries bn'
@@ -6496,7 +6497,8 @@ end;
                     let bn' = nmapping#find bn in
                     if
                       bn'#data#eq bn#data &&
-                      get_orig_name bn = get_orig_name stmt
+                      get_orig_name bn = get_orig_name stmt &&
+                      not (is_cross_boundary nmapping bnd bn')
                     then begin
                       [%debug_log "Inline found: from %a to %a" nups bnd nups bn'];
                       Xset.add base_boundaries bn'
