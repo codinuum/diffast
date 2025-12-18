@@ -5539,6 +5539,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     in
     let mems = ref [] in
     let sub_del_mem_tbl = Hashtbl.create 0 in
+
+    if not (Hashtbl.mem deleted_mems_tbl nd) then
     scan_initial_cluster nd nds
       (fun n ->
         [%debug_log "%a -> %s" nps n (key_opt_to_string key_opt)];

@@ -6146,6 +6146,8 @@ end;
     begin (* to handle Extract/Inline (experimental) *)
       let deleted_name_tbl = Hashtbl.create 0 in
       let inserted_name_tbl = Hashtbl.create 0 in
+      let rename_tbl1 = Hashtbl.create 0 in
+      let rename_tbl2 = Hashtbl.create 0 in
 
       let name_ref_tbl1 = Hashtbl.create 0 in
       let name_ref_tbl2 = Hashtbl.create 0 in
@@ -6186,7 +6188,7 @@ end;
                     Hashtbl.add deleted_name_tbl nm nd
                   end
                 end
-                else if nd#data#is_named_orig(* && nd#data#is_statement*) then begin
+                else(* if nd#data#is_named_orig(* && nd#data#is_statement*) then*) begin
                   let nm, deco_flag = get_deco_name_ nd in
                   if deco_flag then
                     add_name_ref name_ref_tbl1 nm nd
@@ -6203,7 +6205,7 @@ end;
                     Hashtbl.add inserted_name_tbl nm nd
                   end
                 end
-                else if nd#data#is_named_orig(* && nd#data#is_statement*) then begin
+                else(* if nd#data#is_named_orig(* && nd#data#is_statement*) then*) begin
                   let nm, deco_flag = get_deco_name_ nd in
                   if deco_flag then
                     add_name_ref name_ref_tbl2 nm nd
@@ -6217,15 +6219,35 @@ end;
                 nd1#data#is_named_orig && nd2#data#is_named_orig(* &&
                 nd1#data#is_statement && nd2#data#is_statement*)
               then begin
-                let nm1, deco_flag1 = get_deco_name_ nd1 in
-                if deco_flag1 then begin
-                  add_name_ref name_ref_tbl1 nm1 nd1;
+
+                if nd1#data#is_boundary then begin
+                  let nm1, deco_flag1 = get_deco_name_ nd1 in
+                  if deco_flag1 then begin
+                    [%debug_log "@@@ \"%s\" -> %a" nm1 nps nd1];
+                    Hashtbl.add rename_tbl1 nm1 nd1
+                  end
                 end;
-                let nm2, deco_flag2 = get_deco_name_ nd2 in
-                if deco_flag2 then begin
-                  add_name_ref name_ref_tbl2 nm2 nd2
+                if nd2#data#is_boundary then begin
+                  let nm2, deco_flag2 = get_deco_name_ nd2 in
+                  if deco_flag2 then begin
+                    [%debug_log "@@@ \"%s\" -> %a" nm2 nps nd2];
+                    Hashtbl.add rename_tbl2 nm2 nd2
+                  end
+                end;
+
+                if not nd1#data#is_boundary && not nd2#data#is_boundary then begin
+                  let nm1, deco_flag1 = get_deco_name_ nd1 in
+                  if deco_flag1 then begin
+                    add_name_ref name_ref_tbl1 nm1 nd1;
+                  end;
+                  let nm2, deco_flag2 = get_deco_name_ nd2 in
+                  if deco_flag2 then begin
+                    add_name_ref name_ref_tbl2 nm2 nd2
+                  end
                 end
+
               end
+
           end
           | _ -> ()
         );
@@ -6252,10 +6274,10 @@ end;
                     [%debug_log "%s" (Edit.to_string rel)];
                     [%debug_log "nm1=\"%s\" nm2=\"%s\"" nm1 nm2];
                   end;
-                  begin (* Inline *)
+                  if not deco_flag2 || not (Hashtbl.mem rename_tbl2 nm2) then begin (* Inline *)
                     try
                       (*let filt = nmapping#mem_cod in*)
-                      if get_name_count(* ~filt*) name_ref_tbl1 nm1 > 1 then
+                      if get_name_count(* ~filt*) name_ref_tbl1 nm1 <> 1 then
                         raise Exit;
                       let bnd1 = Hashtbl.find deleted_name_tbl nm1 in
                       let blk2 =
@@ -6264,14 +6286,14 @@ end;
                       [%debug_log "bnd1=%a" nps bnd1];
                       [%debug_log "blk2=%a" nps blk2];
                       nmapping#add_starting_pairs_for_glueing [(bnd1, blk2)];
-
                       let bnd2 =
                         if blk2#data#is_boundary then
                           blk2
                         else
                           get_bn blk2
                       in
-                      [%debug_log "bnd2=%a" nps bnd2];
+                      let nm2, deco_flag2 = get_deco_name_ bnd2 in
+                      [%debug_log "bnd2=%a nm2=%s deco_flag2=%B" nps bnd2 nm2 deco_flag2];
                       tree1#fast_scan_whole_initial_subtree bnd1
                         (fun n1 ->
                           try
@@ -6288,14 +6310,14 @@ end;
                       [%debug_log "disallowed relabel: %a-%a" nps nd1 nps nd2];
                       cenv#add_too_bad_pair nd1 nd2;
                       if nmapping#remove nd1 nd2 then
-                        removed_pairs := (nd1, nd2) :: !removed_pairs;
+                        removed_pairs := (nd1, nd2) :: !removed_pairs
                     with
                       _ -> ()
                   end;
-                  begin (* Extract *)
+                  if not deco_flag1 || not (Hashtbl.mem rename_tbl1 nm1) then begin (* Extract *)
                     try
                       (*let filt = nmapping#mem_cod in*)
-                      if get_name_count(* ~filt*) name_ref_tbl2 nm2 > 1 then
+                      if get_name_count(* ~filt*) name_ref_tbl2 nm2 <> 1 then
                         raise Exit;
                       let bnd2 = Hashtbl.find inserted_name_tbl nm2 in
                       let blk1 =
@@ -6304,7 +6326,6 @@ end;
                       [%debug_log "bnd2=%a" nps bnd2];
                       [%debug_log "blk1=%a" nps blk1];
                       nmapping#add_starting_pairs_for_glueing [(blk1, bnd2)];
-
                       let bnd1 =
                         if blk1#data#is_boundary then
                           blk1
@@ -6324,11 +6345,10 @@ end;
                             end
                           with _ -> ()
                         );
-
                       [%debug_log "disallowed relabel: %a-%a" nps nd1 nps nd2];
                       cenv#add_too_bad_pair nd1 nd2;
                       if nmapping#remove nd1 nd2 then
-                        removed_pairs := (nd1, nd2) :: !removed_pairs;
+                        removed_pairs := (nd1, nd2) :: !removed_pairs
                     with
                       _ -> ()
                   end

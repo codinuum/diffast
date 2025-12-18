@@ -178,7 +178,7 @@ class ppbox = object (self)
     fun ?(head=pr_none) ?(tail=pr_none) pr_sep pr a ->
       if (Array.length a) > 0 then begin
         head();
-        Array.iteri (fun i x -> if i > 0 then pr_sep(); pr x) a;
+        Array.iteri (fun i x -> (if i > 0 then pr_sep()); pr x) a;
         tail()
       end
 

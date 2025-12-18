@@ -3377,6 +3377,9 @@ let relabel_allowed (lab1, lab2) =
     | Parameter _, InferredFormalParameter _
     | InferredFormalParameter _, Parameter _
 
+    | Parameters _, InferredFormalParameters
+    | InferredFormalParameters, Parameters _
+
     | LocalVariableDeclaration _, FieldDeclaration _
     | FieldDeclaration _, LocalVariableDeclaration _
 
