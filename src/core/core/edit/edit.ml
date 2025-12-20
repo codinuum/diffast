@@ -2768,10 +2768,28 @@ let rectify_renames_d
           (fun x -> x > 0)
           [!use_rename_count; use_delete_count; use_insert_count;
            conflicting_use_mapping_count1; conflicting_use_mapping_count2
-          ] &&
+          ]
+        &&
         (
-         Comparison.get_orig_name def1 <> Comparison.get_orig_name def2 &&
+         let def_orig_name1 = Comparison.get_orig_name def1 in
+         let def_orig_name2 = Comparison.get_orig_name def2 in
+         def_orig_name1 <> def_orig_name2 &&
          !use_rename_count = 0 &&
+         (if
+           use_delete_count > 0 && use_insert_count = 0 && conflicting_use_mapping_count1 > 0 ||
+           use_insert_count > 0 && use_delete_count = 0 && conflicting_use_mapping_count2 > 0
+         then
+           let uqn1, flag1 = Misc.get_uqn def_orig_name1 in
+           if flag1 then
+             let uqn2, flag2 = Misc.get_uqn def_orig_name2 in
+             if flag2 then
+               uqn1 <> uqn2
+             else
+               true
+           else
+             true
+         else
+           true) &&
          (use_delete_count + conflicting_use_mapping_count1)
            * (use_insert_count + conflicting_use_mapping_count2) = 0
         ||

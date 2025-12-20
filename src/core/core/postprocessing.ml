@@ -1023,7 +1023,10 @@ module F (Label : Spec.LABEL_T) = struct
     let get_mid n =
       try
         match edits#find_mov1 n with
-        | Edit.Move(id, _, _, _) -> Some !id
+        | Edit.Move(id, _, _, _) -> begin
+            [%debug_log "%a --> %a" nups n MID.ps !id];
+            Some !id
+        end
         | _ -> None
       with
         Not_found -> None
@@ -1036,6 +1039,7 @@ module F (Label : Spec.LABEL_T) = struct
 
       let movid, kind =
         let moveon x =
+          x == nd ||
           match get_mid x with
           | Some id -> id = movid
           | _ -> true
@@ -1266,7 +1270,7 @@ module F (Label : Spec.LABEL_T) = struct
                     if n'#initial_parent == nd' then
                       false
                     else if not (tree2#is_initial_ancestor nd' n') then
-                      true
+                      (*true*)false
                     else if has_crossing_mapped_desc' n' n then
                       true
                     else if check_st_flag then
@@ -1288,7 +1292,7 @@ module F (Label : Spec.LABEL_T) = struct
                     if n#initial_parent == nd then
                       false
                     else if not (tree1#is_initial_ancestor nd n) then
-                      true
+                      (*true*)false
                     else if has_crossing_mapped_desc n n' then
                       true
                     else if check_st_flag then
@@ -1305,10 +1309,24 @@ module F (Label : Spec.LABEL_T) = struct
           with
             Not_found -> false
         in
-        [%debug_log "is_frontier --> %B" is_frontier];
+        [%debug_log "is_frontier: %a --> %B" nups nd is_frontier];
         let genmov =
           if is_frontier then (* cf. regression:java/Tar.java: 384L-397L --> 459L-472L *)
-            fun n -> gen_moves (mid_gen()) Edit.Mnormal n
+            fun n ->
+              let mid =
+                (*if
+                  try
+                    let nd' = nmapping#find nd in
+                    let n' = nmapping#find n in
+                    n'#initial_parent == nd' &&
+                    (nd'#initial_nchildren = 1 || nd#initial_nchildren = 1)
+                  with _ -> false
+                then
+                  movid
+                else*)
+                  mid_gen()
+              in
+              gen_moves mid Edit.Mnormal n
           else
             gen_moves movid kind
         in

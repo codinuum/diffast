@@ -3935,7 +3935,8 @@ class ['node_t, 'tree_t] c
                   try
                     let def2 = get_def_node tree2 x2 in
                     [%debug_log "x2=%a def2=%a" nps x2 nps def2];
-                    is_local_def def2 && not (nmapping#mem_cod def2) &&
+                    is_local_def def2 &&
+                    (not (nmapping#mem_cod def2) || nmapping#inv_find def2 == nd1) &&
                     has_p_descendant ~moveon
                       (fun y2 ->
                         try
@@ -3981,7 +3982,8 @@ class ['node_t, 'tree_t] c
                   try
                     let def1 = get_def_node tree1 x1 in
                     [%debug_log "x1=%a def1=%a" nps x1 nps def1];
-                    is_local_def def1 && not (nmapping#mem_dom def1) &&
+                    is_local_def def1 &&
+                    (not (nmapping#mem_dom def1) || nmapping#find def1 == nd2) &&
                     has_p_descendant ~moveon
                       (fun y1 ->
                         try
