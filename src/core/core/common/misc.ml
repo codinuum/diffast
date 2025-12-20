@@ -70,6 +70,14 @@ let pause() =
   ignore (input_line stdin)
 
 
+let sep_pat = Str.regexp {|\b|}
+[%%capture_path
+let get_uqn n =
+  let nl = Str.split sep_pat n in
+  let uqn = Xlist.last nl in
+  [%debug_log "\"%s\" --> \"%s\"" n uqn];
+  uqn, List.length nl > 1
+]
 
 
 [%%capture_path

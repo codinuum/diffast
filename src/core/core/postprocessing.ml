@@ -4599,8 +4599,7 @@ end;
                         is_mapped ~weak:true (get_right true ca1 n1) (get_right true ca2 n2)
                       with _ -> false
                     in
-                    if b then
-                      [%debug_log "!!!!!!!! %B" b];
+                    [%debug_log "%B" b];
                     b
                   in
                   let b = cond0 || cond1() in
@@ -4615,7 +4614,7 @@ end;
                 else if
                   n1#data#is_order_insensitive && n2#data#is_order_insensitive &&
                   n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
-                  not (is_stable n1 n2)
+                  not (cenv#has_uniq_match n1 n2) && not (is_stable n1 n2)
                 then begin
                   [%debug_log "not so good mapping: %a-%a" nups n1 nups n2];
                   if n1#initial_nchildren > 0 || n2#initial_nchildren > 0 then
@@ -5617,24 +5616,38 @@ end;
                   let p2 = n2#initial_parent in
                   let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
                   let padj1 =
-                    if pnd2#data#eq p2#data && anc_each_other2 pnd2 p2 then
+                    if pnd2#data#eq p2#data && anc_each_other2 pnd2 p2 then begin
+                      [%debug_log "@"];
                       false
+                    end
                     else if
                       is_cross_boundary ~filt nmapping pnd1 p2 &&
                       not (is_cross_boundary ~filt nmapping pnd1 pnd2)
-                    then
+                    then begin
+                      [%debug_log "@"];
                       true
+                    end
                     else if
                       is_cross_boundary ~filt nmapping pnd1 pnd2 &&
                       not (is_cross_boundary ~filt nmapping pnd1 p2)
-                    then
+                    then begin
+                      [%debug_log "@"];
                       false
-                    else
+                    end
+                    else if
+                      pnd2 == p2 && abs(nd2#initial_pos - n2#initial_pos) = 1
+                    then begin
+                      [%debug_log "@"];
+                        cenv#get_similarity_score nd1 n2 <
+                        cenv#get_similarity_score nd1 nd2
+                    end
+                    else begin
                       (*if Comparison.next_to_each_other p2 pnd2 then
                         false
                       else!!!NG!!!*)
                         cenv#get_adjacency_score pnd1 p2 <
                         cenv#get_adjacency_score pnd1 pnd2
+                    end
                   in
                   [%debug_log "padj1=%B" padj1];
                   if not padj1 && (pnd1#data#is_statement || pnd2#data#is_statement) then begin
@@ -5702,24 +5715,38 @@ end;
                   let p1 = n1#initial_parent in
                   let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
                   let padj2 =
-                    if pnd1#data#eq p1#data && anc_each_other1 pnd1 p1 then
+                    if pnd1#data#eq p1#data && anc_each_other1 pnd1 p1 then begin
+                      [%debug_log "@"];
                       false
+                    end
                     else if
                       is_cross_boundary ~filt nmapping p1 pnd2 &&
                       not (is_cross_boundary ~filt nmapping pnd1 pnd2)
-                    then
+                    then begin
+                      [%debug_log "@"];
                       true
+                    end
                     else if
                       is_cross_boundary ~filt nmapping pnd1 pnd2 &&
                       not (is_cross_boundary ~filt nmapping p1 pnd2)
-                    then
+                    then begin
+                      [%debug_log "@"];
                       false
-                    else
+                    end
+                    else if
+                      pnd1 == p1 && abs(nd1#initial_pos - n1#initial_pos) = 1
+                    then begin
+                      [%debug_log "@"];
+                        cenv#get_similarity_score n1 nd2 <
+                        cenv#get_similarity_score nd1 nd2
+                    end
+                    else begin
                       (*if Comparison.next_to_each_other p1 pnd1 then
                         false
                       else!!!NG!!!*)
                         cenv#get_adjacency_score p1 pnd2 <
                         cenv#get_adjacency_score pnd1 pnd2
+                    end
                   in
                   [%debug_log "padj2=%B" padj2];
                   if not padj2 && (pnd1#data#is_statement || pnd2#data#is_statement) then begin
@@ -7591,6 +7618,7 @@ end;
                 let bad_movrel =
                   not (nmapping#is_final_mapping nd1 nd2) &&
                   (try nd1#data#get_orig_name <> nd2#data#get_orig_name with _ -> true) &&
+                  not (nd1#data#is_compatible_with ?weak:None nd2#data) &&
                   stability <= options#movrel_stability_threshold &&
                   (
                    ratio <= options#movrel_ratio_threshold ||
@@ -8975,7 +9003,9 @@ end;
                    let b =
                      if
                        nd1#data#is_statement && subtree_rep_eq nd1 nd2 ||
-                       cenv#is_uniq_subtree_match nd1 nd2
+                       cenv#is_uniq_subtree_match nd1 nd2 ||
+                       is_root && sz > 0 && nd1#data#is_statement && nd2#data#is_statement &&
+                       get_move_density1 mid = 1.0 && get_move_density2 mid = 1.0
                      then
                        false
                      else

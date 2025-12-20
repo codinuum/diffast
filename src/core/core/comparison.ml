@@ -4330,9 +4330,9 @@ class ['node_t, 'tree_t] c
           else if
             let b =
               (
-               nd1old == nd1new && nd1old#data#is_op
+               nd1old == nd1new && (nd1old#data#is_op || nd1old#data#is_block)
               ||
-               nd2old == nd2new && nd2old#data#is_op
+               nd2old == nd2new && (nd2old#data#is_op || nd2old#data#is_block)
               ) &&
               (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
               subtree_sim_old > subtree_sim_new && ancsim_old > ancsim_new
@@ -4351,9 +4351,9 @@ class ['node_t, 'tree_t] c
           else if
             let b =
               (
-               nd1old == nd1new && nd1old#data#is_op
+               nd1old == nd1new && (nd1old#data#is_op || nd1old#data#is_block)
               ||
-               nd2old == nd2new && nd2old#data#is_op
+               nd2old == nd2new && (nd2old#data#is_op || nd2old#data#is_block)
               ) &&
               (tree1#in_subtree_mutually nd1old nd1new || tree2#in_subtree_mutually nd2old nd2new) &&
               subtree_sim_new > subtree_sim_old && ancsim_new > ancsim_old
