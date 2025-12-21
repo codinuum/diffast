@@ -3397,9 +3397,9 @@ let relabel_allowed (lab1, lab2) =
     | Statement Statement.Else, SwitchBlockStatementGroup
 
     | SLconstant _, SLdefault | SLdefault, SLconstant _
-    | SLconstant _, Expression _ | Expression _, SLconstant _
+    (*| SLconstant _, Expression _ | Expression _, SLconstant _
+    | SLconstant _, Primary _ | Primary _, SLconstant _*)
     | SLdefault, Expression _ | Expression _, SLdefault
-    | SLconstant _, Primary _ | Primary _, SLconstant _
     | SLdefault, Primary _ | Primary _, SLdefault
 
       -> true
