@@ -688,11 +688,11 @@ class translator options =
   method virtual_nodes = virtual_nodes
   method reg_virtual_node nd = Xset.add virtual_nodes nd
 
-  val final_label_tbl = (Hashtbl.create 0 : (Spec.node_t, Obj.t) Hashtbl.t)
+  (*val final_label_tbl = (Hashtbl.create 0 : (Spec.node_t, Obj.t) Hashtbl.t)
   method final_label_tbl = final_label_tbl
   method reg_final_label nd lab =
     [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#label (L.to_string lab)];
-    Hashtbl.add final_label_tbl nd (Obj.repr lab)
+    Hashtbl.add final_label_tbl nd (Obj.repr lab)*)
 
 
   method set_bindings (tree : Spec.tree_t) =
