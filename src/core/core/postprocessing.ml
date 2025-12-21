@@ -10056,10 +10056,11 @@ end;
               else begin
                 [%debug_log "%a --> virtually untouched" MID.ps mid];
                 Xset.add virtually_untouched mid;
-                List.iter (Xset.add crossing_with_untouched) ml
+                List.iter (Xset.add crossing_with_untouched) ml;
+                List.iter (Xset.add crossing_checked) ml
               end;
               (*List.iter (Xset.add crossing_with_untouched) ml;*)
-              List.iter (Xset.add crossing_checked) ml
+              (*List.iter (Xset.add crossing_checked) ml*)
             end
           with
             Break -> ()

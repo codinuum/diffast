@@ -2761,13 +2761,22 @@ class translator options =
                 let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1; !elseif_count; !else_count]) in
                 let nd_ = self#mknode ~ordinal_tbl_opt (L.Statement (L.Statement.If tid)) children' in
                 begin
+                  let un_else n =
+                    if L.is_else (getlab n) then begin
+                      [%debug_log "%s" n#to_string];
+                      assert (n#nchildren = 1);
+                      n#children.(0)
+                    end
+                    else
+                      n
+                  in
                   match children' with
                   | nd0::nd1::(nd2::_ as rest) -> begin
-                      self#add_true_children nd_ (Array.of_list [nd0; nd1; nd2]);
+                      self#add_true_children nd_ (Array.of_list [nd0; nd1; un_else nd2]);
                       let rec doit nl =
                         match nl with
                         | n0::(n1::_ as tl) -> begin
-                            self#add_true_children n0 (Array.append n0#children [|n1|]);
+                            self#add_true_children n0 (Array.append n0#children [|un_else n1|]);
                             doit tl
                         end
                         | _ -> ()
