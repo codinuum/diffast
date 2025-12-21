@@ -4515,13 +4515,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             List.exists
               (fun (n1, x2) ->
                 List.memq n1 stable_matches1 ||
-                Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data)
+                Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data) ||
+                try cenv#is_uniq_subtree_match n1 (nmapping#find n1) with _ -> false
               ) cand
           ||
             List.exists
               (fun (x1, n2) ->
                 List.memq n2 stable_matches2 ||
-                Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data)
+                Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data) ||
+                try cenv#is_uniq_subtree_match (nmapping#inv_find n2) n2 with _ -> false
               ) cand
           in
           [%debug_log "[%s] -> %B" (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
@@ -5240,6 +5242,26 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 Xset.add modified (!cand2)
               end;
               match !cand with
+              | Some (x1, x2) when begin
+                  if x1 == n1 then
+                    try
+                      let x2' = nmapping#inv_find x2 in
+                      self#mem_mov12 x2' x2 &&
+                      cenv#get_adjacency_score x2' x2 >
+                      cenv#get_adjacency_score x1 x2
+                    with
+                      _ -> false
+                  else if x2 == n2 then
+                    try
+                      let x1' = nmapping#find x1 in
+                      self#mem_mov12 x1 x1' &&
+                      cenv#get_adjacency_score x1 x1' >
+                      cenv#get_adjacency_score x1 x2
+                    with
+                      _ -> false
+                  else
+                    false
+              end -> map_add map n1 n2
               | Some (x1, x2) -> map_add map x1 x2
               | None -> map_add map n1 n2
             end

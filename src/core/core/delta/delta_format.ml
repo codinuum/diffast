@@ -253,7 +253,7 @@ module IrreversibleFormat = struct
 
       let tree = tree_factory#from_file file in
 
-      tree#setup_final_labels();
+      (*tree#setup_final_labels();*)
 
       [%debug_log "T:\n%s\n" tree#to_string];
 
@@ -836,7 +836,7 @@ module ReversibleFormat = struct
 
       let tree = tree_factory#from_file file in
 
-      tree#setup_final_labels();
+      (*tree#setup_final_labels();*)
 
       if not normalized_delta then
         ignore (tree#recover_true_children ~initial_only:true ());

@@ -1630,11 +1630,14 @@ module Statement = struct
     | Labeled of identifier
     | Expression of Expression.t * tie_id
     (*| FlattenedIf of tie_id*)
-    | ElseIf of tie_id
+    (*| ElseIf of tie_id*)
     | Else
+    (*| IfThen of tie_id*)
 
   let get_tid = function
-    | If tid -> tid
+    | If tid
+    (*| IfThen tid*)
+      -> tid
     (*| FlattenedIf tid | ElseIf tid -> tid*)
     (*| Expression tid -> tid*)
     | _ -> raise Not_found
@@ -1693,8 +1696,9 @@ module Statement = struct
       | Expression(se, tid) -> (Expression.to_string se)^"("^(tid_to_string tid)^")"
 
       (*| FlattenedIf tid -> sprintf "FlattenedIf(%s)" (tid_to_string tid)*)
-      | ElseIf tid      -> sprintf "ElseIf(%s)" (tid_to_string tid)
+      (*| ElseIf tid      -> sprintf "ElseIf(%s)" (tid_to_string tid)*)
       | Else            -> "Else"
+      (*| IfThen tid      -> sprintf "IfThen(%s)" (tid_to_string tid)*)
     in
     "Statement." ^ str
 
@@ -1702,7 +1706,8 @@ module Statement = struct
     | Expression(se, _) -> Expression(Expression.strip se, null_tid)
     | If _              -> If null_tid
     (*| FlattenedIf _   -> FlattenedIf null_tid*)
-    | ElseIf _          -> ElseIf null_tid
+    (*| ElseIf _          -> ElseIf null_tid*)
+    (*| IfThen _          -> IfThen null_tid*)
     | stmt              -> stmt
 
   let anonymize ?(more=false) = function
@@ -1713,7 +1718,10 @@ module Statement = struct
     | Expression(se, tid) -> Expression(Expression.anonymize ~more se, anonymize_tid ~more tid)
     | If _          -> If null_tid(*(anonymize_tid ~more tid)*)
     (*| FlattenedIf tid     -> FlattenedIf null_tid(*(anonymize_tid ~more tid)*)*)
-    | ElseIf _      -> (*Else*)If null_tid(*(anonymize_tid ~more tid)*)
+    (*| ElseIf _ when more -> If null_tid(*(anonymize_tid ~more tid)*)
+    | ElseIf _      -> ElseIf null_tid(*(anonymize_tid ~more tid)*)*)
+    (*| IfThen _ when more -> If null_tid(*(anonymize_tid ~more tid)*)
+    | IfThen _      -> IfThen null_tid(*(anonymize_tid ~more tid)*)*)
     | stmt          -> stmt
 
   let to_simple_string = function
@@ -1735,8 +1743,9 @@ module Statement = struct
     | Labeled ident      -> ident
     | Expression(_, _) -> "<se>" (* Expression.to_simple_string se *)
     (*| FlattenedIf tid -> "<flattened-if>"*)
-    | ElseIf _        -> "else if"
+    (*| ElseIf _        -> "else if"*)
     | Else            -> "else"
+    (*| IfThen _        -> "if"*)
 
   let to_short_string = function
     | Empty        -> mkstr 0
@@ -1767,8 +1776,9 @@ module Statement = struct
     | Labeled ident       -> catstr [mkstr 15; ident]
     | Expression(se, tid) -> catstr [mkstr 16; Expression.to_short_string se; tid_to_string tid]
     (*| FlattenedIf tid -> catstr [mkstr 17; tid_to_string tid]*)
-    | ElseIf tid      -> catstr [mkstr 18; tid_to_string tid]
+    (*| ElseIf tid      -> catstr [mkstr 18; tid_to_string tid]*)
     | Else            -> mkstr 19
+    (*| IfThen tid      -> catstr [mkstr 20; tid_to_string tid]*)
 
   let to_index = function
     | Empty            -> 3
@@ -1789,8 +1799,9 @@ module Statement = struct
     | Labeled _        -> 104
     | Expression(_, _) -> 105
     (*| FlattenedIf _    -> 106*)
-    | ElseIf _         -> 107
+    (*| ElseIf _         -> 107*)
     | Else             -> 108
+    (*| IfThen _         -> 109*)
 
   let to_tag ?(strip=false) s =
     let name, attrs =
@@ -1829,10 +1840,11 @@ module Statement = struct
 
       (*| FlattenedIf _ when strip -> "FlattenedIfStatement", []
       | FlattenedIf tid          -> "FlattenedIfStatement", mktidattr tid*)
-      | ElseIf _ when strip      -> "ElseIfStatement", []
-      | ElseIf tid               -> "ElseIfStatement", mktidattr tid
+      (*| ElseIf _ when strip      -> "ElseIfStatement", []
+      | ElseIf tid               -> "ElseIfStatement", mktidattr tid*)
       | Else                     -> "ElseStatement", []
-
+      (*| IfThen _ when strip      -> "IfThenStatement", []
+      | IfThen tid               -> "IfThenStatement", mktidattr tid*)
     in
     name, attrs
 
@@ -1849,8 +1861,12 @@ module Statement = struct
     | If _, Switch | Switch, If _
     | If _, If _
     (*| FlattenedIf _, Switch | Switch, FlattenedIf _*)
-    | ElseIf _, If _ | If _, ElseIf _
-    | ElseIf _, Else | Else, ElseIf _
+    (*| ElseIf _, If _ | If _, ElseIf _
+    | ElseIf _, Else | Else, ElseIf _*)
+
+    (*| IfThen _, If _ | If _, IfThen _
+    | IfThen _, Else | Else, IfThen _*)
+
     | Else, If _ | If _, Else
     | For, ForEnhanced | ForEnhanced, For
     | For, While | While, For
@@ -3391,8 +3407,13 @@ let relabel_allowed (lab1, lab2) =
 
     | SwitchBlockStatementGroup, Statement Statement.If _
     | Statement Statement.If _, SwitchBlockStatementGroup
-    | SwitchBlockStatementGroup, Statement Statement.ElseIf _
-    | Statement Statement.ElseIf _, SwitchBlockStatementGroup
+
+    (*| SwitchBlockStatementGroup, Statement Statement.ElseIf _
+    | Statement Statement.ElseIf _, SwitchBlockStatementGroup*)
+
+    (*| SwitchBlockStatementGroup, Statement Statement.IfThen _
+    | Statement Statement.IfThen _, SwitchBlockStatementGroup*)
+
     | SwitchBlockStatementGroup, Statement Statement.Else
     | Statement Statement.Else, SwitchBlockStatementGroup
 
@@ -3653,13 +3674,17 @@ let is_if = function
   (*| Statement Statement.FlattenedIf _ -> true*)
   | _ -> false
 
-let is_elseif = function
+(*let is_elseif = function
   | Statement Statement.ElseIf _ -> true
-  | _ -> false
+  | _ -> false*)
 
 let is_else = function
   | Statement Statement.Else -> true
   | _ -> false
+
+(*let is_ifthen = function
+  | Statement Statement.IfThen _ -> true
+  | _ -> false*)
 
 let is_while = function
   | Statement Statement.While -> true
@@ -4756,8 +4781,9 @@ let of_elem_data =
     "AssertStatement",          (fun _ -> mks Statement.Assert);
     "IfStatement",              (fun a -> mks (Statement.If(find_tid a)));
     (*"FlattenedIfStatement",     (fun a -> mks (Statement.FlattenedIf(find_tid a)));*)
-    "ElseIfStatement",          (fun a -> mks (Statement.ElseIf(find_tid a)));
+    (*"ElseIfStatement",          (fun a -> mks (Statement.ElseIf(find_tid a)));*)
     "ElseStatement",            (fun _ -> mks Statement.Else);
+    (*"IfThenStatement",          (fun a -> mks (Statement.IfThen(find_tid a)));*)
     "BasicForStatement",        (fun _ -> mks Statement.For);
     "EnhancedForStatement",     (fun _ -> mks Statement.ForEnhanced);
     "WhileStatement",           (fun _ -> mks Statement.While);

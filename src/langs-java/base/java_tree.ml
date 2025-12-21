@@ -234,12 +234,18 @@ let set_control_flow body =
             done;
             add_succ nexts
         end
-        | L.Statement.ElseIf _ -> begin
+        (*| L.Statement.ElseIf _ -> begin
             let c1 = children.(1) in
             add_succ1 c1;
             set_succ label_env loop_env nexts c1;
             add_succ nexts
-        end
+        end*)
+        (*| L.Statement.IfThen _ -> begin
+            let c1 = children.(1) in
+            add_succ1 c1;
+            set_succ label_env loop_env nexts c1;
+            add_succ nexts
+        end*)
         | L.Statement.Else -> begin
             let c = children.(0) in
             add_succ1 c;
@@ -682,7 +688,7 @@ class translator options =
   method virtual_nodes = virtual_nodes
   method reg_virtual_node nd = Xset.add virtual_nodes nd
 
-  val final_label_tbl = Hashtbl.create 0
+  val final_label_tbl = (Hashtbl.create 0 : (Spec.node_t, Obj.t) Hashtbl.t)
   method final_label_tbl = final_label_tbl
   method reg_final_label nd lab =
     [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#label (L.to_string lab)];
@@ -2553,7 +2559,8 @@ class translator options =
           let e_ = self#of_expression e in
           let tid = self#mktid e_ in
           (*let tid = L.null_tid in*)
-          let lab = L.Statement (L.Statement.If tid) in
+          (*let lab = L.Statement (L.Statement.If tid) in*)
+          let lab = L.Statement (L.Statement.If(*Then*) tid) in
           let s_ = self#of_statement ~block_context:"if" s in
           let s_ = self#normalize_block_stmt s_ in
           let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1]) in
@@ -2671,10 +2678,15 @@ class translator options =
                   assert false
               else (* not is_top *)
                 if L.is_if lab0 then
-                  let lab_ = lab0 in
+                  (*let lab_ = lab0 in
                   let final_lab =
                     match lab0 with
                     | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.ElseIf tid0)
+                    | _ -> assert false
+                  in*)
+                  let lab_ =
+                    match lab0 with
+                    | L.Statement (L.Statement.If tid0) -> L.Statement (L.Statement.If(*Then*) tid0)
                     | _ -> assert false
                   in
                   if nchildren0 = 3 then begin
@@ -2690,7 +2702,7 @@ class translator options =
                     [%debug_log "loc_=%s" (Loc.to_string loc_)];
                     nd_#data#set_loc loc_;
 
-                    self#reg_final_label nd_ final_lab;
+                    (*self#reg_final_label nd_ final_lab;*)
                     self#reg_true_category nd_ (L.get_category lab0);
                     self#reg_true_loc nd_ nd0#data#src_loc;
 
@@ -2729,7 +2741,7 @@ class translator options =
                     in
                     nd_#data#set_loc loc_;
 
-                    self#reg_final_label nd_ final_lab;
+                    (*self#reg_final_label nd_ final_lab;*)
                     self#reg_true_category nd_ (L.get_category lab0);
                     self#reg_true_loc nd_ nd0#data#src_loc;
 
@@ -2747,7 +2759,24 @@ class translator options =
                 (*[%debug_log "%d children found" (Array.length ca0)];*)
                 let children' = ca0.(0)::ca0.(1)::rest in
                 let ordinal_tbl_opt = Some (new ordinal_tbl [1; 1; !elseif_count; !else_count]) in
-                self#mknode ~ordinal_tbl_opt (L.Statement (L.Statement.If tid)) children'
+                let nd_ = self#mknode ~ordinal_tbl_opt (L.Statement (L.Statement.If tid)) children' in
+                begin
+                  match children' with
+                  | nd0::nd1::(nd2::_ as rest) -> begin
+                      self#add_true_children nd_ (Array.of_list [nd0; nd1; nd2]);
+                      let rec doit nl =
+                        match nl with
+                        | n0::(n1::_ as tl) -> begin
+                            self#add_true_children n0 (Array.append n0#children [|n1|]);
+                            doit tl
+                        end
+                        | _ -> ()
+                      in
+                      doit rest
+                  end
+                  | _ -> ()
+                end;
+                nd_
             end
             | _ -> assert false
             (*let ordinal_tbl_opt = Some (new ordinal_tbl [1; !elseif_count; !else_count]) in
@@ -4001,7 +4030,7 @@ let of_compilation_unit options cu =
   tree#set_true_category_tbl trans#true_category_tbl;
   tree#set_true_loc_tbl trans#true_loc_tbl;
   tree#set_virtual_nodes trans#virtual_nodes;
-  tree#set_final_label_tbl trans#final_label_tbl;
+  (*tree#set_final_label_tbl trans#final_label_tbl;*)
 
   tree#set_true_parent_tbl trans#true_parent_tbl;
   tree#set_true_children_tbl trans#true_children_tbl;

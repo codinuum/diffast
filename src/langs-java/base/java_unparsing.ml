@@ -860,14 +860,14 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           else begin
             pr_nth_child 1;
             if nchildren > 2 then begin
-              pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
-              pr_selected ~fail_on_error ~head:pad1 L.is_else children;
-
               let last_idx = nchildren - 1 in
 
+              (*pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_elseif children;
+              pr_selected ~fail_on_error ~head:pad1 ~sep:pad1 L.is_ifthen children;
+              pr_selected ~fail_on_error ~head:pad1 L.is_else children;
               let else_part = children.(last_idx) in
               let lab = getlab else_part in
-              if not (L.is_elseif lab || L.is_else lab) then begin
+              if not (L.is_elseif lab || L.is_ifthen lab || L.is_else lab) then begin
                 spc ~blk_style 1; pr_string "else";
                 let else_lab = getlab else_part in
                 if L.is_block else_lab || L.is_if else_lab then
@@ -875,9 +875,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                 else
                   pr_break 1 pb#indent;
                 pr_node ~fail_on_error else_part
-              end
+              end*)
 
-              (*for i = 2 to last_idx do
+              for i = 2 to last_idx do
                 let childi = children.(i) in
                 if i < last_idx then begin
                   pad1();
@@ -885,7 +885,11 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                 end
                 else begin
                   let labi = getlab childi in
-                  if L.is_elseif labi || L.is_else labi then begin
+                  if
+                    (*L.is_ifthen labi ||
+                    L.is_elseif labi ||*)
+                    L.is_else labi
+                  then begin
                     pad1()
                   end
                   else begin
@@ -897,7 +901,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
                   end
                 end;
                 pr_node ~fail_on_error childi
-              done;*)
+              done;
 
             end
           end
@@ -909,7 +913,44 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
             pb#close_box()
           end*)
 
-      | L.Statement.ElseIf _ ->
+      (*| L.Statement.IfThen _ ->
+          if
+            try
+              let parent, idx =
+                try
+                  let pn = node#initial_parent in
+                  match Array.find_index (fun x -> x == node) pn#initial_children with
+                  | Some i -> pn, i
+                  | _ -> raise Not_found
+                with _ ->
+                  let pn = node#parent in
+                  match Array.find_index (fun x -> x == node) pn#initial_children with
+                  | Some i -> pn, i
+                  | _ -> raise Not_found
+              in
+              idx > 1 && L.is_if (getlab parent)
+            with
+              _ -> false
+          then
+            pr_string "else if ("
+          else
+            pr_string "if (";
+          pr_nth_child 0; pr_rparen();
+          begin
+            try
+              if L.is_block (getlab (children.(1))) then
+                pad 1
+              else
+                pr_break 1 pb#indent;
+            with
+              _ -> pad 1
+          end;
+          if nchildren < 2 then
+            pr_string "{}"
+          else
+            pr_nth_child 1*)
+
+      (*| L.Statement.ElseIf _ ->
           if
             try
               let parent =
@@ -946,7 +987,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
           if nchildren < 2 then
             pr_string "{}"
           else
-            pr_nth_child 1
+            pr_nth_child 1*)
 
       | L.Statement.Else ->
           pr_string "else";

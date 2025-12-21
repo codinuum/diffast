@@ -6142,8 +6142,8 @@ end;
         try
           let nd' = nmapping#find nd in
           if
-            not (nd#data#eq nd'#data) ||
-            tree1#has_final_label nd <> tree2#has_final_label nd'
+            not (nd#data#eq nd'#data)(* ||
+            tree1#has_final_label nd <> tree2#has_final_label nd'*)
           then begin
             let rel = Edit.make_relabel nd nd' in
             [%debug_log "%s" (Edit.to_string rel)];
@@ -10055,9 +10055,10 @@ end;
               end
               else begin
                 [%debug_log "%a --> virtually untouched" MID.ps mid];
-                Xset.add virtually_untouched mid
+                Xset.add virtually_untouched mid;
+                List.iter (Xset.add crossing_with_untouched) ml
               end;
-              List.iter (Xset.add crossing_with_untouched) ml;
+              (*List.iter (Xset.add crossing_with_untouched) ml;*)
               List.iter (Xset.add crossing_checked) ml
             end
           with

@@ -867,7 +867,7 @@ module Tree (L : Spec.LABEL_T) = struct
     method is_virtual_node nd = Xset.mem virtual_nodes nd
     method set_virtual_nodes set = virtual_nodes <- set
 
-    val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
+    (*val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
     method set_final_label_tbl tbl = final_label_tbl <- tbl
     method has_final_label nd = Hashtbl.mem final_label_tbl nd
     method setup_final_labels () =
@@ -875,7 +875,7 @@ module Tree (L : Spec.LABEL_T) = struct
         (fun nd lab ->
           [%debug_log "%s -> %s\n" nd#data#label (L.to_string (Obj.obj lab : L.t))];
           nd#data#relab ?orig:None lab
-        ) final_label_tbl
+        ) final_label_tbl*)
 
 
     val mutable true_parent_tbl = (Hashtbl.create 0 : (UID.t, node_t) Hashtbl.t)
@@ -890,13 +890,17 @@ module Tree (L : Spec.LABEL_T) = struct
       (*Printf.printf "! [before] initial_size=%d (initial_only=%B)\n"
         self#initial_size initial_only;*)
       [%debug_log "initial_only=%B" initial_only];
-      let modified = ref false in
+      (*let modified = ref false in*)
+      let modified_nodes = Xset.create 0 in
       let deleted_node_list = ref [] in
+      let used_nodes = Xset.create 0 in
       Hashtbl.iter
         (fun nd c ->
 
-          [%debug_log "recovering true children: %a -> [%s]"
-            UID.ps nd#uid (Xarray.to_string (fun n -> UID.to_string n#uid) ";" c)];
+          [%debug_log "recovering true children: %a (%s) -> [%s]"
+            UID.ps nd#uid nd#data#label (Xarray.to_string (fun n -> UID.to_string n#uid) ";" c)];
+
+          Array.iter (Xset.add used_nodes) c;
 
           begin %debug_block
             let _nc = nd#initial_nchildren in
@@ -932,7 +936,8 @@ module Tree (L : Spec.LABEL_T) = struct
                 n#set_pos i
               end
             ) c;
-          modified := true
+          (*modified := true*)
+          Xset.add modified_nodes nd
         ) true_children_tbl;
 
       begin %debug_block
@@ -942,17 +947,26 @@ module Tree (L : Spec.LABEL_T) = struct
           ) true_parent_tbl
       end;
 
-      if !modified then begin
+      if Xset.size modified_nodes > 0 then begin
         self#fast_scan_whole_initial (fun nd -> nd#set_gindex GI.unknown);
         self#setup_initial_size;
         self#setup_gindex_table;
         self#setup_initial_leftmost_table;
-        self#setup_apath
+        self#setup_apath;
+        Xset.iter
+          (fun x ->
+            let st = self#create x false in
+            let d = st#digest in
+            x#data#_set_digest d
+          ) modified_nodes
       end;
       (*Printf.printf "! [after] initial_size=%d\n" self#initial_size;*)
+      let deleted_node_list_ =
+        List.filter (fun x -> not (Xset.mem used_nodes x)) !deleted_node_list
+      in
       [%debug_log "deleted nodes: [%s]"
-         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" !deleted_node_list)];
-      !deleted_node_list
+         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" deleted_node_list_)];
+      deleted_node_list_
 
     val mutable source_path = "unknown"
     method set_source_path p = source_path <- p

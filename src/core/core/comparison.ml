@@ -5507,6 +5507,35 @@ class ['node_t, 'tree_t] c
         List.iter (fun (n1, nl1) ->  atbl_add atbl1 nmapping#mem_dom n1 nl1) mapped1;
         List.iter (fun (n2, nl2) ->  atbl_add atbl2 nmapping#mem_cod n2 nl2) mapped2;
 
+        let alink_tbl2 = Nodetbl.create 0 in
+        Nodetbl.iter
+          (fun n2 _ ->
+            Nodetbl.iter
+              (fun n2' _ ->
+                if n2' != n2 && tree2#is_initial_ancestor n2 n2' then begin
+                  [%debug_log "%a -> %a" nups n2 nups n2'];
+                  Nodetbl.add alink_tbl2 n2 n2'
+                end
+              ) atbl2
+          ) atbl2;
+
+        let atbl_find2 x =
+          [%debug_log "x=%a" nups x];
+          let rec find y =
+            [%debug_log "y=%a" nups y];
+            let z = Nodetbl.find alink_tbl2 y in
+            [%debug_log "z=%a" nups z];
+            try
+              (Nodetbl.find atbl2 z) @ (try find z with _ -> [])
+            with
+              Not_found -> try find z with _ -> []
+          in
+          try
+            (Nodetbl.find atbl2 x) @ (try find x with _ -> [])
+          with
+            Not_found -> find x
+        in
+
         List.iter
           (fun (nd1, nds1) ->
 
@@ -5630,7 +5659,7 @@ class ['node_t, 'tree_t] c
             | [n1] -> begin
                 try
                   let an1' = nmapping#find an1 in
-                  let nl2 = Nodetbl.find atbl2 an1' in
+                  let nl2 = atbl_find2(*Nodetbl.find atbl2*) an1' in
                   [%debug_log "%a -> %a -> [%a]" nups an1 nups an1' nsps nl2];
                   match nl2 with
                   | [n2] -> begin
