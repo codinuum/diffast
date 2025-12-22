@@ -387,16 +387,72 @@ let generate_compatible_edits
           matches;
       end;
 
+      let is_map x1 x2 = try nmapping#find x1 == x2 with _ -> false in
+
       let matches =
         List.filter
           (fun (n1, n2) ->
             (try
               let n1' = nmapping#find n1 in
-              not (n1' != n2 && nmapping#is_final_mapping n1 n1')
+              if
+                n1' != n2 &&
+                (
+                 nmapping#is_final_mapping n1 n1' ||
+                 try
+                   let pn1 = n1#initial_parent in
+                   let pn1' = n1'#initial_parent in
+                   is_map pn1 pn1' &&
+                   match pn1#data#_digest with
+                   | Some d -> begin
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | nml1, nml2, _ ->
+                           try
+                             let nl1 = List.assq pn1 nml1 in
+                             let nl2 = List.assq pn1' nml2 in
+                             List.for_all2 (fun x1 x2 -> is_map x1 x2) nl1 nl2
+                           with
+                             _ -> false
+                   end
+                   | None -> false
+                 with
+                   _ -> false
+                )
+              then
+                false
+              else
+                true
             with _ -> true) &&
             (try
               let n2' = nmapping#inv_find n2 in
-              not (n2' != n1 && nmapping#is_final_mapping n2' n2)
+              if
+                n2' != n1 &&
+                (
+                 nmapping#is_final_mapping n2' n2 ||
+                 try
+                   let pn2' = n2'#initial_parent in
+                   let pn2 = n2#initial_parent in
+                   is_map pn2' pn2 &&
+                   match pn2#data#_digest with
+                   | Some d -> begin
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | nml1, nml2, _ ->
+                           try
+                             let nl1 = List.assq pn2' nml1 in
+                             let nl2 = List.assq pn2 nml2 in
+                             List.for_all2 (fun x1 x2 -> is_map x1 x2) nl1 nl2
+                           with
+                             _ -> false
+                   end
+                   | None -> false
+                 with
+                   _ -> false
+                )
+              then
+                false
+              else
+                true
             with _ -> true)
           ) matches
       in

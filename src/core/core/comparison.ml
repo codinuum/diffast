@@ -5429,7 +5429,7 @@ class ['node_t, 'tree_t] c
         end
         else
 
-        let add_map n1 n2 =
+        let add_map ?(lock=false) n1 n2 =
           [%debug_log "%a-%a" nups n1 nups n2];
           begin
             try
@@ -5452,6 +5452,8 @@ class ['node_t, 'tree_t] c
               Not_found -> ()
           end;
           let _ = nmapping#add_settled ~stable:false (* EXPERIMENTAL *) n1 n2 in
+          if lock then
+            nmapping#lock_mapping n1 n2;
           if not (List.mem (n1, n2) !added_pairs) then
             added_pairs := (n1, n2) :: !added_pairs
         in
@@ -5536,6 +5538,8 @@ class ['node_t, 'tree_t] c
             Not_found -> find x
         in
 
+        let match_ratio_tbl = Hashtbl.create 0 in
+
         List.iter
           (fun (nd1, nds1) ->
 
@@ -5578,6 +5582,8 @@ class ['node_t, 'tree_t] c
 
                       [%debug_log "subtree pair %a-%a: %d nodes mapped (ratio=%f)"
                         nups nd1 nups nd2 !c match_ratio];
+
+                      Hashtbl.add match_ratio_tbl (nd1, nd2) match_ratio;
 
                       if match_ratio > options#subtree_match_ratio_threshold then begin
                         overwrite nd1 nd2 !cands
@@ -5656,6 +5662,7 @@ class ['node_t, 'tree_t] c
           (fun an1 nl1 ->
             [%debug_log "%a -> [%a]" nups an1 nsps nl1];
             match nl1 with
+            | [] -> ()
             | [n1] -> begin
                 try
                   let an1' = nmapping#find an1 in
@@ -5676,6 +5683,33 @@ class ['node_t, 'tree_t] c
                 with
                   _ -> ()
             end
+            (*| nl1 -> begin
+                try
+                  let an1' = nmapping#find an1 in
+                  let nl2 = atbl_find2(*Nodetbl.find atbl2*) an1' in
+                  [%debug_log "%a -> %a -> [%a]" nups an1 nups an1' nsps nl2];
+                  match nl2 with
+                  | [n2] -> begin
+                      let nl1' =
+                        List.filter (fun x1 -> Hashtbl.find match_ratio_tbl (x1, n2) > 0.0) nl1
+                      in
+                      match nl1' with
+                      | [n1] -> begin
+                          add_map n1 n2;
+                          try
+                            let mnl1 = Nodetbl.find mtbl n1 in
+                            let mnl2 = Nodetbl.find mtbl n2 in
+                            if List.length mnl1 = List.length mnl2 then
+                              List.iter2 (fun mn1 mn2 -> add_map mn1 mn2) mnl1 mnl2
+                          with
+                            _ -> ()
+                      end
+                      | _ -> ()
+                  end
+                  | _ -> ()
+                with
+                  _ -> ()
+            end*)
             | _ -> ()
           ) atbl1;
 

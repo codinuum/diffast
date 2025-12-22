@@ -9023,8 +9023,10 @@ end;
                    in
                    let b =
                      if
-                       nd1#data#is_statement && subtree_rep_eq nd1 nd2 ||
-                       cenv#is_uniq_subtree_match nd1 nd2 ||
+                       nd1#data#is_statement && subtree_rep_eq nd1 nd2
+                     ||
+                       cenv#is_uniq_subtree_match nd1 nd2
+                     ||
                        is_root && sz > 0 && nd1#data#is_statement && nd2#data#is_statement &&
                        get_move_density1 mid = 1.0 && get_move_density2 mid = 1.0
                      then
@@ -9846,7 +9848,10 @@ end;
     [%debug_log "top nodes:"];
     Hashtbl.iter
       (fun mid (rt1, rt2) ->
-        [%debug_log "%a: %a-%a" MID.ps mid nups rt1 nups rt2];
+        [%debug_log "%a: %a-%a xsz=%f ysz=%d"
+           MID.ps mid nups rt1 nups rt2
+           (Hashtbl.find x_move_size_tbl mid)
+           (Hashtbl.find y_move_size_tbl mid)];
         let d1 = List.length (tree1#initial_ancestor_nodes rt1) in
         let d2 = List.length (tree2#initial_ancestor_nodes rt2) in
         Hashtbl.add move_depth_tbl mid (d1 + d2)
@@ -9863,12 +9868,12 @@ end;
         let r1, r1_ = Hashtbl.find move_top_tbl m1 in
         let c =
           if
-            tree1#is_initial_ancestor r0 r1 ||
+            tree1#is_initial_ancestor r0 r1 &&
             tree2#is_initial_ancestor r0_ r1_
           then
             -1
           else if
-            tree1#is_initial_ancestor r1 r0 ||
+            tree1#is_initial_ancestor r1 r0 &&
             tree2#is_initial_ancestor r1_ r0_
           then
             1
@@ -10056,11 +10061,9 @@ end;
               else begin
                 [%debug_log "%a --> virtually untouched" MID.ps mid];
                 Xset.add virtually_untouched mid;
-                List.iter (Xset.add crossing_with_untouched) ml;
-                List.iter (Xset.add crossing_checked) ml
               end;
-              (*List.iter (Xset.add crossing_with_untouched) ml;*)
-              (*List.iter (Xset.add crossing_checked) ml*)
+              List.iter (Xset.add crossing_with_untouched) ml;
+              List.iter (Xset.add crossing_checked) ml
             end
           with
             Break -> ()

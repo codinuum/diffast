@@ -966,6 +966,9 @@ module Tree (L : Spec.LABEL_T) = struct
       in
       [%debug_log "deleted nodes: [%s]"
          (Xlist.to_string (fun n -> UID.to_string n#uid) ";" deleted_node_list_)];
+
+      [%debug_log "\n%s" self#initial_to_string];
+
       deleted_node_list_
 
     val mutable source_path = "unknown"
