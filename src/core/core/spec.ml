@@ -131,8 +131,8 @@ class type tree_t = object ('self)
   method find_true_loc : node_t -> Loc.t
   method set_true_loc_tbl : (node_t, Loc.t) Hashtbl.t -> unit
 
-  method is_virtual_node : node_t -> bool
-  method set_virtual_nodes : node_t Xset.t -> unit
+  (*method is_virtual_node : node_t -> bool
+  method set_virtual_nodes : node_t Xset.t -> unit*)
 
   (*method set_final_label_tbl : (node_t, Obj.t) Hashtbl.t -> unit
   method has_final_label : node_t -> bool
@@ -145,6 +145,7 @@ class type tree_t = object ('self)
   method set_true_children_tbl    : (node_t, node_t array) Hashtbl.t -> unit
   method recover_true_children    : initial_only:bool -> unit -> node_t list
   method has_true_children        : node_t -> bool
+  method is_false_node            : node_t -> bool
 
   method set_source_info          : Storage.file -> unit
 

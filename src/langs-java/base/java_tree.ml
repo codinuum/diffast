@@ -684,9 +684,9 @@ class translator options =
     [%debug_log "%a: %s -> %s" UID.ps nd#uid (Loc.to_string nd#data#src_loc) (Loc.to_string loc)];
     Hashtbl.add true_loc_tbl nd loc
 
-  val virtual_nodes = Xset.create 0
+  (*val virtual_nodes = Xset.create 0
   method virtual_nodes = virtual_nodes
-  method reg_virtual_node nd = Xset.add virtual_nodes nd
+  method reg_virtual_node nd = Xset.add virtual_nodes nd*)
 
   (*val final_label_tbl = (Hashtbl.create 0 : (Spec.node_t, Obj.t) Hashtbl.t)
   method final_label_tbl = final_label_tbl
@@ -2667,7 +2667,7 @@ class translator options =
                       in
                       nd_#data#set_loc loc_;
 
-                      self#reg_virtual_node nd_;
+                      (*self#reg_virtual_node nd_;*)
 
                       incr else_count;
                       [nd0; nd_]
@@ -2724,7 +2724,7 @@ class translator options =
 
                       (*self#reg_true_loc nd__ true_loc;*)
 
-                      self#reg_virtual_node nd__;
+                      (*self#reg_virtual_node nd__;*)
 
                       incr else_count;
                       [nd_; nd__]
@@ -4038,7 +4038,7 @@ let of_compilation_unit options cu =
 
   tree#set_true_category_tbl trans#true_category_tbl;
   tree#set_true_loc_tbl trans#true_loc_tbl;
-  tree#set_virtual_nodes trans#virtual_nodes;
+  (*tree#set_virtual_nodes trans#virtual_nodes;*)
   (*tree#set_final_label_tbl trans#final_label_tbl;*)
 
   tree#set_true_parent_tbl trans#true_parent_tbl;

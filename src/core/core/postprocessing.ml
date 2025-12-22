@@ -6406,7 +6406,20 @@ end;
 
       let getmems tree nd =
         let m = ref [] in
-        tree#fast_scan_whole_initial_subtree nd (fun n -> m := n::!m);
+        let add n =
+          if not (tree#is_false_node n) then
+            m := n::!m
+        in
+        let rec do_scan nd f =
+          let ca =
+            if tree#has_true_children nd then
+              nd#children
+            else
+              nd#initial_children
+          in
+          f nd; Array.iter (fun nd -> do_scan nd f) ca
+        in
+        do_scan nd add;
         !m
       in
       let add_mapping added_nodes1 added_nodes2 n1 n2 =
@@ -6477,6 +6490,7 @@ end;
                 let filt x = x#data#is_statement in
                 List.iter
                   (fun (r1, r2) ->
+                    [%debug_log "%a-%a" nups r1 nups r2];
                     List.iter2 add_mapping (getmems tree1 r1) (getmems tree2 r2)
                   ) (cenv#get_matched_uniq_subtree_root_pairs ~filt bn' bnd);
 
@@ -6565,6 +6579,7 @@ end;
                 let filt x = x#data#is_statement in
                 List.iter
                   (fun (r1, r2) ->
+                    [%debug_log "%a-%a" nups r1 nups r2];
                     List.iter2 add_mapping (getmems tree1 r1) (getmems tree2 r2)
                   ) (cenv#get_matched_uniq_subtree_root_pairs ~filt bnd bn');
 

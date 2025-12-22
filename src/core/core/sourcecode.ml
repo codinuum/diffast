@@ -863,9 +863,9 @@ module Tree (L : Spec.LABEL_T) = struct
       loc
     method set_true_loc_tbl tbl = true_loc_tbl <- tbl
 
-    val mutable virtual_nodes = (Xset.create 0 : node_t Xset.t)
+    (*val mutable virtual_nodes = (Xset.create 0 : node_t Xset.t)
     method is_virtual_node nd = Xset.mem virtual_nodes nd
-    method set_virtual_nodes set = virtual_nodes <- set
+    method set_virtual_nodes set = virtual_nodes <- set*)
 
     (*val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
     method set_final_label_tbl tbl = final_label_tbl <- tbl
@@ -885,6 +885,8 @@ module Tree (L : Spec.LABEL_T) = struct
     val mutable true_children_tbl = (Hashtbl.create 0 : (node_t, node_t array) Hashtbl.t)
     method set_true_children_tbl tbl = true_children_tbl <- tbl
     method has_true_children n = Hashtbl.mem true_children_tbl n
+    val false_nodes = Xset.create 0
+    method is_false_node n = Xset.mem false_nodes n
 
     method recover_true_children ~initial_only () =
       (*Printf.printf "! [before] initial_size=%d (initial_only=%B)\n"
@@ -962,7 +964,15 @@ module Tree (L : Spec.LABEL_T) = struct
       end;
       (*Printf.printf "! [after] initial_size=%d\n" self#initial_size;*)
       let deleted_node_list_ =
-        List.filter (fun x -> not (Xset.mem used_nodes x)) !deleted_node_list
+        List.filter
+          (fun x ->
+            if Xset.mem used_nodes x then
+              false
+            else begin
+              Xset.add false_nodes x;
+              true
+            end
+          ) !deleted_node_list
       in
       [%debug_log "deleted nodes: [%s]"
          (Xlist.to_string (fun n -> UID.to_string n#uid) ";" deleted_node_list_)];

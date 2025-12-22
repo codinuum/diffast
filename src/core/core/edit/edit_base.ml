@@ -5365,7 +5365,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       let comma_flag = ref comma in
       Nodetbl.iter
         (fun n1 n2 ->
-          if tree1#is_virtual_node n1 || tree2#is_virtual_node n2 then
+          if
+            (*tree1#is_virtual_node n1 || tree2#is_virtual_node n2*)
+            tree1#is_false_node n1 || tree2#is_false_node n2
+          then
             [%debug_log "%a-%a: skipped" nups n1 nups n2]
           else begin
             if !comma_flag then

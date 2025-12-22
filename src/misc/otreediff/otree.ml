@@ -1431,7 +1431,7 @@ class [ 'node ] otree (root : 'node) =
       in do_scan node
 
     method preorder_scan_subtree node (f : 'node -> unit) =
-      let rec do_scan nd = 
+      let rec do_scan nd =
         let c = nd#children in
         f nd; Array.iter (fun nd -> do_scan nd) c
       in
