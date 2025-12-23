@@ -69,6 +69,8 @@ class type node_data_t_shared = object ('self)
   method set_digest   : Xhash.t -> unit
   method _set_digest  : Xhash.t -> unit
   method reset_digest : unit
+  method _reset_digest : unit
+  method __set_digest : Xhash.t -> unit
 
   method label           : string
   method _label          : Obj.t

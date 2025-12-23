@@ -136,19 +136,39 @@ let _same_digest tree1 tree2
   [%debug_log "[leaf_comparison:%B,digest_for_leaf=%B,digest_for_all=%B] %a %a"
     leaf_comparison digest_for_leaf digest_for_all nps n1 nps n2];
 
-  let nc1 = n1#initial_nchildren in
-  let nc2 = n2#initial_nchildren in
+  let nc1 =
+    if
+      tree1#true_children_recovered &&
+      tree1#has_true_children n1
+    then
+      n1#nchildren
+    else
+      n1#initial_nchildren
+  in
+  let nc2 =
+    if
+      tree2#true_children_recovered &&
+      tree2#has_true_children n2
+    then
+      n2#nchildren
+    else
+      n2#initial_nchildren
+  in
 
-  (leaf_comparison || nc1 > 0 && nc2 > 0) &&
-  if (digest_for_leaf || digest_for_all) && nc1 = 0 && nc2 = 0 then
-    __same_digest tree1 tree2 n1 n2
-  else if nc1 = 0 && nc2 = 0 then
-    n1#data#eq n2#data
-  else if digest_for_all then
-    __same_digest tree1 tree2 n1 n2
-  else
-    nc1 = nc2 &&
-    __same_digest tree1 tree2 n1 n2
+  let b =
+    (leaf_comparison || nc1 > 0 && nc2 > 0) &&
+    if (digest_for_leaf || digest_for_all) && nc1 = 0 && nc2 = 0 then
+      __same_digest tree1 tree2 n1 n2
+    else if nc1 = 0 && nc2 = 0 then
+      n1#data#eq n2#data
+    else if digest_for_all then
+      __same_digest tree1 tree2 n1 n2
+    else
+      nc1 = nc2 &&
+      __same_digest tree1 tree2 n1 n2
+  in
+  [%debug_log "%B" b];
+  b
 ]
 
 [%%capture_path
@@ -262,7 +282,7 @@ type 'node_t multiple_subtree_match_tbl_t =
 [%%capture_path
 class ['node_t] multiple_subtree_matches options = object
 
-  val tbl = (Hashtbl.create 0: 'node_t multiple_subtree_match_tbl_t)
+  val mutable tbl = (Hashtbl.create 0: 'node_t multiple_subtree_match_tbl_t)
   val mutable match_thresh = 0
 
   method add d (ndmems1, ndmems2) =
@@ -283,6 +303,36 @@ class ['node_t] multiple_subtree_matches options = object
   method remove d =
     [%debug_log "removing %s" (try Digest.to_hex d with _ -> d)];
     Hashtbl.remove tbl d
+
+  method filter xl1 xl2 =
+    let tbl_ = Hashtbl.create 0 in
+    Hashtbl.iter
+      (fun d (ndmems1, ndmems2, sz) ->
+        let ndmems1_ =
+          List.filter
+            (fun (n, _) ->
+              if List.memq n xl1 then begin
+                [%debug_log "filtered out: %a" nups n];
+                false
+              end
+              else
+                true
+            ) ndmems1
+        in
+        let ndmems2_ =
+          List.filter
+            (fun (n, _) ->
+              if List.memq n xl2 then begin
+                [%debug_log "filtered out: %a" nups n];
+                false
+              end
+              else
+                true
+            ) ndmems2
+        in
+        Hashtbl.add tbl_ d (ndmems1_, ndmems2_, sz)
+      ) tbl;
+    tbl <- tbl_
 
   method iter
       (f : Digest.t * 'node_t subroot_members_t list * 'node_t subroot_members_t list * int -> unit)

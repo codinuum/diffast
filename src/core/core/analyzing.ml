@@ -1554,8 +1554,8 @@ end;
       [%debug_log "nmapping BEFORE EDIT SEQ GENERATION: %s" nmapping#to_string];
 
       if options#recover_orig_ast_flag then begin
-        let dnl1 = tree1#recover_true_children ~initial_only:true () in
-        let dnl2 = tree2#recover_true_children ~initial_only:true () in
+        let dnl1, mnl1 = tree1#recover_true_children ~initial_only:true () in
+        let dnl2, mnl2 = tree2#recover_true_children ~initial_only:true () in
         List.iter
           (fun dn1 ->
             try
@@ -1571,7 +1571,52 @@ end;
               ignore (nmapping#remove dn2' dn2);
               cenv#multiple_node_matches#remove dn2#data#_label
             with _ -> ()
-          ) dnl2
+          ) dnl2;
+        cenv#multiple_subtree_matches#filter mnl1 mnl2;
+
+        let getmems tree nd =
+          let m = ref [] in
+          tree#fast_scan_whole_initial_subtree nd (fun n -> m := n::!m);
+          !m
+        in
+        let dtbl1 = Hashtbl.create 0 in
+        let dtbl2 = Hashtbl.create 0 in
+        List.iter
+          (fun (nl, dtbl, tree) ->
+            List.iter
+              (fun n ->
+                match n#data#_digest with
+                | Some d -> begin
+                    let ndmem = (n, getmems tree n) in
+                    try
+                      let ndmems = Hashtbl.find dtbl d in
+                      Hashtbl.replace dtbl d (ndmem::ndmems)
+                    with
+                      Not_found -> Hashtbl.add dtbl d [ndmem]
+                end
+                | None -> ()
+              ) nl
+          ) [mnl1, dtbl1, tree1; mnl2, dtbl2, tree2];
+        Hashtbl.iter
+          (fun d ndmems1 ->
+            try
+              let ndmems2 = Hashtbl.find dtbl2 d in
+              match ndmems1, ndmems2 with
+              | [], _ | _, [] -> ()
+              | ndmem1::rest1, ndmem2::rest2 -> begin
+                  let sz = List.length (snd ndmem1) in
+                  [%debug_log "multiple subtree matches (sz=%d)" sz];
+                  [%debug_log "[%s] <--> [%s]"
+                     (Xlist.to_string (fun (n, _) -> UID.to_string n#uid) ";" ndmems1)
+                     (Xlist.to_string (fun (n, _) -> UID.to_string n#uid) ";" ndmems2)];
+                  match rest1, rest2 with
+                  | [], [] -> cenv#add_subtree_match (fst ndmem1) (fst ndmem2) sz
+                  | _ -> cenv#multiple_subtree_matches#add d (ndmems1, ndmems2)
+              end
+            with
+              Not_found -> ()
+          ) dtbl1
+
       end;
 
 

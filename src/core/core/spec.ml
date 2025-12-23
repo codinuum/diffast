@@ -138,12 +138,14 @@ class type tree_t = object ('self)
   method has_final_label : node_t -> bool
   method setup_final_labels : unit -> unit*)
 
+  method scan_false_subtree : node_t -> (node_t -> unit) -> unit
+  method true_children_recovered : bool
 
   method set_true_parent_tbl      : (UID.t, node_t) Hashtbl.t -> unit
   method find_true_parent         : UID.t -> node_t
 
   method set_true_children_tbl    : (node_t, node_t array) Hashtbl.t -> unit
-  method recover_true_children    : initial_only:bool -> unit -> node_t list
+  method recover_true_children    : initial_only:bool -> unit -> node_t list * node_t list
   method has_true_children        : node_t -> bool
   method is_false_node            : node_t -> bool
 

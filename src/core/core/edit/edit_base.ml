@@ -3394,7 +3394,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       in
                       List.iter (fun (x, x') -> add ~parent_only:true x x') spairs;
 
-                      tree#(*fast_rev_scan_whole_initial_subtree*)fast_scan_whole_initial_subtree r
+                      let subtree_scan =
+                        if
+                          tree#true_children_recovered && r#data#is_statement && tree#has_true_children r
+                        then
+                          tree#scan_false_subtree
+                        else
+                          tree#(*fast_rev_scan_whole_initial_subtree*)fast_scan_whole_initial_subtree
+                      in
+                      subtree_scan r
                         (fun n ->
                           [%debug_log "n=%a" nps n];
                           match n#data#_digest with
@@ -3506,23 +3514,23 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
         let moveon =
           let b =
-          if same_digest ~digest_for_all:true nd1 nd2 then begin
-            assert (l1 = l2);
-            let rec loop i =
-              if i > l1 then
-                false
-              else
-                let n1 = tree1#search_node_by_gindex (lgi1 + i) in
-                let n2 = tree2#search_node_by_gindex (lgi2 + i) in
-                if not (nmapping#has_mapping n1 n2) then
-                  true
+            if same_digest ~digest_for_all:true nd1 nd2 then begin
+              assert (l1 = l2);
+              let rec loop i =
+                if i > l1 then
+                  false
                 else
-                  loop (i + 1)
-            in
-            loop 0
-          end
-          else
-            true
+                  let n1 = tree1#search_node_by_gindex (lgi1 + i) in
+                  let n2 = tree2#search_node_by_gindex (lgi2 + i) in
+                  if not (nmapping#has_mapping n1 n2) then
+                    true
+                  else
+                    loop (i + 1)
+              in
+              loop 0
+            end
+            else
+              true
           in
           [%debug_log "%B" b];
           b
@@ -3847,7 +3855,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let move_root_tbl = Hashtbl.create 0 in (* mid -> root node pair list *)
 
-    self#iter_moves
+    let getmems tree nd =
+      let m = ref [] in
+      let add n =
+        if not (tree#is_false_node n) then
+          m := n::!m
+      in
+      tree#scan_false_subtree nd add;
+      !m
+    in
+
+    self#iter_moves_topdown
       (function
         | Move(mid, _, (i1, _), (i2, _)) -> begin
             let n1 = Info.get_node i1 in
@@ -3859,7 +3877,21 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
               let digest_for_leaf = n1#data#has_non_trivial_value || n1#data#is_named in
 
-              if same_digest ~digest_for_leaf n1 n2 then begin
+              if
+                tree1#true_children_recovered && tree2#true_children_recovered &&
+                n1#data#is_statement && n2#data#is_statement &&
+                tree1#has_true_children n1 && tree2#has_true_children n2 &&
+                let xl1 = getmems tree1 n1 in
+                let xl2 = getmems tree2 n2 in
+                List.for_all2 (fun x1 x2 -> nmapping#has_mapping x1 x2) xl1 xl2
+              then begin
+                [%debug_log "@"];
+                if not (Hashtbl.mem move_root_tbl !mid) then begin
+                  [%debug_log "@"];
+                  Hashtbl.add move_root_tbl !mid [n1, n2]
+                end
+              end
+              else if same_digest ~digest_for_leaf n1 n2 then begin
                 let gi1, gi2 = n1#gindex, n2#gindex in
                 let lgi1 = (tree1#initial_leftmost n1)#gindex in
                 let lgi2 = (tree2#initial_leftmost n2)#gindex in
@@ -3932,7 +3964,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             try
               let n' = nmap n in
               match find n n' with
-              | [] | [Relabel _] -> raise Found
+              | [] | [Relabel _] -> begin
+                  [%debug_log "found: %a" nps n];
+                  raise Found
+              end
               | _ -> ()
             with
               Not_found -> ()
@@ -4213,14 +4248,23 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               with
                                 Found -> true
                             in
+                            [%debug_log "crossing=%B" crossing];
                             not
                               (
                                crossing ||
-                               tree2#is_initial_ancestor n2 nd2 ||
-                               tree2#is_initial_ancestor nd2 n2 ||
+                               (match nd1#data#_digest, n2#data#_digest with
+                               | Some d1, Some d2 -> begin
+                                   [%debug_log "d1=%s d2=%s" (Xhash.to_hex d1) (Xhash.to_hex d2)];
+                                   d1 <> d2
+                               end
+                               | _ -> true) &&
                                (
-                                n2#initial_nchildren > 0 &&
-                                contain_stably_mapped tree2 n2 nmapping#inv_find self#find21
+                                tree2#is_initial_ancestor n2 nd2 ||
+                                tree2#is_initial_ancestor nd2 n2 ||
+                                (
+                                 n2#initial_nchildren > 0 &&
+                                 contain_stably_mapped tree2 n2 nmapping#inv_find self#find21
+                                )
                                )
                               )
                           in
@@ -4245,7 +4289,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               []
                             else
                               let t2 = make_subtree_copy2 r2 in
-                              tree_matcher t1 t2
+                              List.filter
+                                (fun (x1, x2) ->
+                                  not (nmapping#has_mapping x1 x2)
+                                ) (tree_matcher t1 t2)
                           ) rcands2',
                         Some (an1, an2)
                       with
@@ -4284,6 +4331,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                           | [], _, _ | _, [], _ -> [], None
                           | l1, l2, _ -> begin
                               let cands = ref [] in
+
                               List.iter
                                 (fun (x1, mems1) ->
                                   List.iter
@@ -4355,11 +4403,19 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                             not
                               (
                                crossing ||
-                               tree1#is_initial_ancestor n1 nd1 ||
-                               tree1#is_initial_ancestor nd1 n1 ||
+                               (match n1#data#_digest, nd2#data#_digest with
+                               | Some d1, Some d2 -> begin
+                                   [%debug_log "d1=%s d2=%s" (Xhash.to_hex d1) (Xhash.to_hex d2)];
+                                   d1 <> d2
+                               end
+                               | _ -> true) &&
                                (
-                                n1#initial_nchildren > 0 &&
-                                contain_stably_mapped tree1 n1 nmapping#find self#find12
+                                tree1#is_initial_ancestor n1 nd1 ||
+                                tree1#is_initial_ancestor nd1 n1 ||
+                                (
+                                 n1#initial_nchildren > 0 &&
+                                 contain_stably_mapped tree1 n1 nmapping#find self#find12
+                                )
                                )
                               )
                           in
@@ -4385,7 +4441,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               []
                             else
                               let t1 = make_subtree_copy1 r1 in
-                              tree_matcher t1 t2
+                              List.filter
+                                (fun (x1, x2) ->
+                                  not (nmapping#has_mapping x1 x2)
+                                ) (tree_matcher t1 t2)
                           ) rcands1',
                         Some (an1, an2)
                       with
@@ -4421,6 +4480,14 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       (fun (an1, an2) cands ->
 
         [%debug_log "stably mapped: %a - %a:" nps an1 nps an2];
+        begin %debug_block
+          List.iter
+            (fun cand ->
+              [%debug_log "cand: [%s]"
+                (Xlist.to_string
+                   (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand)]
+            ) cands
+        end;
 
         let stable_matches = ref [] in
 
@@ -4514,19 +4581,30 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           let b =
             List.exists
               (fun (n1, x2) ->
-                List.memq n1 stable_matches1 ||
-                Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data) ||
-                try cenv#is_uniq_subtree_match n1 (nmapping#find n1) with _ -> false
+                (let b = List.memq n1 stable_matches1 in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
+              ||
+                (let b = Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data) in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
+              ||
+                (let b = try cenv#is_uniq_subtree_match n1 (nmapping#find n1) with _ -> false in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
               ) cand
           ||
             List.exists
               (fun (x1, n2) ->
-                List.memq n2 stable_matches2 ||
-                Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data) ||
-                try cenv#is_uniq_subtree_match (nmapping#inv_find n2) n2 with _ -> false
+                (let b = List.memq n2 stable_matches2 in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
+              ||
+                (let b = Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data) in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
+              ||
+                (let b = try cenv#is_uniq_subtree_match (nmapping#inv_find n2) n2 with _ -> false in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
               ) cand
           in
-          [%debug_log "[%s] -> %B" (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
+          [%debug_log "[%s] -> %B"
+             (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
           b
         in
 
@@ -4578,6 +4656,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         let cands = (* extract connected pairs *)
           List.concat_map get_largest_connected_subset cands
         in
+
+        begin %debug_block
+          List.iter
+            (fun cand ->
+              [%debug_log "cand: [%s]"
+                (Xlist.to_string
+                   (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand)]
+            ) cands
+        end;
 
         let filtered_cands =
           List.map

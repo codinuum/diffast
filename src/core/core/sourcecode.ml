@@ -497,6 +497,14 @@ module Tree (L : Spec.LABEL_T) = struct
       method to_simple_string = L.to_simple_string lab
 
 
+      method __set_digest d =
+        _digest <- Some d
+
+      method _reset_digest =
+        _digest <- None;
+        let ignore_identifiers_flag = options#ignore_identifiers_flag in
+        rep <- L.to_short_string ~ignore_identifiers_flag lab
+
       method _set_digest d =
         _digest <- Some d;
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
@@ -757,11 +765,22 @@ module Tree (L : Spec.LABEL_T) = struct
     inherit node_maker options
     inherit [ node_t ] Otree.otree2 root is_whole as super
 
-
     method private create root is_whole =
       let t = new c options root is_whole in
       t#setup_initial_children;
       t
+
+    method scan_false_subtree rt (f : node_t -> unit) =
+      let rec do_scan nd f =
+        let ca =
+          if self#true_children_recovered && self#has_true_children nd then
+            nd#children
+          else
+            nd#initial_children
+        in
+        f nd; Array.iter (fun nd -> do_scan nd f) ca
+      in
+      do_scan rt f
 
     method is_statement (nd : node_t) = nd#data#is_statement
 
@@ -885,6 +904,8 @@ module Tree (L : Spec.LABEL_T) = struct
     val mutable true_children_tbl = (Hashtbl.create 0 : (node_t, node_t array) Hashtbl.t)
     method set_true_children_tbl tbl = true_children_tbl <- tbl
     method has_true_children n = Hashtbl.mem true_children_tbl n
+    val mutable true_children_recovered_flag = false
+    method true_children_recovered = true_children_recovered_flag
     val false_nodes = Xset.create 0
     method is_false_node n = Xset.mem false_nodes n
 
@@ -949,18 +970,57 @@ module Tree (L : Spec.LABEL_T) = struct
           ) true_parent_tbl
       end;
 
+      let modified_node_list = ref [] in
+
       if Xset.size modified_nodes > 0 then begin
         self#fast_scan_whole_initial (fun nd -> nd#set_gindex GI.unknown);
         self#setup_initial_size;
         self#setup_gindex_table;
         self#setup_initial_leftmost_table;
         self#setup_apath;
+
+        [%debug_log "updating subtree digests (statements only)"];
         Xset.iter
           (fun x ->
-            let st = self#create x false in
-            let d = st#digest in
-            x#data#_set_digest d
-          ) modified_nodes
+            if x#data#is_statement then begin
+              modified_node_list := x :: !modified_node_list;
+              x#data#_reset_digest
+            end
+          ) modified_nodes;
+        let modified_node_list_ =
+          let cmp x y = Stdlib.compare y#gindex x#gindex in
+          List.fast_sort cmp !modified_node_list
+        in
+        List.iter
+          (fun x ->
+            [%debug_log "x=%s" x#initial_to_string];
+            match x#data#_digest with
+            | None -> begin
+                let st = self#create x false in
+                x#hide_parent;
+                let i = ref 1 in
+                st#scan_whole_initial
+                  (fun n ->
+                    n#set_index !i;
+                    incr i
+                  );
+                [%debug_log "%s" x#initial_to_rep];
+                let buf = Buffer.create 0 in
+                st#scan_whole_initial
+                  (fun n ->
+                    Buffer.add_string buf (n#initial_to_rep);
+                    Buffer.add_string buf "\n"
+                  );
+                x#unhide_parent;
+                let rep = Buffer.contents buf in
+                let d = Xhash.digest_of_string self#hash rep in
+                [%debug_log "d=%s" (Xhash.to_hex d)];
+                x#data#__set_digest d
+            end
+            | _ -> ()
+          ) modified_node_list_;
+        modified_node_list := modified_node_list_
+
       end;
       (*Printf.printf "! [after] initial_size=%d\n" self#initial_size;*)
       let deleted_node_list_ =
@@ -977,9 +1037,14 @@ module Tree (L : Spec.LABEL_T) = struct
       [%debug_log "deleted nodes: [%s]"
          (Xlist.to_string (fun n -> UID.to_string n#uid) ";" deleted_node_list_)];
 
+      [%debug_log "modified statement nodes: [%s]"
+         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" !modified_node_list)];
+
       [%debug_log "\n%s" self#initial_to_string];
 
-      deleted_node_list_
+      true_children_recovered_flag <- true;
+
+      deleted_node_list_, !modified_node_list
 
     val mutable source_path = "unknown"
     method set_source_path p = source_path <- p

@@ -319,10 +319,10 @@ class [ 'a ] node (d : 'a) =
 
 
     method to_rep =
-      let chldrn_to_string = 
+      (*let chldrn_to_string =
         Xarray.to_string (fun c -> string_of_int c#index) ";"
       in
-      let chldrn_str = 
+      let chldrn_str =
         let s = chldrn_to_string self#children in
         if s = "" then
           ""
@@ -333,11 +333,18 @@ class [ 'a ] node (d : 'a) =
         sprintf "<%d:%s ps=%d prnt=%d%s>"
           self#index self#data#to_rep self#pos
           self#parent#index chldrn_str
-      with 
+      with
         Parent_not_found _ ->
           sprintf "<%d:%s%s>"
-            self#index self#data#to_rep chldrn_str
-
+            self#index self#data#to_rep chldrn_str*)
+      let cs_str =
+        if self#children = [||] then
+          ""
+        else
+          sprintf " [%s]"
+            (Xarray.to_string (fun c -> string_of_int c#index) ";" self#children)
+      in
+      sprintf "<%d %s%s>" self#index self#data#to_rep cs_str
 
       
     method to_string =
@@ -603,6 +610,19 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
           sprintf "$%s(%d)" self#data#digest_string self#data#weight
         else
           "")
+
+
+    method initial_to_rep =
+      let cs_str =
+        if self#initial_children = [||] then
+          ""
+        else
+          sprintf " [%s]"
+            (Xarray.to_string
+               (fun c -> string_of_int c#index) ";" self#initial_children)
+      in
+      sprintf "<%d %s%s>" self#index self#data#to_rep cs_str
+
 
     val mutable collapse_locked = false
 
