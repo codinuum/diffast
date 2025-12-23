@@ -330,7 +330,8 @@ class ['node_t] multiple_subtree_matches options = object
                 true
             ) ndmems2
         in
-        Hashtbl.add tbl_ d (ndmems1_, ndmems2_, sz)
+        if ndmems1_ <> [] && ndmems2_ <> [] then
+          Hashtbl.add tbl_ d (ndmems1_, ndmems2_, sz)
       ) tbl;
     tbl <- tbl_
 
