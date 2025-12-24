@@ -1294,14 +1294,28 @@ class ['node_t, 'tree_t] c
   method add_bad_pair n1 n2 =
     [%debug_log "%a-%a" nups n1 nups n2];
     Xset.add bad_pairs (n1, n2)
-  method is_bad_pair n1 n2 = Xset.mem bad_pairs (n1, n2)
+  method is_bad_pair n1 n2 =
+    let b =
+      Xset.mem bad_pairs (n1, n2) ||
+      tree1#is_false_node n1 ||
+      tree2#is_false_node n2
+    in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
 
   val too_bad_pairs = (Xset.create 0 : ('node_t * 'node_t) Xset.t)
   method add_too_bad_pair n1 n2 =
     [%debug_log "%a-%a" nups n1 nups n2];
     self#add_bad_pair n1 n2;
     Xset.add too_bad_pairs (n1, n2)
-  method is_too_bad_pair n1 n2 = Xset.mem too_bad_pairs (n1, n2)
+  method is_too_bad_pair n1 n2 =
+    let b =
+      Xset.mem too_bad_pairs (n1, n2) ||
+      tree1#is_false_node n1 ||
+      tree2#is_false_node n2
+    in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
 
   val subtree_matches = Nodetbl.create 0
   method subtree_matches = subtree_matches
@@ -2051,12 +2065,30 @@ class ['node_t, 'tree_t] c
     estimate_cost_of_move tree1 tree2 nmapping nd1 nd2
 
   method find_ancestor_pairs_of_same_category rev_flag nd1 nd2 =
+    [%debug_log "%a-%a rev_flag=%B" nups nd1 nups nd2 rev_flag];
     let id x = x in
     let list_rev0 = if rev_flag then id else List.rev in
     let list_rev1 = if rev_flag then List.rev else id in
 
     let l1 = (tree1#initial_ancestor_nodeposs nd1) in
     let l2 = (tree2#initial_ancestor_nodeposs nd2) in
+
+    (*begin %debug_block
+      [%debug_log "l1:"];
+      List.iter
+        (fun (x, pos) ->
+          let nc = x#initial_nchildren in
+          let head = if pos >= nc then "!!! " else "" in
+          [%debug_log "%spos=%d nc=%d %s" head pos nc x#initial_to_string]
+        ) l1;
+      [%debug_log "l2:"];
+      List.iter
+        (fun (x, pos) ->
+          let nc = x#initial_nchildren in
+          let head = if pos >= nc then "!!! " else "" in
+          [%debug_log "%spos=%d nc=%d %s" head pos nc x#initial_to_string]
+        ) l2;
+    end;*)
 
     let filt = List.filter (fun (n, p) -> not n#initial_children.(p)#data#is_order_insensitive) in
     let l1 = filt l1 in

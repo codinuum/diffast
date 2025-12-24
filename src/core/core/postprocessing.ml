@@ -2935,7 +2935,7 @@ end;
              with _ -> false
             )
           ||
-            Xset.mem bad_pairs (n1, n2)
+            cenv#is_bad_pair n1 n2
           ||
             (try cenv#is_scope_breaking_mapping nmapping n1 n2 with Failure _ -> false)
           ||
@@ -2946,7 +2946,7 @@ end;
       else
         fun n1 n2 ->
           let b =
-            Xset.mem bad_pairs (n1, n2)
+            cenv#is_bad_pair n1 n2
           ||
             (
              try

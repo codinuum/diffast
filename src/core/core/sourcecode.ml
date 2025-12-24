@@ -906,7 +906,8 @@ module Tree (L : Spec.LABEL_T) = struct
     method has_true_children n = Hashtbl.mem true_children_tbl n
     val mutable true_children_recovered_flag = false
     method true_children_recovered = true_children_recovered_flag
-    val false_nodes = Xset.create 0
+    val mutable false_nodes = Xset.create 0
+    method set_false_nodes ns = false_nodes <- ns
     method is_false_node n = Xset.mem false_nodes n
 
     method recover_true_children ~initial_only () =
@@ -1297,6 +1298,7 @@ module Tree (L : Spec.LABEL_T) = struct
       let tree = self#create nd false in
       tree#_set_gindex_table gindex_table;
       tree#_set_initial_leftmost_table initial_leftmost_table;
+      tree#set_false_nodes false_nodes;
       tree
 
     method make_subtree_from_uid uid =

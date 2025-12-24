@@ -3979,15 +3979,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let full_tree_matcher t1 t2 =
       let _, m, _ = Treediff.find t1 t2 in
-      List.filter
-        (fun (nd1, nd2) ->
-          nd1#data#eq nd2#data
-        )
-        (List.map
-           (fun (i, j) ->
-             tree1#search_node_by_gindex (t1#get i)#gindex,
-             tree2#search_node_by_gindex (t2#get j)#gindex
-           ) m)
+      List.filter_map
+        (fun (i, j) ->
+          let n1 = tree1#search_node_by_gindex (t1#get i)#gindex in
+          let n2 = tree2#search_node_by_gindex (t2#get j)#gindex in
+          if tree1#is_false_node n1 || tree2#is_false_node n2 then
+            None
+          else if n1#data#eq n2#data then
+            Some (n1, n2)
+          else
+            None
+        ) m
     in
     let fast_tree_matcher t1 t2 =
       let matches = ref [] in
@@ -4009,9 +4011,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
              ) (mat @ rel))
       in
       scan (t1#root, t2#root);
-      List.map
+      List.filter_map
         (fun (n1, n2) ->
-          tree1#search_node_by_gindex n1#gindex, tree2#search_node_by_gindex n2#gindex
+          if tree1#is_false_node n1 || tree2#is_false_node n2 then
+            None
+          else
+            Some (tree1#search_node_by_gindex n1#gindex,
+                  tree2#search_node_by_gindex n2#gindex)
         ) !matches
     in
     let tree_matcher t1 t2 =
