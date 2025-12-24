@@ -2846,6 +2846,7 @@ end;
     in
 
     let bad_pairs = cenv#bad_pairs in
+    let _ = bad_pairs in
 
     begin %debug_block
       [%debug_log "START: first=%B record_conflicted_pairs=%B" first record_conflicted_pairs];
