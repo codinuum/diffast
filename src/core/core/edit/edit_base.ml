@@ -3194,19 +3194,25 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           then begin
             try
               let pnd' = nmap pnd in
+              [%debug_log "pnd'=%a" nups pnd'];
               if not (mem_mov_nn pnd pnd') then begin
+                [%debug_log "@"];
                 if
-                  (not (pnd'#data#is_named_orig && pnd#data#is_named_orig) || pnd'#data#eq pnd#data) &&
-                  (
-                   pnd'#data#is_named_orig && pnd#data#is_named_orig ||
-                   pnd#data#_anonymized_label = pnd'#data#_anonymized_label
-                  )
+                  pnd#data#_anonymized_label = pnd'#data#_anonymized_label
                 then begin
                   let nd' = pnd'#initial_children.(nd#initial_pos) in
                   [%debug_log "nd': %a" nps nd'];
                   let cond0 =
                     not (List.memq nd' !cands) &&
-                    (nd'#data#eq nd#data) &&
+                    (
+                     nd'#data#eq nd#data ||
+                     nd'#data#_anonymized_label = nd#data#_anonymized_label &&
+                     try
+                       let name' = Comparison.get_stripped_name nd' in
+                       let name = Comparison.get_stripped_name nd in
+                       cenv#is_rename_pat (name', name)
+                     with _ -> false
+                    ) &&
                     (mem_del_or_ins nd' || (mem_mov_n' nd' && nd0 != nd'))(* &&
                     try
                       let n = (nmap' nd') in
@@ -3229,6 +3235,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     let stable_node_pairs = ref [] in
 
                     let cond1 =
+                      nd#initial_nchildren = 0 ||
                       let stable_count = ref 0 in
                       try
                         tree#fast_scan_whole_initial_subtree nd
@@ -3614,19 +3621,50 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               (fun (n1, n2) ->
                 [%debug_log "%a-%a" nups n1 nups n2];
 
-                let es1 = self#find1 n1 in
-                List.iter (remove_edit ~from_parent) es1;
-
-                let es2 = self#find2 n2 in
-                List.iter (remove_edit ~from_parent) es2;
+                let el = self#find12 n1 n2 in
+                List.iter (remove_edit ~from_parent) el;
+                begin
+                  try
+                    remove_edit ~from_parent (self#find_del n1)
+                  with Not_found -> ()
+                end;
+                begin
+                  try
+                    remove_edit ~from_parent (self#find_ins n2)
+                  with Not_found -> ()
+                end;
 
                 ignore (nmapping#remove n1 n2)
 
               ) !node_pairs
           in
 
+          let check_context x1 x2 =
+            let b =
+              try
+                let px1 = x1#initial_parent in
+                let px2 = x2#initial_parent in
+                nmapping#has_mapping px1 px2 &&
+                not (self#mem_mov12 px1 px2) &&
+                Array.for_all2
+                  (fun y1 y2 ->
+                    y1 == x1 || y2 == x2 ||
+                    nmapping#has_mapping y1 y2
+                  ) px1#initial_children px2#initial_children
+            with
+              _ -> false
+            in
+            [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
+            b
+          in
+
           let check1 n1 =
             let b =
+              (
+               match !node_pairs with
+               | [_, n2] -> check_context n1 n2
+               | _ -> false
+              ) ||
               let pn1 = ref n1 in
               try
                 List.iter
@@ -3645,6 +3683,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
           let check2 n2 =
             let b =
+              (
+               match !node_pairs with
+               | [n1, _] -> check_context n1 n2
+               | _ -> false
+              ) ||
               let pn2 = ref n2 in
               try
                 List.iter
