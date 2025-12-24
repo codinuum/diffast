@@ -5772,12 +5772,10 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     Hashtbl.add excluded_paths_tbl mid (subtree, nd, paths_from);
 
     let excluded = List.map (fun p -> subtree#acc ?from:None p#path) paths_from in
-    [%debug_log "excluded:\n%s"
+    [%debug_log "excluded (%d):\n%s" (List.length excluded)
       (String.concat "\n" (List.map (fun n -> n#initial_to_string) excluded))];
 
     subtree#prune_initial_nodes excluded;
-
-    [%debug_log "copied subtree:\n%s" subtree#initial_to_string];
 
     let finally_deleted_nodes = Xset.create 0 in
     begin
@@ -5816,14 +5814,21 @@ class ['tree] interpreter (tree : 'tree) = object (self)
               let nds' = List.concat_map trace nds in
               [%debug_log "rt=%a pnd=%a pos=%d nds'=[%a]" nps rt nps pnd pos nsps nds'];
               if nds' <> [] then begin
-                scan_initial_cluster rt nds' (fun x -> Xset.add finally_deleted_nodes x#uid)
+                scan_initial_cluster rt nds'
+                  (fun x ->
+                    [%debug_log "x=%a" nps x];
+                    Xset.add finally_deleted_nodes x#uid
+                  )
               end;
-              self#prune_cluster pnd pos nds'
+              subtree#prune_initial_cluster rt nds
+              (*self#prune_cluster pnd pos nds'*)
             end
           ) specs_
       with
         Not_found -> ()
     end;
+
+    [%debug_log "copied subtree:\n%s" subtree#initial_to_string];
 
     Hashtbl.add copied_subtree_tbl mid subtree;
     Hashtbl.add copied_subtree_sz_tbl mid (subtree#size_of_initial_cluster (subtree#root, []));
@@ -5849,7 +5854,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       (fun n ->
         [%debug_log "%a -> %s" nps n (key_to_string key)];
         if Xset.mem finally_deleted_nodes n#uid then
-          [%debug_log "canceled since %a will be deleted at last" nps n]
+          [%debug_log "canceled since %a will eventually be deleted" nps n]
         else
           Hashtbl.add key_tbl n key
       );

@@ -2144,6 +2144,32 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
             (Xlist.to_string (fun n -> UID.to_string n#uid) ";" excluded_nodes)]
     (* end of method prune_cluster *)
 
+    (* excluded_nodes must preserve the left-to-right relation *)
+    method prune_initial_cluster (pruned_node : 'node) (excluded_nodes : 'node list) : unit =
+      try
+        self#prune_initial_nodes excluded_nodes;
+
+        let excluded_nodes_a = Array.of_list excluded_nodes in
+
+        [%debug_log "excluded_nodes_a: [%s]"
+          (Xlist.to_string
+             (fun nd -> UID.to_string nd#uid) "," excluded_nodes)];
+
+        try
+          let p = pruned_node#initial_parent in
+          p#_replace_children ~initial:true [pruned_node#initial_pos, excluded_nodes_a];
+          pruned_node#set_initial_pos (-1);
+          self#unregister_uid pruned_node#uid
+        with
+          Parent_not_found _ ->
+            internal_error
+              "Otree.otree2#prune_cluster: parent not found: uid=%a" UID.p pruned_node#uid
+      with
+        Not_found ->
+          [%warn_log "not found: %a[%s]" UID.ps pruned_node#uid
+            (Xlist.to_string (fun n -> UID.to_string n#uid) ";" excluded_nodes)]
+    (* end of method prune_initial_cluster *)
+
     (* excluded_uids must preserve the left-to-right relation *)
     method prune_cluster_by_uid uid excluded_uids =
       try
