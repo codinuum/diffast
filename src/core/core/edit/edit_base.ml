@@ -3641,6 +3641,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
           let check_context x1 x2 =
             let b =
+              x1#initial_nchildren = 0 && x2#initial_nchildren = 0 &&
               try
                 let px1 = x1#initial_parent in
                 let px2 = x2#initial_parent in

@@ -10758,7 +10758,7 @@ end;
               let pnd2 = nd2#initial_parent in
               not pnd1#data#is_sequence && not pnd2#data#is_sequence &&
               nmapping#is_final_mapping pnd1 pnd2
-              (*nmapping#has_mapping pnd1 pnd2 &&
+              (*nmapping#has_mapping pnd1 pnd2 && (* !!!NG!!! *)
               not (edits#mem_mov12 pnd1 pnd2) &&
               Array.for_all2 nmapping#has_mapping pnd1#initial_children pnd2#initial_children*)
             with
