@@ -2876,8 +2876,8 @@ class ['node_t, 'tree_t] c
           in
           if
             nd1#data#is_statement || nd2#data#is_statement ||
-            not (is_use nd1 || Array.exists is_use nd1#initial_children) ||
-            not (is_use nd2 || Array.exists is_use nd2#initial_children)
+            not (is_use nd1(* || Array.exists is_use nd1#initial_children*)) ||
+            not (is_use nd2(* || Array.exists is_use nd2#initial_children*))
           then
             0.0
           else
@@ -4338,7 +4338,9 @@ class ['node_t, 'tree_t] c
             (try
               List.exists2
                 (fun is_mapped n ->
-                  not (is_mapped (get_bn n))
+                  let bn = get_bn n in
+                  [%debug_log "bn=%a" nps bn];
+                  not (is_mapped bn)
                 )
                 [nmapping#mem_dom; nmapping#mem_cod; nmapping#mem_dom; nmapping#mem_cod;]
                 [nd1old; nd2old; nd1new; nd2new]
