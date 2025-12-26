@@ -2958,9 +2958,29 @@ end;
                   let def2 = get_def_node cenv#tree2 n2 in
                   [%debug_log "def1=%a" nps def1];
                   [%debug_log "def2=%a" nps def2];
-                  not (is_local_def def1 && is_local_def def2) ||
-                  nmapping#mem_dom def1 && nmapping#mem_cod def2
-                with _ -> true
+                  let local1 = is_local_def def1 in
+                  let local2 = is_local_def def2 in
+                  [%debug_log "local1=%B local2=%B" local1 local2];
+                  if local1 && local2 then
+                    nmapping#mem_dom def1 && nmapping#mem_cod def2
+                  else if local1 <> local2 then
+                    if
+                      let nm1 = get_orig_name n1 in
+                      let nm2 = get_orig_name n2 in
+                      [%debug_log "\"%s\" - \"%s\"" nm1 nm2];
+                      nm1 = nm2 &&
+                      try
+                        not (nmapping#mem_dom (get_bn n1)) ||
+                        not (nmapping#mem_cod (get_bn n2))
+                      with _ -> false
+                    then
+                      false
+                    else
+                      true
+                  else
+                    false
+                with
+                  _ -> true
                )
              with Failure _ -> false
             )
