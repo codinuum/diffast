@@ -3190,8 +3190,18 @@ end;
           parents_mapped && nd1#data#is_block && nd2#data#is_block &&
           let pnd1 = nd1#initial_parent in
           let pnd2 = nd2#initial_parent in
-          Array.for_all (fun x -> x == nd1 || not (nmapping#mem_dom x)) pnd1#initial_children &&
-          Array.for_all (fun x -> x == nd2 || not (nmapping#mem_cod x)) pnd2#initial_children &&
+          Array.for_all
+            (fun x ->
+              x == nd1 ||
+              not (nmapping#mem_dom x) &&
+              not (has_p_descendant nmapping#mem_dom x)
+            ) pnd1#initial_children &&
+          Array.for_all
+            (fun x ->
+              x == nd2 ||
+              not (nmapping#mem_cod x) &&
+              not (has_p_descendant nmapping#mem_cod x)
+            ) pnd2#initial_children &&
           (match edits_opt with
           | Some edits -> not (edits#mem_mov12 pnd1 pnd2)
           | None -> false) &&
