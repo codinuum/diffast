@@ -961,6 +961,13 @@ module Tree (L : Spec.LABEL_T) = struct
               end
             ) c;
           (*modified := true*)
+          begin
+            try
+              let loc = self#find_true_loc nd in
+              nd#data#set_loc loc
+            with
+              _ -> ()
+          end;
           Xset.add modified_nodes nd
         ) true_children_tbl;
 
