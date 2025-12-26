@@ -3186,6 +3186,49 @@ end;
           reg_deferred_op (nd1, nd2) (add_move nd1 nd2);
           false
         end
+        else if
+          parents_mapped && nd1#data#is_block && nd2#data#is_block &&
+          let pnd1 = nd1#initial_parent in
+          let pnd2 = nd2#initial_parent in
+          Array.for_all (fun x -> x == nd1 || not (nmapping#mem_dom x)) pnd1#initial_children &&
+          Array.for_all (fun x -> x == nd2 || not (nmapping#mem_cod x)) pnd2#initial_children &&
+          (match edits_opt with
+          | Some edits -> not (edits#mem_mov12 pnd1 pnd2)
+          | None -> false) &&
+          let ok1 =
+            try
+              tree1#scan_whole_initial_subtree nd1
+                (fun x ->
+                  try
+                    let x' = nmapping#find x in
+                    if not (tree2#is_initial_ancestor nd2 x') then
+                      raise Exit
+                  with _ -> ()
+                );
+              true
+            with Exit -> false
+          in
+          [%debug_log "ok1=%B" ok1];
+          ok1 &&
+          let ok2 =
+            try
+              tree2#scan_whole_initial_subtree nd2
+                (fun x ->
+                  try
+                    let x' = nmapping#inv_find x in
+                    if not (tree1#is_initial_ancestor nd1 x') then
+                      raise Exit
+                  with _ -> ()
+                );
+              true
+            with Exit -> false
+          in
+          [%debug_log "ok2=%B" ok2];
+          ok2
+        then begin
+          [%debug_log "@"];
+          false
+        end
         else begin
           [%debug_log "@"];
           true
@@ -4461,6 +4504,7 @@ end;
                       let ns1' = List.filter (filt lgi1 gi1) ns1 in
                       let ns2' = List.filter (filt lgi2 gi2) ns2 in
                       match ns1', ns2' with
+                      | [], _ | _, [] -> ()
                       | [n1], [n2] -> begin
                           if
                             not (List.mem (n1, n2) !found) && not (issub1 n1) && not (issub2 n2)
@@ -4481,7 +4525,10 @@ end;
                               _ -> ()
                           end
                       end
-                      | _ -> ()
+                      | nl1, nl2 -> begin
+                          [%debug_log "[%a] <--> [%a]" nsps nl1 nsps nl2];
+                      end
+                      (*| _ -> ()*)
                     )
                 with
                   Not_found -> ()
