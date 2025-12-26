@@ -1201,7 +1201,7 @@ module Tree (L : Spec.LABEL_T) = struct
     method get_ident_use_list gid =
       let nd = self#search_node_by_gindex gid in
       let res = ref [] in
-      self#preorder_scan_whole_initial_subtree nd
+      self#preorder_scan_whole_initial_subtree nd ?after:None
         (fun n ->
           let s = n#data#get_ident_use in
           if  s <> "" && not (List.mem s !res) then
@@ -1507,7 +1507,7 @@ module Tree (L : Spec.LABEL_T) = struct
           Not_found -> false
       in
 
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           if nd != self#root then begin
             try
@@ -1563,7 +1563,7 @@ module Tree (L : Spec.LABEL_T) = struct
 
     method find_nodes_by_line_range (start_line, end_line) =
       let res = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           let loc = nd#data#src_loc in
           if start_line <= loc.Loc.start_line && loc.Loc.end_line <= end_line then
@@ -1576,7 +1576,7 @@ module Tree (L : Spec.LABEL_T) = struct
 
     method find_nodes_by_line_col_range ((start_line, start_col), (end_line, end_col)) =
       let res = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           let loc = nd#data#src_loc in
           if
@@ -1611,7 +1611,7 @@ module Tree (L : Spec.LABEL_T) = struct
       if token_array = [||] then
         let l = ref [] in
         let ndl = ref [] in
-        self#preorder_scan_whole_initial
+        self#preorder_scan_whole_initial ?after:None
           (fun nd ->
             if nd#data#not_frommacro then begin
               l := nd#data#to_short_string :: !l;
@@ -1639,7 +1639,7 @@ module Tree (L : Spec.LABEL_T) = struct
     method get_token_array_pat (frag : GIDfragment.c) =
       let l = ref [] in
       let ndl = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           if frag#contains nd#gindex && nd#data#not_frommacro then begin
             l := nd#data#to_short_string :: !l;

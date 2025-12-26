@@ -2878,7 +2878,7 @@ end;
           let bid1 = Edit.get_bid n1 in
           let bid2 = Edit.get_bid n2 in
           try
-            match cenv#get_use1 bid1, cenv#get_use2 bid2 with
+            match cenv#get_uses1 bid1, cenv#get_uses2 bid2 with
             | [], [] -> false
             | [u1], [u2] -> begin
                 [%debug_log "%a %a" nups u1 nups u2];
@@ -5440,7 +5440,24 @@ end;
                   s
               with _ -> s
             in*)
-            ((n1, n2), (s, adj, (n1#gindex, n2#gindex)))
+            let bonus =
+              if
+                n1#data#eq n2#data &&
+                List.for_all
+                  (fun x ->
+                    not x#data#is_block &&
+                    not (Comparison.contains_stmt x)
+                  ) [n1; n2] &&
+                Comparison.get_contained_uses n1 <> [] &&
+                Comparison.get_contained_uses n2 <> [] &&
+                cenv#check_bindings nmapping n1 n2
+              then
+                1
+              else
+                0
+            in
+            [%debug_log "%a-%a: bonus=%d" nups n1 nups n2 bonus];
+            ((n1, n2), (s+bonus, adj, (n1#gindex, n2#gindex)))
           ) conflicting_cands
       in
       List.fast_sort cmp_score l
@@ -7357,8 +7374,8 @@ end;
                   let bid1 = Edit.get_bid nd1 in
                   let bid2 = Edit.get_bid nd2 in
                   [%debug_log "%a -> %a" BID.ps bid1 BID.ps bid2];
-                  let _use1 = cenv#get_use1 bid1 in
-                  let _use2 = cenv#get_use2 bid2 in
+                  let _use1 = cenv#get_uses1 bid1 in
+                  let _use2 = cenv#get_uses2 bid2 in
                   let alab1 = nd1#data#_anonymized2_label in
                   let alab2 = nd2#data#_anonymized2_label in
                   let filt alab nd n =
@@ -11495,8 +11512,8 @@ end;
               with
               | Certain -> false
               | _ -> begin
-                  let freq1 = List.length (try cenv#get_use1 (Edit.get_bid n1) with _ -> []) in
-                  let freq2 = List.length (try cenv#get_use2 (Edit.get_bid n2) with _ -> []) in
+                  let freq1 = List.length (try cenv#get_uses1 (Edit.get_bid n1) with _ -> []) in
+                  let freq2 = List.length (try cenv#get_uses2 (Edit.get_bid n2) with _ -> []) in
                   [%debug_log "freq1: %a -> %d" labps n1 freq1];
                   [%debug_log "freq2: %a -> %d" labps n2 freq2];
                   freq1 > 3 && freq2 > 3

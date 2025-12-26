@@ -4088,7 +4088,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       let acands = ref [] in
       let lab = nd#data#_label in
       let alab = nd#data#_anonymized_label in
-      tree#preorder_scan_whole_initial_subtree an
+      tree#preorder_scan_whole_initial_subtree an ?after:None
         (fun n ->
           if n != an && not (Xset.mem nodes_to_be_excluded n) then
 
@@ -5166,7 +5166,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 with _ -> None
               in
 
-              tree1#preorder_scan_whole_initial_subtree n1
+              tree1#preorder_scan_whole_initial_subtree n1 ?after:None
                 (fun x1 ->
                   incr node_count;
 
@@ -5216,7 +5216,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               map_count := 0;
               node_count := 0;
 
-              tree2#preorder_scan_whole_initial_subtree n2
+              tree2#preorder_scan_whole_initial_subtree n2 ?after:None
                 (fun x2 ->
                   incr node_count;
 

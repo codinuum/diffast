@@ -705,6 +705,45 @@ let weight_compare x0 x1 =
   end
   | _ -> failwith "Compare.weight_compare"
 
+[%%capture_path
+let contains_stmt n =
+  let moveon x = not x#data#is_block in
+  let b =
+    has_p_descendant ~moveon (fun x -> x#data#is_statement) n
+  in
+  [%debug_log "%a --> %B" nups n b];
+  b
+]
+
+[%%capture_path
+let get_contained_uses n =
+  let moveon x = x == n || not x#data#is_block && not x#data#is_statement in
+  let nl = get_p_descendants ~moveon is_use n in
+  [%debug_log "%a --> [%a]" nups n nsps nl];
+  nl
+]
+
+[%%capture_path
+let is_local_use ?(exclude_params=true) tree n =
+  let b =
+    try
+      let d = get_def_node tree n in
+      (not exclude_params || not d#data#is_parameter) &&
+      is_local_def d
+    with _ -> false
+  in
+  [%debug_log "%a --> %B" nups n b];
+  b
+]
+
+[%%capture_path
+let contains_local_use tree n =
+  let moveon x = x == n || not x#data#is_block && not x#data#is_statement in
+  let b = has_p_descendant ~moveon (is_local_use tree) n in
+  [%debug_log "%a --> %B" nups n b];
+  b
+]
+
 
 [%%capture_path
 class ['node_t, 'tree_t] c
@@ -1386,6 +1425,9 @@ class ['node_t, 'tree_t] c
   val use_tbl1 = Hashtbl.create 0 (* bid -> node list *)
   val use_tbl2 = Hashtbl.create 0 (* bid -> node list *)
 
+  val def_tbl1 = Nodetbl.create 0 (* scope -> node *)
+  val def_tbl2 = Nodetbl.create 0 (* scope -> node *)
+
   val weak_node_eq_cache = (Tbl2.create() : ('node_t, 'node_t, bool) Tbl2.t)
   val weak_subtree_eq_cache = (Tbl2.create() : ('node_t, 'node_t, bool) Tbl2.t)
 
@@ -1396,22 +1438,49 @@ class ['node_t, 'tree_t] c
     with
       Not_found -> Hashtbl.add tbl b [n]
 
-  method get_use1 = Hashtbl.find use_tbl1
-  method get_use2 = Hashtbl.find use_tbl2
+  method private def_tbl_add tbl scope n =
+    Nodetbl.add tbl scope n
+
+  method get_uses1 = Hashtbl.find use_tbl1
+  method get_uses2 = Hashtbl.find use_tbl2
+
+  method has_def1 = Nodetbl.mem def_tbl1
+  method has_def2 = Nodetbl.mem def_tbl2
 
   initializer
     if has_elaborate_edits then begin
-      let scan tbl nd =
+      let stack = Stack.create() in
+      let after n =
+        try
+          if Stack.top stack == n then
+            ignore (Stack.pop stack)
+        with
+          _ -> ()
+      in
+      let scan use_tbl def_tbl nd =
         let b = nd#data#binding in
-        if B.is_use b then
+        if B.is_use b then begin
           try
             let bid = B.get_bid b in
-            self#use_tbl_add tbl bid nd
+            self#use_tbl_add use_tbl bid nd
           with
             Not_found -> ()
+        end
+        else if B.is_def b then begin
+          match Stack.top_opt stack with
+          | Some scope -> begin
+              [%debug_log "%a -> %a" nps scope nups nd];
+              self#def_tbl_add def_tbl scope nd
+          end
+          | None -> ()
+        end;
+        if nd#data#is_scope_creating then begin
+          Stack.push nd stack
+        end
       in
-      tree1#scan_whole_initial (scan use_tbl1);
-      tree2#scan_whole_initial (scan use_tbl2)
+      tree1#preorder_scan_whole_initial ?after:(Some after) (scan use_tbl1 def_tbl1);
+      Stack.clear stack;
+      tree2#preorder_scan_whole_initial ?after:(Some after) (scan use_tbl2 def_tbl2)
     end
 
 
@@ -2807,7 +2876,8 @@ class ['node_t, 'tree_t] c
           in
           if
             nd1#data#is_statement || nd2#data#is_statement ||
-            not (is_use nd1) || not (is_use nd2)
+            not (is_use nd1 || Array.exists is_use nd1#initial_children) ||
+            not (is_use nd2 || Array.exists is_use nd2#initial_children)
           then
             0.0
           else
@@ -2825,12 +2895,12 @@ class ['node_t, 'tree_t] c
                   [%debug_log "%a-%a" nups r1 nups r2];
                   let desc1 = ref [] in
                   let desc2 = ref [] in
-                  tree1#preorder_scan_whole_initial_subtree r1
+                  tree1#preorder_scan_whole_initial_subtree r1 ?after:None
                     (fun n1 ->
                       if filt1 n1 then
                         desc1 := n1 :: !desc1
                     );
-                  tree2#preorder_scan_whole_initial_subtree r2
+                  tree2#preorder_scan_whole_initial_subtree r2 ?after:None
                     (fun n2 ->
                       if filt2 n2 then
                         desc2 := n2 :: !desc2
@@ -3245,6 +3315,50 @@ class ['node_t, 'tree_t] c
     ) &&
     self#has_matched_subtree nmapping nd1 nd2 ~excluded:[_nd1] nd1
 
+  method get_scope1 n =
+    get_p_ancestor
+      (fun x ->
+        x#data#is_scope_creating &&
+        self#has_def1 x
+      ) n
+
+  method get_scope2 n =
+    get_p_ancestor
+      (fun x ->
+        x#data#is_scope_creating &&
+        self#has_def2 x
+      ) n
+
+  method check_bindings nmapping n1 n2 =
+    [%debug_log "n1=%a" nps n1];
+    [%debug_log "n2=%a" nps n2];
+    let filt_use tree scope n =
+      let d = get_def_node tree n in
+      tree#is_initial_ancestor scope d
+    in
+    let b =
+      try
+        let scope1 = self#get_scope1 n1 in
+        let scope2 = self#get_scope2 n2 in
+        [%debug_log "scope1=%a" nps scope1];
+        [%debug_log "scope2=%a" nps scope2];
+        let ul1 = get_contained_uses n1 in
+        let ul2 = get_contained_uses n2 in
+        [%debug_log "ul1=[%a]" nsps ul1];
+        [%debug_log "ul2=[%a]" nsps ul2];
+        let ul1_ = List.filter (filt_use tree1 scope1) ul1 in
+        let ul2_ = List.filter (filt_use tree2 scope2) ul2 in
+        [%debug_log "ul1_=[%a]" nsps ul1_];
+        [%debug_log "ul2_=[%a]" nsps ul2_];
+        List.for_all2
+          (fun u1 u2 ->
+            self#is_scope_consistent_mapping nmapping u1 u2
+          ) ul1_ ul2_
+      with
+        _ -> false
+    in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
 
   method compare_mappings
       (nmapping : 'node_t Node_mapping.c)
@@ -4122,6 +4236,12 @@ class ['node_t, 'tree_t] c
                 b
           in
 
+          let parent_adj_score_old = ref 0.0 in
+          let parent_adj_score_new = ref 0.0 in
+
+          let binding_check_result_old = ref false in
+          let binding_check_result_new = ref false in
+
           if
             try
               let pnd1old = nd1old#initial_parent in
@@ -4212,6 +4332,89 @@ class ['node_t, 'tree_t] c
             in
             add_cache false b ncd ncsim
           end
+
+          else if
+            (subtree_sim_old = 1.0) = (subtree_sim_new = 1.0) &&
+            (try
+              List.exists2
+                (fun is_mapped n ->
+                  not (is_mapped (get_bn n))
+                )
+                [nmapping#mem_dom; nmapping#mem_cod; nmapping#mem_dom; nmapping#mem_cod;]
+                [nd1old; nd2old; nd1new; nd2new]
+            with _ -> false) &&
+            nd1old#data#eq nd2old#data && nd1new#data#eq nd2new#data &&
+            List.for_all2
+              (fun tree x ->
+                not x#data#is_block &&
+                not (contains_stmt x) &&
+                contains_local_use tree x
+              ) [tree1; tree2; tree1; tree2] [nd1old; nd2old; nd1new; nd2new] &&
+            let bchk_old = self#check_bindings nmapping nd1old nd2old in
+            let bchk_new = self#check_bindings nmapping nd1new nd2new in
+            binding_check_result_old := bchk_old;
+            binding_check_result_new := bchk_new;
+            (bchk_old || bchk_new) && bchk_old <> bchk_new
+          then begin
+            if !binding_check_result_old && not !binding_check_result_new then begin
+              [%debug_log "@"];
+              let b, ncd, ncsim =
+                action_old None None true;
+                false, None, None
+              in
+              add_cache false b ncd ncsim
+            end
+            else if !binding_check_result_new && not !binding_check_result_old then begin
+              [%debug_log "@"];
+              let b, ncd, ncsim =
+                action_new None None true;
+                true, None, None
+              in
+              add_cache false b ncd ncsim
+            end
+            else
+              assert false
+          end
+          else if
+            subtree_sim_old = 1.0 && subtree_sim_new = 1.0 &&
+            List.for_all
+              (fun x ->
+                not x#data#is_statement &&
+                not x#data#is_block &&
+                (try x#initial_parent#data#is_statement with _ -> false) &&
+                not (contains_stmt x)
+              ) [nd1old; nd2old; nd1new; nd2new] &&
+            let padj_score_old =
+              self#get_adjacency_score nd1old#initial_parent nd2old#initial_parent
+            in
+            let padj_score_new =
+              self#get_adjacency_score nd1new#initial_parent nd2new#initial_parent
+            in
+            [%debug_log "padj_score_old=%f padj_score_new=%f" padj_score_old padj_score_new];
+            parent_adj_score_old := padj_score_old;
+            parent_adj_score_new := padj_score_new;
+            padj_score_old <> padj_score_new
+          then begin
+            if !parent_adj_score_old > !parent_adj_score_new then begin
+              [%debug_log "@"];
+              let b, ncd, ncsim =
+                action_old None None false;
+                false, None, None
+              in
+              add_cache false b ncd ncsim
+            end
+            else if !parent_adj_score_new > !parent_adj_score_old then begin
+              [%debug_log "@"];
+              let b, ncd, ncsim =
+                action_new None None false;
+                true, None, None
+              in
+              add_cache false b ncd ncsim
+            end
+            else
+              assert false
+          end
+
           else if
             let b =
             (subtree_sim_old > subtree_sim_new || name_matches_old() && not (name_matches_new())) &&

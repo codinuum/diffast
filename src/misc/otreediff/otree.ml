@@ -2916,16 +2916,24 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
         (fun _ -> initial_size <- initial_size + 1)
 
 
-    method preorder_scan_whole_initial_subtree nd (f : 'node -> unit) =
+    method preorder_scan_whole_initial_subtree
+        nd
+        ?(after=(fun _ -> () : 'node -> unit))
+        (f : 'node -> unit)
+        =
       let rec do_scan nd =
         let c = nd#initial_children in
         f nd;
-        Array.iter do_scan c
+        Array.iter do_scan c;
+        after nd
       in
       do_scan nd
 
-    method preorder_scan_whole_initial (f : 'node -> unit) =
-      self#preorder_scan_whole_initial_subtree self#root f
+    method preorder_scan_whole_initial
+        ?(after=(fun _ -> () : 'node -> unit))
+        (f : 'node -> unit)
+        =
+      self#preorder_scan_whole_initial_subtree self#root ~after f
 
     method setup_initial_parent =
       self#preorder_scan_whole_initial_subtree self#root
