@@ -5817,8 +5817,9 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         List.iter
           (fun (rt, pnd, pos, nds) ->
             if not (Xset.mem used rt) then begin
+              [%debug_log "rt=%a pnd=%a pos=%d nds=[%a]" nps rt nps pnd pos nsps nds];
               let nds' = List.concat_map trace nds in
-              [%debug_log "rt=%a pnd=%a pos=%d nds'=[%a]" nps rt nps pnd pos nsps nds'];
+              [%debug_log "nds'=[%a]" nsps nds'];
               if nds' <> [] then begin
                 scan_initial_cluster rt nds'
                   (fun x ->
@@ -5826,7 +5827,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                     Xset.add finally_deleted_nodes x#uid
                   )
               end;
-              self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds)
+              self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds')
               (*self#prune_cluster pnd pos nds'*)
             end
           ) specs_
