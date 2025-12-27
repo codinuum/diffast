@@ -7037,6 +7037,9 @@ end;
               add_odd (n1, n2)
             end
             else if
+              (try
+                nmapping#mem_dom (get_bn n1) && nmapping#mem_cod (get_bn n2)
+              with _ -> false) &&
               try
                 let def1 = get_def_node tree1 n1 in
                 let def2 = get_def_node tree2 n2 in
