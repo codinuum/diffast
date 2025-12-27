@@ -238,6 +238,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
   val del_tbl = Hashtbl.create 0 (* node -> (node * node list) *)
 
+  val mutable deferred_delete_list = []
+
   val marked_keys = Xset.create 0
 
   val mask_tbl = Hashtbl.create 0 (* key -> index list *)
@@ -303,6 +305,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
   val renamed_nodes = Xset.create 0
 
   (*val no_trans_mutations = Xset.create 0*)
+
+  method add_deferred_delete f = deferred_delete_list <- f::deferred_delete_list
 
   method add_deferred_relabel f = deferred_relabel_list <- f::deferred_relabel_list
 
@@ -1501,6 +1505,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     self#check_pos_trans_tbl();
 
     self#prune_deferred nodes;
+
+    List.iter (fun f -> f()) deferred_delete_list;
 
     (*Printf.printf "*** begin1\n";
     preorder_scan_whole_initial_subtree tree#root
@@ -5820,7 +5826,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                     Xset.add finally_deleted_nodes x#uid
                   )
               end;
-              subtree#prune_initial_cluster rt nds
+              self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds)
               (*self#prune_cluster pnd pos nds'*)
             end
           ) specs_
