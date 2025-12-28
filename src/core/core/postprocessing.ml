@@ -12628,7 +12628,7 @@ end;
               else
                 true
           end
-          | Move(_, _, (info1, _), (info2, _)) as mov -> begin
+          (*| Move(_, _, (info1, _), (info2, _)) as mov -> begin
               let _ = mov in
               let nd1 = Info.get_node info1 in
               let nd2 = Info.get_node info2 in
@@ -12638,8 +12638,8 @@ end;
               end
               else
                 true
-          end
-          (*| _ -> true*)
+          end*)
+          | _ -> true
         )
     end;
 

@@ -467,7 +467,7 @@ module Edit = struct
       initializer
         List.iter
           (fun ed ->
-            [%debug_log "@@@ %s" (to_string ed)];
+            (*[%debug_log "@@@ %s" (to_string ed)];*)
             match ed with
             | Delete(nd1, excluded1) -> begin
                 scan_initial_cluster nd1 excluded1
