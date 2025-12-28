@@ -1644,7 +1644,7 @@ end;
       edits_copy#cleanup_ghost tree1 tree2;
       Edit.dump_changes options lang tree1 tree2 nmapping edits_copy edits dchange;
 
-      if options#dump_delta_flag then begin
+      (*if options#dump_delta_flag then begin
         let delta =
           if options#dump_delta_out <> "" then
             options#dump_delta_out
@@ -1653,7 +1653,7 @@ end;
         in
         let info_file_path = Filename.concat cache_path "delta_info.json" in
         edits#dump_delta ~info_file_path tree1 tree2 nmapping edits_copy delta
-      end;
+      end;*)
 
       let orig_edits, find_mov_gr, find_mov_gr_mems =
         if
@@ -1756,7 +1756,12 @@ end;
                   let x2 = nmapping#find x1 in
                   let g2 = x2#gindex in
                   lgi2 <= g2 && g2 < gi2 &&
-                  not (edits#mem_mov12 x1 x2)
+                  if not (edits#mem_mov12 x1 x2) then begin
+                    [%debug_log "found: %a - %a" nps x1 nps x2];
+                    true
+                  end
+                  else
+                    false
                 with
                   _ -> false
               ) nd1
@@ -1794,13 +1799,31 @@ end;
           | Editop.Move(mid, _, (_, exc1), (_, exc2)) as mov -> begin
               let b =
                 nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
-                !exc1 = [] && !exc2 = [] &&
+                (*!exc1 = [] && !exc2 = [] &&*)
                 let pnd1 = nd1#initial_parent in
                 let pnd2 = nd2#initial_parent in
                 (try nmapping#find pnd1 == pnd2 with _ -> false) &&
                 (
                  digest_eq nd1 nd2 ||
-                 not (has_stably_mapped_descendant nd1 nd2)
+                 (*not (has_stably_mapped_descendant nd1 nd2)*)
+                 List.for_all
+                   (fun n1 ->
+                     if not (nmapping#mem_dom n1) || edits#mem_mov1 n1 then
+                       true
+                     else begin
+                       [%debug_log "n1=%a" nps n1];
+                       false
+                     end
+                   ) (List.map Info.get_node !exc1) &&
+                 List.for_all
+                   (fun n2 ->
+                     if not (nmapping#mem_cod n2) || edits#mem_mov2 n2 then
+                       true
+                     else begin
+                       [%debug_log "n2=%a" nps n2];
+                       false
+                     end
+                   ) (List.map Info.get_node !exc2)
                 ) &&
                 (try
                   edits#iter_moves
@@ -1900,9 +1923,24 @@ end;
                 true
           end
           | _ -> true
-        )
+        );
+        edits#sync
       end;
+      [%debug_log "moves filtered."];
+      [%debug_log "\nEdits:\n%s\n" (edits#to_string)];
+
       Xprint.verbose options#verbose_flag "done.";
+
+      if options#dump_delta_flag then begin
+        let delta =
+          if options#dump_delta_out <> "" then
+            options#dump_delta_out
+          else
+            Filename.concat cache_path Delta_base.delta_file_name^".xml"
+        in
+        let info_file_path = Filename.concat cache_path "delta_info.json" in
+        edits#dump_delta ~info_file_path tree1 tree2 nmapping edits_copy delta
+      end;
 
       begin %debug_block
         let moved_nodes = edits#get_moved_nodes tree1 in

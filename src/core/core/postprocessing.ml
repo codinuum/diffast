@@ -12628,7 +12628,18 @@ end;
               else
                 true
           end
-          | _ -> true
+          | Move(_, _, (info1, _), (info2, _)) as mov -> begin
+              let _ = mov in
+              let nd1 = Info.get_node info1 in
+              let nd2 = Info.get_node info2 in
+              if nd1#data#is_phantom && nd2#data#is_phantom then begin
+                [%debug_log "filtered: %s" (Edit.to_string mov)];
+                false
+              end
+              else
+                true
+          end
+          (*| _ -> true*)
         )
     end;
 
