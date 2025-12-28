@@ -1513,7 +1513,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       (fun n -> Printf.printf "%s\n" n#initial_to_string);
     Printf.printf "*** end1\n";*)
 
-    [%debug_log "finished"]
+    [%debug_log "finished."]
 
 
   method prune_deferred nodes =
@@ -5820,14 +5820,22 @@ class ['tree] interpreter (tree : 'tree) = object (self)
               [%debug_log "rt=%a pnd=%a pos=%d nds=[%a]" nps rt nps pnd pos nsps nds];
               let nds' = List.concat_map trace nds in
               [%debug_log "nds'=[%a]" nsps nds'];
-              if nds' <> [] then begin
+              if nds' = [] then begin
+                scan_whole_initial_subtree rt
+                  (fun x ->
+                    [%debug_log "x=%a" nps x];
+                    Xset.add finally_deleted_nodes x#uid
+                  );
+                self#add_deferred_delete (fun () -> subtree#prune_initial_nodes [rt])
+              end
+              else begin
                 scan_initial_cluster rt nds'
                   (fun x ->
                     [%debug_log "x=%a" nps x];
                     Xset.add finally_deleted_nodes x#uid
-                  )
-              end;
-              self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds')
+                  );
+                self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds')
+              end
               (*self#prune_cluster pnd pos nds'*)
             end
           ) specs_
@@ -6126,7 +6134,16 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       ) paths
 
 
-  method insert_into_subtree ?(adj=0) ?(shift=0) (path : path_c) depth parent_tree subtree nes =
+  method insert_into_subtree
+      ?(partial=false)
+      ?(adj=0)
+      ?(shift=0)
+      (path : path_c)
+      depth
+      parent_tree
+      subtree
+      nes
+      =
     let head_path = Path.head path#path (-depth) in
     [%debug_log "head_path=%s" (Path.to_string head_path)];
 
@@ -6152,7 +6169,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       else
         pa
     in
-    self#insert_cluster pnd pos' ofs subtree#root nes
+    self#insert_cluster ~partial pnd pos' ofs subtree#root nes
 
 
 
@@ -6344,6 +6361,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       (Xlist.to_string
          (fun (n, e) -> sprintf "<%a,%s>" nps n (Elem.to_string e)) ";" nes)];
 
+    let partial = self#is_marked_key key in
+
     let default() =
       let pos', ofs' =
         match shift_opt with
@@ -6351,8 +6370,6 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         | None -> pos, ofs
       in
       [%debug_log "-> pos'=%d ofs'=%s" pos' (Elem.ofs_to_str ofs')];
-
-      let partial = self#is_marked_key key in
 
       self#insert_cluster ~partial pnd pos' ofs' subtree#root nes
     in (* default *)
@@ -6380,7 +6397,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
             in
             [%debug_log "-> shift=%d" shift];
 
-            self#insert_into_subtree ~adj ~shift path depth parent_tree subtree nes
+            self#insert_into_subtree ~partial ~adj ~shift path depth parent_tree subtree nes
 
           with
             Not_found -> default()

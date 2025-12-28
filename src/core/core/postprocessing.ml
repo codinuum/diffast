@@ -10726,8 +10726,9 @@ end;
       [%debug_log "* AFTER GROUPING MOVES *"];
 
       Hashtbl.iter
-      (fun mid0 mid1 -> [%debug_log "%a -> %a" MID.ps mid0 MID.ps mid1])
-      mid_chg_tbl;
+        (fun mid0 mid1 ->
+          [%debug_log "%a -> %a" MID.ps mid0 MID.ps mid1]
+        ) mid_chg_tbl;
 
       let tbl = Hashtbl.create 0 in
       edits#iter_moves
@@ -11025,7 +11026,6 @@ end;
           end
           | _ -> assert false
         );
-
 
 
     (* identify relative permutations *)
