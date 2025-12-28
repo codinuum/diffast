@@ -1893,7 +1893,9 @@ class translator options =
           in
           let ta_nodes = self#of_type_arguments_opt ident targs_opt in
           let otbl = [1; List.length ta_nodes; 1] in
-          let children = ty_node :: ta_nodes @ [self#of_named_arguments ident args] in
+          let children =
+            ty_node :: ta_nodes @ [self#of_named_arguments (orig_ty_name^"."^ident) args]
+          in
           create ~orig_lab_opt plab children otbl
 
       | Ast.MIsuper(loc_super, targs_opt, ident, args) ->

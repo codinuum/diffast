@@ -3961,11 +3961,17 @@ class ['node_t, 'tree_t] c
                 let pn1 = n1#initial_parent in
                 let pn2 = n2#initial_parent in
                 pn1#data#is_named && pn2#data#is_named &&
-                pn1#data#get_name = n1#data#get_name &&
-                pn2#data#get_name = n2#data#get_name
+                let pname1 = get_orig_name pn1 in
+                let nname1 = get_orig_name n1 in
+                [%debug_log "pname1=%s nname1=%s" pname1 nname1];
+                pname1 = nname1 &&
+                let pname2 = get_orig_name pn2 in
+                let nname2 = get_orig_name n2 in
+                [%debug_log "pname2=%s nname2=%s" pname2 nname2];
+                pname2 = nname2
               with _ -> false
             in
-            [%debug_log "%B" b];
+            [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
             b
           in
 
