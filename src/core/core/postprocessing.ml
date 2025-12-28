@@ -2990,9 +2990,85 @@ end;
             (
              match edits_opt with
              | None -> false
-             | Some edits ->
-                 n1#data#is_named && n2#data#is_named && is_odd_relabel tree1 tree2 nmapping n1 n2 &&
-                 is_crossing_with_untouched edits nmapping n1 n2
+             | Some edits -> begin
+                 if
+                   n1#data#is_statement && n2#data#is_statement &&
+                   n1#data#is_named_orig && n2#data#is_named_orig &&
+                   get_orig_name n1 = get_orig_name n2 &&
+                   (
+                     has_p_descendant
+                       (fun x1 ->
+                         try
+                           let def1 = get_def_node cenv#tree1 x1 in
+                           [%debug_log "def1=%a" nps def1];
+                           let x2 = nmapping#find x1 in
+                           [%debug_log "x2=%a" nps x2];
+                           let xbn2 = get_bn x2 in
+                           [%debug_log "xbn2=%a" nps xbn2];
+                           let xname2, flag = get_deco_name_ xbn2 in
+                           [%debug_log "xname2=%s flag=%B" xname2 flag];
+                           flag && not (nmapping#mem_cod xbn2) &&
+                           has_p_descendant
+                             (fun y1 ->
+                               [%debug_log "y1=%a" nps y1];
+                               try
+                                 let y2 = nmapping#find y1 in
+                                 [%debug_log "y2=%a" nps y2];
+                                 let yname2 = y2#data#get_name in
+                                 [%debug_log "yname2=%s" yname2];
+                                 if yname2 = xname2 then begin
+                                   [%debug_log "found: %a->%a" nups y1 nups y2];
+                                   true
+                                 end
+                                 else
+                                   false
+                               with
+                                 _ -> false
+                             ) def1
+                         with
+                           _ -> false
+                       ) n1 ||
+                     has_p_descendant
+                       (fun x2 ->
+                         try
+                           let def2 = get_def_node cenv#tree1 x2 in
+                           [%debug_log "def2=%a" nps def2];
+                           let x1 = nmapping#inv_find x2 in
+                           [%debug_log "x1=%a" nps x1];
+                           let xbn1 = get_bn x1 in
+                           [%debug_log "xbn1=%a" nps xbn1];
+                           let xname1, flag = get_deco_name_ xbn1 in
+                           [%debug_log "xname1=%s flag=%B" xname1 flag];
+                           flag && not (nmapping#mem_dom xbn1) &&
+                           has_p_descendant
+                             (fun y2 ->
+                               [%debug_log "y2=%a" nps y2];
+                               try
+                                 let y1 = nmapping#inv_find y2 in
+                                 [%debug_log "y1=%a" nps y1];
+                                 let yname1 = y1#data#get_name in
+                                 [%debug_log "yname1=%s" yname1];
+                                 if yname1 = xname1 then begin
+                                   [%debug_log "found: %a<-%a" nups y1 nups y2];
+                                   true
+                                 end
+                                 else
+                                   false
+                               with
+                                 _ -> false
+                             ) def2
+                         with
+                           _ -> false
+                       ) n2
+                   )
+                 then begin
+                   [%debug_log "@"];
+                   false
+                 end
+                 else
+                   n1#data#is_named && n2#data#is_named && is_odd_relabel tree1 tree2 nmapping n1 n2 &&
+                   is_crossing_with_untouched edits nmapping n1 n2
+             end
             )
           in
           [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
