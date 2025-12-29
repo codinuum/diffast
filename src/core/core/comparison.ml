@@ -1441,11 +1441,24 @@ class ['node_t, 'tree_t] c
   method private def_tbl_add tbl scope n =
     Nodetbl.add tbl scope n
 
-  method get_uses1 = Hashtbl.find use_tbl1
-  method get_uses2 = Hashtbl.find use_tbl2
+  method get_uses1 bid = Hashtbl.find use_tbl1 bid
+  method get_uses2 bid = Hashtbl.find use_tbl2 bid
 
-  method has_def1 = Nodetbl.mem def_tbl1
-  method has_def2 = Nodetbl.mem def_tbl2
+  method get_uses_of_def1 (def1 : 'node_t) =
+    try
+      self#get_uses1 (B.get_bid def1#data#binding)
+    with _ -> []
+
+  method get_uses_of_def2 (def2 : 'node_t) =
+    try
+      self#get_uses2 (B.get_bid def2#data#binding)
+    with _ -> []
+
+  method has_def1 scope = Nodetbl.mem def_tbl1 scope
+  method has_def2 scope = Nodetbl.mem def_tbl2 scope
+
+  method get_defs1 scope = Nodetbl.find_all def_tbl1 scope
+  method get_defs2 scope = Nodetbl.find_all def_tbl2 scope
 
   initializer
     if has_elaborate_edits then begin

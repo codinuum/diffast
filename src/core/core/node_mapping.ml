@@ -37,6 +37,7 @@ type node_t = Spec.node_t
 
 let nps = Misc.nps
 let nups = Misc.nups
+let nsps = Misc.nsps
 
 
 let is_crossing nd1 nd2 n1 n2 =
@@ -383,6 +384,59 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
       starting_pairs_for_glueing <- p :: starting_pairs_for_glueing
 
   method starting_pairs_for_glueing = starting_pairs_for_glueing
+
+  method get_unmapped_use_pairs n1 n2 = (* assumes scope-creating node pair *)
+    let pair_list = ref [] in
+    let proc_def_pair def1 def2 =
+      let uses1 = cenv#get_uses_of_def1 def1 in
+      [%debug_log "uses1: [%a]" nsps uses1];
+      let uses1 = List.filter (fun x -> not (self#mem_dom x)) uses1 in
+      [%debug_log "unmapped uses1: [%a]" nsps uses1];
+      let uses2 = cenv#get_uses_of_def2 def2 in
+      [%debug_log "uses2: [%a]" nsps uses2];
+      let uses2 = List.filter (fun x -> not (self#mem_cod x)) uses2 in
+      [%debug_log "unmapped uses2: [%a]" nsps uses2];
+      match uses1, uses2 with
+      | [], _ | _, [] -> ()
+      | [use1], [use2] -> pair_list := (use1, use2) :: !pair_list
+      | [use1], _ -> begin
+          let l =
+            List.fast_sort
+              (fun (_, x) (_, y) -> compare y x)
+              (List.map (fun u -> u, cenv#get_adjacency_score use1 u) uses2)
+          in
+          match l  with
+          | (use2, _)::_ -> pair_list := (use1, use2) :: !pair_list
+          | _ -> ()
+      end
+      | _, [use2] -> begin
+          let l =
+            List.fast_sort
+              (fun (_, x) (_, y) -> compare y x)
+              (List.map (fun u -> u, cenv#get_adjacency_score u use2) uses1)
+          in
+          match l  with
+          | (use1, _)::_ -> pair_list := (use1, use2) :: !pair_list
+          | _ -> ()
+      end
+      | _ -> ()
+    in
+    let defs1 = cenv#get_defs1 (n1 : 'node_t) in
+    let defs2 = cenv#get_defs2 (n2 : 'node_t) in
+    List.iteri
+      (fun i def1 ->
+        [%debug_log "def1[%d]: %a" i nps def1];
+        try
+          let def2 = self#find def1 in
+          [%debug_log "def2[%d]: %a" i nps def2];
+          if List.memq def2 defs2 then
+            proc_def_pair def1 def2
+        with
+          _ -> ()
+      ) defs1;
+    [%debug_log "%a-%a --> [%s]" nups n1 nups n2
+       (Xlist.to_string (fun (x1, x2) -> sprintf "%a-%a" nups x1 nups x2) ";" !pair_list)];
+    !pair_list
 
   val mutable locked_nodes = (Nodetbl.create 0 : Key.t Nodetbl.t)
 

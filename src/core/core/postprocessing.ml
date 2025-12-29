@@ -7054,6 +7054,16 @@ end;
         Xset.to_list conflicted_pairs
       in
 
+      let starting_pairs =
+        List.concat_map
+          (fun ((n1, n2) as np) ->
+            if n1#data#is_scope_creating && n2#data#is_scope_creating then
+              np::(nmapping#get_unmapped_use_pairs n1 n2)
+            else
+              [np]
+          ) starting_pairs
+      in
+
       let starting_pairs = sort_node_pairs starting_pairs in
 
       nmapping#add_starting_pairs_for_glueing starting_pairs;
@@ -10065,17 +10075,31 @@ end;
           let xsz1 = Hashtbl.find x_move_size_tbl m1 in
           let c = Stdlib.compare xsz1 xsz0 in
           if c = 0 then
-
               let ysz0 = Hashtbl.find y_move_size_tbl m0 in
               let ysz1 = Hashtbl.find y_move_size_tbl m1 in
               let c = Stdlib.compare ysz1 ysz0 in
               if c = 0 then
-                let ln0 = get_ln r0 in
-                let ln1 = get_ln r1 in
-                let c = Stdlib.compare ln0 ln1 in
-                c
-              else
-                c
+                let c =
+                  if
+                    (r0#data#is_named_orig || r0_#data#is_named_orig) &&
+                    (not r1#data#is_named_orig && not r1_#data#is_named_orig)
+                  then
+                    -1
+                  else if
+                    (r1#data#is_named_orig || r1_#data#is_named_orig) &&
+                    (not r0#data#is_named_orig && not r0_#data#is_named_orig)
+                  then
+                    1
+                  else
+                    0
+                in
+                if c = 0 then
+                  let ln0 = get_ln r0 in
+                  let ln1 = get_ln r1 in
+                  let c = Stdlib.compare ln0 ln1 in
+                  c
+                else
+                  c
 (*
               let ln0 = get_ln r0 in
               let ln1 = get_ln r1 in
@@ -10088,6 +10112,8 @@ end;
               else
                 c
 *)
+              else
+                c
           else
             c
         else
