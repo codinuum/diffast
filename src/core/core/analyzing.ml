@@ -1747,21 +1747,23 @@ end;
           b
         in
         let has_stably_mapped_descendant nd1 nd2 =
-          let gi2 = nd2#gindex in
-          let lgi2 = (tree2#initial_leftmost nd2)#gindex in
+          (*let gi2 = nd2#gindex in
+          let lgi2 = (tree2#initial_leftmost nd2)#gindex in*)
           let b =
             Misc.has_p_descendant
               (fun x1 ->
                 try
                   let x2 = nmapping#find x1 in
-                  let g2 = x2#gindex in
-                  lgi2 <= g2 && g2 < gi2 &&
-                  if not (edits#mem_mov12 x1 x2) then begin
+                  (*let g2 = x2#gindex in
+                  lgi2 <= g2 && g2 < gi2 &&*)
+                  if edits_copy#mem_mov12 x1 x2 then begin
+                    [%debug_log "move: %a - %a" nps x1 nps x2];
+                    false
+                  end
+                  else begin
                     [%debug_log "found: %a - %a" nps x1 nps x2];
                     true
                   end
-                  else
-                    false
                 with
                   _ -> false
               ) nd1
@@ -1795,8 +1797,11 @@ end;
           end
           | _ -> assert false
         in
+
         let check_mov_for_delta nd1 nd2 = function
           | Editop.Move(mid, _, (_, exc1), (_, exc2)) as mov -> begin
+              [%debug_log "nd1=%a" nps nd1];
+              [%debug_log "nd2=%a" nps nd2];
               let b =
                 nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
                 (*!exc1 = [] && !exc2 = [] &&*)
@@ -1805,25 +1810,7 @@ end;
                 (try nmapping#find pnd1 == pnd2 with _ -> false) &&
                 (
                  digest_eq nd1 nd2 ||
-                 (*not (has_stably_mapped_descendant nd1 nd2)*)
-                 List.for_all
-                   (fun n1 ->
-                     if not (nmapping#mem_dom n1) || edits#mem_mov1 n1 then
-                       true
-                     else begin
-                       [%debug_log "n1=%a" nps n1];
-                       false
-                     end
-                   ) (List.map Info.get_node !exc1) &&
-                 List.for_all
-                   (fun n2 ->
-                     if not (nmapping#mem_cod n2) || edits#mem_mov2 n2 then
-                       true
-                     else begin
-                       [%debug_log "n2=%a" nps n2];
-                       false
-                     end
-                   ) (List.map Info.get_node !exc2)
+                 not (has_stably_mapped_descendant nd1 nd2)
                 ) &&
                 (try
                   edits#iter_moves

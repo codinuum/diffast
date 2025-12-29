@@ -1241,7 +1241,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
   method sync =
     list <-
       List.concat_map
-        (fun tbl -> Nodetbl.fold (fun _ e l -> e :: l) tbl [])
+        self#edit_tbl_to_list
         [del_tbl; ins_tbl; rel1_tbl; mov1_tbl];
 
   method iter_topdown f =
