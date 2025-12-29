@@ -5793,7 +5793,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
           Hashtbl.iter
             (fun dk (p, pl) ->
               match dk with
-              | K_del _ -> begin
+              | K_del _ when pl <> [] -> begin
                   if p#path = path_from#path then begin
                     [%debug_log "del_spec found: %s" (key_to_string dk)];
                     sl := (new path_c Path.root, pl) :: !sl
