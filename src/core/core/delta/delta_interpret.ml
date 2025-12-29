@@ -5789,19 +5789,22 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         let compo_tbl = Hashtbl.create 0 in
         let specs = Hashtbl.find_all sub_del_spec_tbl mid in
         let specs =
-          let sl = ref [] in
-          Hashtbl.iter
-            (fun dk (p, pl) ->
-              match dk with
-              | K_del _ when pl <> [] -> begin
-                  if p#path = path_from#path then begin
-                    [%debug_log "del_spec found: %s" (key_to_string dk)];
-                    sl := (new path_c Path.root, pl) :: !sl
-                  end
-              end
-              | _ -> ()
-          ) del_spec_tbl;
-          specs @ !sl
+          if excluded <> [] then
+            specs
+          else
+            let sl = ref [] in
+            Hashtbl.iter
+              (fun dk (p, pl) ->
+                match dk with
+                | K_del _ when pl <> [] -> begin
+                    if p#path = path_from#path then begin
+                      [%debug_log "del_spec found: %s" (key_to_string dk)];
+                      sl := (new path_c Path.root, pl) :: !sl
+                    end
+                end
+                | _ -> ()
+              ) del_spec_tbl;
+            specs @ !sl
         in
         let specs_ =
           List.map
