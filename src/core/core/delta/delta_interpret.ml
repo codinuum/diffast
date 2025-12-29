@@ -5788,13 +5788,28 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       try
         let compo_tbl = Hashtbl.create 0 in
         let specs = Hashtbl.find_all sub_del_spec_tbl mid in
+        let specs =
+          let sl = ref [] in
+          Hashtbl.iter
+            (fun dk (p, pl) ->
+              match dk with
+              | K_del _ -> begin
+                  if p#path = path_from#path then begin
+                    [%debug_log "del_spec found: %s" (key_to_string dk)];
+                    sl := (new path_c Path.root, pl) :: !sl
+                  end
+              end
+              | _ -> ()
+          ) del_spec_tbl;
+          specs @ !sl
+        in
         let specs_ =
           List.map
             (fun (p, pl) ->
               [%debug_log "sub_del_spec found: (%s,[%s])"
                 p#to_string (String.concat ";" (List.map (fun x -> x#to_string) pl))];
               let rt = subtree#acc ?from:None p#path in
-              let pnd = rt#initial_parent in
+              let pnd = try rt#initial_parent with _ -> rt in
               let pos = rt#initial_pos in
               let nds = List.map (fun x -> subtree#acc ?from:(Some rt) x#path) pl in
               [%debug_log "rt=%a pnd=%a pos=%d nds=[%a]" nps rt nps pnd pos nsps nds];
