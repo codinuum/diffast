@@ -1747,26 +1747,56 @@ end;
           b
         in
         let has_stably_mapped_descendant nd1 nd2 =
-          (*let gi2 = nd2#gindex in
-          let lgi2 = (tree2#initial_leftmost nd2)#gindex in*)
+          let gi1 = nd1#gindex in
+          let lgi1 = (tree1#initial_leftmost nd1)#gindex in
+          let gi2 = nd2#gindex in
+          let lgi2 = (tree2#initial_leftmost nd2)#gindex in
           let b =
             Misc.has_p_descendant
               (fun x1 ->
                 try
                   let x2 = nmapping#find x1 in
-                  (*let g2 = x2#gindex in
-                  lgi2 <= g2 && g2 < gi2 &&*)
                   if edits_copy#mem_mov12 x1 x2 then begin
-                    [%debug_log "move: %a - %a" nps x1 nps x2];
-                    false
+                    [%debug_log "move: %a -> %a" nps x1 nps x2];
+                    let g2 = x2#gindex in
+                    if lgi2 <= g2 && g2 < gi2 then begin
+                      false
+                    end
+                    else begin
+                      [%debug_log "outgoing"];
+                      true
+                    end
                   end
                   else begin
-                    [%debug_log "found: %a - %a" nps x1 nps x2];
+                    [%debug_log "found: %a -> %a" nps x1 nps x2];
                     true
                   end
                 with
                   _ -> false
               ) nd1
+          ||
+            Misc.has_p_descendant
+              (fun x2 ->
+                try
+                  let x1 = nmapping#inv_find x2 in
+                  if edits_copy#mem_mov12 x1 x2 then begin
+                    [%debug_log "move: %a <- %a" nps x1 nps x2];
+                    let g1 = x1#gindex in
+                    if lgi1 <= g1 && g1 < gi1 then begin
+                      false
+                    end
+                    else begin
+                      [%debug_log "incoming"];
+                      true
+                    end
+                  end
+                  else begin
+                    [%debug_log "found: %a <- %a" nps x1 nps x2];
+                    true
+                  end
+                with
+                  _ -> false
+              ) nd2
           in
           [%debug_log "%a-%a -> %B" nups nd1 nups nd2 b];
           b
