@@ -5846,7 +5846,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                   );
                 self#add_deferred_delete (fun () -> subtree#prune_initial_nodes [rt])
               end
-              else if rt != pnd then begin
+              else(* if rt != pnd then*) begin
                 scan_initial_cluster rt nds'
                   (fun x ->
                     [%debug_log "x=%a" nps x];
