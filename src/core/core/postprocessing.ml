@@ -709,7 +709,7 @@ module F (Label : Spec.LABEL_T) = struct
 
     detect_permutation mid_gen cenv pruned edits extra_edits pmap;
 
-    [%debug_log "%d edits generated (permutatioin)" (extra_edits#get_nedits - c)];
+    [%debug_log "%d edits generated (permutatioin detected)" extra_edits#get_nedits];
 
     (*if options#no_moves_flag then begin
       extra_edits#iter_moves
@@ -6038,6 +6038,13 @@ end;
                     if List.mem n1_n2 !added_pairs then
                       added_pairs := Xlist.subtract !added_pairs [n1_n2];
                     [%debug_log "removed %a-%a" nups n1 nups n2];
+                    match edits_opt with
+                    | Some edits -> begin
+                        try
+                          List.iter edits#remove_edit (edits#find12 n1 n2)
+                        with _ -> ()
+                    end
+                    | None -> ()
                   end
                 end
               ) !to_be_removed;

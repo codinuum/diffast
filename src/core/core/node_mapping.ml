@@ -66,7 +66,10 @@ let add map1 map1rev map2 map2rev nd1 nd2 =
   begin
     try
       let nd1' = Nodetbl.find map1 nd1 in
-      if nd1' != nd2 then begin
+      if nd1' == nd2 then begin
+        [%debug_log "already mapped!"]
+      end
+      else begin
 
         Nodetbl.replace map1 nd1 nd2;
         Nodetbl.remove map1rev nd1';

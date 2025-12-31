@@ -6586,20 +6586,6 @@ class ['node_t, 'tree_t] c
 
     end; (* if options#multi_node_match_flag *)
 
-    let added_then_removed_pairs = Xlist.intersection !removed_pairs !added_pairs in
-
-    begin %debug_block
-      List.iter
-      (fun (n1, n2) ->
-        [%debug_log "added then removed pair: %a-%a" nups n1 nups n2]
-      ) added_then_removed_pairs
-    end;
-
-    if added_then_removed_pairs <> [] then begin
-      removed_pairs := Xlist.subtract !removed_pairs added_then_removed_pairs;
-      added_pairs := Xlist.subtract !added_pairs added_then_removed_pairs
-    end;
-
     begin %debug_block
       List.iter
         (fun (n1, n2) ->
@@ -6611,9 +6597,53 @@ class ['node_t, 'tree_t] c
         ) !added_pairs
     end;
 
+    let removed_pair_tbl = Hashtbl.create 0 in
+    let added_pair_tbl = Hashtbl.create 0 in
+    let pair_tbl_add tbl pair =
+      try
+        let c = Hashtbl.find tbl pair in
+        Hashtbl.replace tbl pair (c + 1)
+      with Not_found ->
+        Hashtbl.add tbl pair 1
+    in
+    List.iter (pair_tbl_add removed_pair_tbl) !removed_pairs;
+    List.iter (pair_tbl_add added_pair_tbl) !added_pairs;
+
+    let added_pairs_ =
+      Hashtbl.fold
+        (fun pair c l ->
+          let c' = try Hashtbl.find removed_pair_tbl pair with _ -> 0 in
+          if c > c' then
+            pair :: l
+          else
+            l
+      ) added_pair_tbl []
+    in
+    let removed_pairs_ =
+      Hashtbl.fold
+        (fun pair c l ->
+          let c' = try Hashtbl.find added_pair_tbl pair with _ -> 0 in
+          if c > c' then
+            pair :: l
+          else
+            l
+      ) removed_pair_tbl []
+    in
+
+    begin %debug_block
+      List.iter
+        (fun (n1, n2) ->
+          [%debug_log "removed_pair_: %a-%a (%a-%a)" nups n1 nups n2 GI.ps n1#gindex GI.ps n2#gindex];
+        ) removed_pairs_;
+      List.iter
+        (fun (n1, n2) ->
+          [%debug_log "added_pair_: %a-%a (%a-%a)" nups n1 nups n2 GI.ps n1#gindex GI.ps n2#gindex];
+        ) added_pairs_
+    end;
+
     Xprint.verbose options#verbose_flag "    elaborating completed.";
 
-    !removed_pairs, !added_pairs
+    removed_pairs_, added_pairs_
 
     (* end of method elaborate_nmapping *)
 

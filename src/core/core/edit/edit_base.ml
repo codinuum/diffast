@@ -315,7 +315,7 @@ let sort_move_list_topdown movl = sort_mids_movs (comp_edits_topdown gid_of_edit
 let sort_move_list_bottomup movl = sort_mids_movs (comp_edits_bottomup gid_of_edit1) movl
 
 let tbl_remove tbl k =
-  (*while Hashtbl.mem tbl k do*)
+  (*while Nodetbl.mem tbl k do*)
     Nodetbl.remove tbl k
   (*done*)
 
@@ -667,16 +667,16 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
     [%debug_log "%s" (to_string ed)];
 
     match ed with
-    | Delete(_, i, _) -> (*Hashtbl.remove*)tbl_remove del_tbl (Info.get_node i)
-    | Insert(_, i, _) -> (*Hashtbl.remove*)tbl_remove ins_tbl (Info.get_node i)
+    | Delete(_, i, _) -> tbl_remove del_tbl (Info.get_node i)
+    | Insert(_, i, _) -> tbl_remove ins_tbl (Info.get_node i)
     | Relabel(_, (i1, _), (i2, _)) ->
-        (*Hashtbl.remove*)tbl_remove rel1_tbl (Info.get_node i1);
-        (*Hashtbl.remove*)tbl_remove rel2_tbl (Info.get_node i2)
+        tbl_remove rel1_tbl (Info.get_node i1);
+        tbl_remove rel2_tbl (Info.get_node i2)
     | Move(_, _, (i1, _), (i2, _)) -> begin
         let n1 = Info.get_node i1 in
         let n2 = Info.get_node i2 in
-        (*Hashtbl.remove*)tbl_remove mov1_tbl n1;
-        (*Hashtbl.remove*)tbl_remove mov2_tbl n2;
+        tbl_remove mov1_tbl n1;
+        tbl_remove mov2_tbl n2;
         begin
           try
             match self#find_rel12 n1 n2 with
@@ -690,11 +690,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
   method remove_del nd =
     [%debug_log "%a" nups nd];
-    Nodetbl.remove del_tbl nd
+    tbl_remove del_tbl nd
 
   method remove_ins nd =
     [%debug_log "%a" nups nd];
-    Nodetbl.remove ins_tbl nd
+    tbl_remove ins_tbl nd
 
   method is_empty = self#get_nedits = 0
 
@@ -4867,8 +4867,16 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let used_matches = ref [] in
 
+    let _cand_list = ref [] in
     Hashtbl.iter
       (fun (an1, an2) cands ->
+        _cand_list := (an1, an2, cands) :: !_cand_list
+      ) cand_tbl;
+    let cmp (x1, _, _) (x2, _, _) = Stdlib.compare x1#gindex x2#gindex in
+    let cand_list = List.fast_sort cmp !_cand_list in
+
+    List.iter
+      (fun (an1, an2, cands) ->
         let _ = an1 in
         let _ = an2 in
         let cands' =
@@ -4902,6 +4910,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
             List.iter
               (fun (nd1, nd2) ->
+                [%debug_log "%a-%a" nups nd1 nups nd2];
                 try
                   let to_be_removed, nmap_to_be_removed, to_be_added =
                     try
@@ -4961,11 +4970,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                   used_matches := (nd1, nd2) :: !used_matches
                 with
                   Abort -> ()
+
               ) cand
 
           ) cands'
 
-      ) cand_tbl;
+      ) cand_list;
 
     Xprint.verbose options#verbose_flag "%d matches added by move shrinkage" (List.length !used_matches)
 
