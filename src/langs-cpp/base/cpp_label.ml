@@ -1862,7 +1862,22 @@ let is_stmt = function
     -> true
   | _ -> false
 
-let is_statement = is_stmt
+let is_assignment = function
+  | AssignmentExpression
+  | AssignmentExpressionOverloaded _
+  | AssignmentExpressionEq
+  | AssignmentExpressionPlus
+  | AssignmentExpressionMinus
+  | AssignmentExpressionMult
+  | AssignmentExpressionDiv
+  | AssignmentExpressionMod
+  | AssignmentExpressionShiftLeft
+  | AssignmentExpressionShiftRight
+  | AssignmentExpressionAnd _
+  | AssignmentExpressionXor _
+  | AssignmentExpressionOr _
+      -> true
+  | _ -> false
 
 let get_ident_use = function
   | _ -> ""
@@ -2398,6 +2413,7 @@ let is_common = function
 let get_nparams _ = raise Not_found
 let get_nargs _ = raise Not_found
 let is_parameter = is_param_decl
+let is_statement = is_stmt
 
 
 open Astml.Attr

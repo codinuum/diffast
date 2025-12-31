@@ -73,6 +73,7 @@ class type node_data_t = object ('self)
   method is_real_literal   : bool
   method is_literal        : bool
   method is_statement      : bool
+  method is_assignment     : bool
   method is_block          : bool
   method is_primary        : bool
   method is_op             : bool
@@ -432,6 +433,7 @@ module type LABEL_T = sig
   val is_real_literal    : t -> bool
 
   val is_statement       : t -> bool
+  val is_assignment      : t -> bool
   val is_block           : t -> bool
   val is_primary         : t -> bool
   val is_op              : t -> bool

@@ -261,10 +261,12 @@ let combine_node_lists
     ?(filt=(fun _ _ -> true))
     (cenv : (node_t, tree_t) Comparison.c)
     nmapping
+    edits
     cands1
     cands2
     =
-  [%debug_log "cands1=[%a] cands2=[%a]" nsps cands1 nsps cands2];
+  [%debug_log "cands1=[%a]" nsps cands1];
+  [%debug_log "cands2=[%a]" nsps cands2];
   match cands1, cands2 with
   | [], _ | _, [] -> []
   | [nd1], [nd2] -> [nd1, nd2]
@@ -295,13 +297,31 @@ let combine_node_lists
       [%debug_log "anc1=%a anc2=%a" nps anc1 nps anc2];
       let anchor = Some (anc1, anc2) in
       let pair_weight_list = ref [] in
+
+      let excluded1, excluded2 =
+        if anc1#data#is_sequence && anc1#data#is_sequence then
+          List.filter
+            (fun x -> edits#mem_del x || edits#mem_mov1 x)
+            (Array.to_list anc1#initial_children),
+          List.filter
+            (fun x -> edits#mem_ins x || edits#mem_mov2 x)
+            (Array.to_list anc2#initial_children)
+        else
+          [], []
+      in
+      [%debug_log "excluded1=[%a]" nsps excluded1];
+      [%debug_log "excluded2=[%a]" nsps excluded2];
+
       List.iter
         (fun nd1 ->
           List.iter
             (fun nd2 ->
               if filt nd1 nd2 then begin
                 let a =
-                  Stdlib.truncate ((cenv#get_adjacency_score ~anchor nd1 nd2) *. 10000.0)
+                  Stdlib.truncate
+                    ((cenv#get_adjacency_score
+                        ~anchor ~excluded1 ~excluded2 nd1 nd2
+                     ) *. 10000.0)
                 in
                 let w = Comparison.weight_of_int a in
                 pair_weight_list := (nd1, nd2, w) :: !pair_weight_list
@@ -2227,7 +2247,7 @@ let rectify_renames_u
         is_def1 && is_def2 || is_use1 && is_use2 ||
         not is_def1 && not is_def2 && not is_use1 && not is_use2
       in
-      compatible_pairs := (combine_node_lists ~filt cenv nmapping cands1 cands2) @ !compatible_pairs
+      compatible_pairs := (combine_node_lists ~filt cenv nmapping edits cands1 cands2) @ !compatible_pairs
 
     ) cands_pair_tbl;
 
@@ -2958,6 +2978,16 @@ let rectify_renames_d
         | _ -> ()
       end
       else begin (* is good def pair *)
+        let non_rename_def_flag =
+          Comparison.get_orig_name def1 = Comparison.get_orig_name def2
+        in
+        [%debug_log "non_rename_def_flag=%B" non_rename_def_flag];
+        let non_rename_def_plausible_flag =
+          non_rename_def_flag &&
+          !use_rename_count >
+          (conflicting_use_mapping_count1 + conflicting_use_mapping_count2)
+        in
+        [%debug_log "non_rename_def_plausible_flag=%B" non_rename_def_plausible_flag];
         let chk_def1 n1 n2 =
           is_use n1 && is_use n2 &&
           let _ = [%debug_log "%a-%a" nups n1 nups n2] in
@@ -2980,6 +3010,15 @@ let rectify_renames_d
           with
             Not_found -> true
         in
+        let name_cond n1 n2 =
+          non_rename_def_plausible_flag &&
+          Comparison.get_orig_name n1 <> Comparison.get_orig_name n2
+        in
+        let lhs_cond n1 n2 =
+          try
+            n1#initial_parent#data#is_assignment <> n2#initial_parent#data#is_assignment
+          with _ -> false
+        in
         let conflicting_mapping_list1_, conflicting_mapping_list2_ =
           let filt chk_def =
             List.filter
@@ -2991,6 +3030,8 @@ let rectify_renames_d
                    (try
                      nmapping#find n1#initial_parent != n2#initial_parent
                    with _ -> true) ||
+                   name_cond n1 n2 ||
+                   lhs_cond n1 n2 ||
                    chk_def n1 n2
                   )
                 in
@@ -3142,10 +3183,40 @@ let rectify_renames_d
           else
             nds1_, nds2_
         in
+        let cmp n1 n2 =
+          let get_ofs n = n#data#src_loc.Loc.start_offset in
+          Stdlib.compare (get_ofs n1) (get_ofs n2)
+        in
+        let nds1__, nds2__ =
+          List.fast_sort cmp nds1__, List.fast_sort cmp nds2__
+        in
         [%debug_log "nds1__=[%a]" nsps nds1__];
         [%debug_log "nds2__=[%a]" nsps nds2__];
+
         if nds1__ <> [] && nds2__ <> [] then
           to_be_mapped := (nds1__, nds2__) :: !to_be_mapped;
+
+        (*let is_lhs x =
+          x#initial_parent#data#is_assignment &&
+          x#initial_pos = 0
+        in
+        let lhss1, nds1___ = List.partition is_lhs nds1__ in
+        let lhss2, nds2___ = List.partition is_lhs nds2__ in
+        [%debug_log "lhss1=[%a]" nsps lhss1];
+        [%debug_log "lhss2=[%a]" nsps lhss2];
+        [%debug_log "nds1___=[%a]" nsps nds1___];
+        [%debug_log "nds2___=[%a]" nsps nds2___];
+
+        if lhss1 = [] || lhss2 = [] then begin
+          if nds1__ <> [] && nds2__ <> [] then
+            to_be_mapped := (nds1__, nds2__) :: !to_be_mapped;
+        end
+        else begin
+          if lhss1 <> [] && lhss2 <> [] then
+            to_be_mapped := (lhss1, lhss2) :: !to_be_mapped;
+          if nds1___ <> [] && nds2___ <> [] then
+            to_be_mapped := (nds1___, nds2___) :: !to_be_mapped;
+        end;*)
 
         Hashtbl.add def_bid_map1 bid1 bid2;
         Hashtbl.add def_bid_map2 bid2 bid1
@@ -3186,7 +3257,7 @@ let rectify_renames_d
         compatible_pairs := (comb sorted_cands1 sorted_cands2) @ !compatible_pairs
       end
       else
-        compatible_pairs := (combine_node_lists cenv nmapping cands1 cands2) @ !compatible_pairs
+        compatible_pairs := (combine_node_lists cenv nmapping edits cands1 cands2) @ !compatible_pairs
     ) !to_be_mapped;
 
   begin

@@ -608,6 +608,7 @@ module Tree (L : Spec.LABEL_T) = struct
         L.is_string_literal lab || L.is_int_literal lab || L.is_real_literal lab
 
       method is_statement = L.is_statement lab
+      method is_assignment = L.is_assignment lab
       method is_block = L.is_block lab
       method is_primary = L.is_primary lab
       method is_op = L.is_op lab

@@ -2772,6 +2772,7 @@ let to_short_string ?(ignore_identifiers_flag=false) =
 
   | VariableDeclaration -> mkstr 121
 
+
 let sig_attr_name = "___signature"
 
 let to_tag ?(strip=false) l =

@@ -166,6 +166,7 @@ let is_string_literal { elem_name=name; elem_attrs=attrs; _ } =
 let is_int_literal (*lab*)_ = false (* not yet *)
 let is_real_literal (*lab*)_ = false (* not yet *)
 let is_statement (*lab*)_ = false (* not yet *)
+let is_assignment (*lab*)_ = false (* not yet *)
 let is_block (*lab*)_ = false (* not yet *)
 let is_primary (*lab*)_ = false (* not yet *)
 let is_op (*lab*)_ = false (* not yet *)

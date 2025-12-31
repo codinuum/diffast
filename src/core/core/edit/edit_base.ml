@@ -5107,6 +5107,92 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           if tree1#is_statement n1 && tree2#is_statement n2 then begin
             (*[%debug_log "%a-%a" nps n1 nps n2];*)
             if
+              n1#data#is_assignment && n2#data#is_assignment &&
+              try
+                let lhs1 = n1#initial_children.(0) in
+                let lhs2 = n2#initial_children.(0) in
+                (
+                 lhs1#initial_nchildren = 0 && lhs2#initial_nchildren = 0 &&
+                 lhs1#data#eq lhs2#data
+                ||
+                  lhs1#data#subtree_equals lhs2#data
+                ) &&
+                nmapping#has_mapping lhs1 lhs2 &&
+                if
+                  let rhs1 = n1#initial_children.(1) in
+                  let rhs2 = n2#initial_children.(1) in
+                  not (nmapping#has_mapping rhs1 rhs2) &&
+                  (
+                   cenv#is_uniq_subtree_match n1 (nmapping#find rhs1)#initial_parent
+                  ||
+                   cenv#is_uniq_subtree_match (nmapping#inv_find rhs2)#initial_parent n2
+                  )
+                then
+                  false
+                else
+                  true
+              with
+                _ -> false
+            then begin
+              [%debug_log "@"];
+              map_add map n1 n2
+            end
+            else if
+              let has_no_mapped_def tree is_mapped lhs =
+                let b =
+                  try
+                    let def = Comparison.get_def_node tree lhs in
+                    not (is_mapped def)
+                  with _ -> true
+                in
+                [%debug_log "%a --> %B" nups lhs b];
+                b
+              in
+              n1#data#is_assignment && n2#data#is_assignment &&
+              try
+                let lhs1 = n1#initial_children.(0) in
+                let lhs2 = n2#initial_children.(0) in
+                lhs1#initial_nchildren = 0 && lhs2#initial_nchildren = 0 &&
+                not (lhs1#data#eq lhs2#data) &&
+                let cond1 = nmapping#mem_dom lhs1 in
+                let cond2 = nmapping#mem_cod lhs2 in
+                cond1 && not cond2 && not (has_no_mapped_def tree2 nmapping#mem_cod lhs2)
+              ||
+                not cond1 && cond2 && not (has_no_mapped_def tree1 nmapping#mem_dom lhs1)
+              with
+                _ -> false
+            then begin
+              [%debug_log "@"];
+              let n1_, n2_ =
+                try
+                  let lhs1 = n1#initial_children.(0) in
+                  let lhs2 = n2#initial_children.(0) in
+                  if nmapping#mem_dom lhs1 then
+                    let lhs1' = nmapping#find lhs1 in
+                    let n1' = lhs1'#initial_parent in
+                    if n1'#data#is_statement && n1'#data#is_assignment then begin
+                      [%debug_log "n2_=%a" nups n1'];
+                      n1, n1'
+                    end
+                    else
+                      n1, n2
+                  else if nmapping#mem_cod lhs2 then
+                    let lhs2' = nmapping#inv_find lhs2 in
+                    let n2' = lhs2'#initial_parent in
+                    if n2'#data#is_statement && n2'#data#is_assignment then begin
+                      [%debug_log "n1_=%a" nups n2'];
+                      n2', n2
+                    end
+                    else
+                      n1, n2
+                  else
+                    n1, n2
+                with
+                  _ -> n1, n2
+              in
+              map_add map n1_ n2_
+            end
+            else if
               not (self#mem_mov12 n1 n2) &&
               (*n1#data#_anonymized_label = n2#data#_anonymized_label*)
               n1#data#relabel_allowed n2#data &&
@@ -5402,8 +5488,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               | Some (x1, x2) -> map_add map x1 x2
               | None -> map_add map n1 n2
             end
-            else
+            else begin
+              [%debug_log "@"];
               map_add map n1 n2
+            end
           end
           else begin
             try

@@ -1609,6 +1609,8 @@ let is_special _ = false
 let get_nparams _ = raise Not_found
 let get_nargs _ = raise Not_found
 let is_parameter = is_param
+let is_assignment = is_assign
+
 
 open Astml.Attr
 

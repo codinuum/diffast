@@ -652,8 +652,8 @@ let match_trees
     let to_s1 i = UID.to_string (tree1#get i)#uid in
     let to_s2 j = UID.to_string (tree2#get j)#uid in
     (*[%debug_log "eds:\n%s" (Edit._seq_to_string to_s1 to_s2 eds)];*)
-    [%debug_log "deleted:\n[%s]" (Xlist.to_string to_s1 "; " deletes)];
-    [%debug_log "inserted:\n[%s]" (Xlist.to_string to_s2 "; " inserts)];
+    [%debug_log "deleted:\n[%s]" (Xlist.to_string to_s1 ";" deletes)];
+    [%debug_log "inserted:\n[%s]" (Xlist.to_string to_s2 ";" inserts)];
     [%debug_log "relabeled:\n%s" (Mapping._to_string to_s1 to_s2 relabels)];
     [%debug_log "mapping:\n%s" (Mapping._to_string to_s1 to_s2 mapping)]
   end;

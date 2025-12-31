@@ -1373,7 +1373,8 @@ class ['node_t, 'tree_t] c
       raise Not_found
 
   method add_subtree_match nd nd' sz =
-    let lgi = (tree1#initial_leftmost nd)#gindex in
+    Nodetbl.add subtree_matches nd (nd', sz)
+    (*let lgi = (tree1#initial_leftmost nd)#gindex in
     let gi = nd#gindex in
     try
       Nodetbl.filter_map_inplace
@@ -1389,7 +1390,7 @@ class ['node_t, 'tree_t] c
         ) subtree_matches;
       Nodetbl.add subtree_matches nd (nd', sz)
     with
-      Exit -> ()
+      Exit -> ()*)
 
   val mutable multiple_subtree_matches = (None : 'node_t multiple_subtree_matches option)
   method set_multiple_subtree_matches msm = multiple_subtree_matches <- Some msm
@@ -2349,7 +2350,13 @@ class ['node_t, 'tree_t] c
     sim
 
   (* adjacency : similarity of the context *)
-  method _get_adjacency_score ?(anchor=None) nd1 nd2 =
+  method _get_adjacency_score
+      ?(anchor=None)
+      ?(excluded1=[])
+      ?(excluded2=[])
+      nd1
+      nd2
+      =
 
     [%debug_log "evaluating %a-%a..." nups nd1 nups nd2];
 
@@ -2646,10 +2653,24 @@ class ['node_t, 'tree_t] c
           let ichildren2 = anc2#initial_children in
           let offset' = -offset in
 
+          let get_lr ichildren ipos offset excluded =
+            let rec get pos =
+              [%debug_log "pos=%d" pos];
+              try
+                let lr = ichildren.(pos) in
+                if List.memq lr excluded then
+                  get (pos + offset)
+                else
+                  lr
+              with _ -> raise Not_found
+            in
+            get (ipos + offset)
+          in
+
           begin
             try
-              let lr1 = ichildren1.(ipos1 + offset) in
-              let lr2 = ichildren2.(ipos2 + offset) in
+              let lr1 = get_lr ichildren1 ipos1 offset excluded1 in
+              let lr2 = get_lr ichildren2 ipos2 offset excluded2 in
               [%debug_log "lr1=%a lr2=%a" nups lr1 nups lr2];
               comp_score ~extra_denom:d ~bonus_named:true lr1 lr2
                 (fun () ->
@@ -2667,13 +2688,13 @@ class ['node_t, 'tree_t] c
                   end
                 )
             with
-              Invalid_argument _ -> ()
+            | Invalid_argument _ -> ()
+            | Not_found -> ()
           end;
           if extra then begin
             try (* extra addition *)
-              let n1 = ichildren1.(ipos1 + offset * 2) in
-              let n2 = ichildren2.(ipos2 + offset * 2) in
-
+              let n1 = get_lr ichildren1 ipos1 (offset * 2) excluded1 in
+              let n2 = get_lr ichildren2 ipos2 (offset * 2) excluded2 in
               comp_score ~extra_denom:d ~bonus_named:true n1 n2
                 (fun () ->
                   let lst1 = (get_descendants offset' n1) @ [n1] in
@@ -2686,7 +2707,8 @@ class ['node_t, 'tree_t] c
                   end
                 )
             with
-              Invalid_argument _ -> ()
+            | Invalid_argument _ -> ()
+            | Not_found -> ()
           end
 
         in (* end of func score_lr *)
@@ -2903,6 +2925,26 @@ class ['node_t, 'tree_t] c
               [%debug_log "nd2: %a" nps nd2];
               [%debug_log "stmt1: %a" nps stmt1];
               [%debug_log "stmt2: %a" nps stmt2];
+              let pairs =
+                (
+                 if
+                   stmt1#data#is_assignment && stmt2#data#is_assignment
+                 then
+                   let lhs1 = stmt1#initial_children.(0) in
+                   let lhs2 = stmt2#initial_children.(0) in
+                   if
+                     lhs1#data#eq lhs2#data &&
+                     lhs1#initial_nchildren = 0 && lhs2#initial_nchildren = 0
+                   ||
+                     lhs1#data#subtree_equals lhs2#data
+                   then
+                     [(lhs1, lhs2)]
+                   else
+                     []
+                 else
+                   []
+                ) @ (self#get_matched_uniq_subtree_root_pairs stmt1 stmt2)
+              in
               List.fold_left
                 (fun s (r1, r2) ->
                   [%debug_log "%a-%a" nups r1 nups r2];
@@ -2925,7 +2967,7 @@ class ['node_t, 'tree_t] c
                     (fun s x1 x2 ->
                       s +. _incr_score ~exact_only:true [x1] [x2]
                     ) 0.0 !desc1 !desc2
-                ) 0.0 (self#get_matched_uniq_subtree_root_pairs stmt1 stmt2)
+                ) 0.0 pairs
             with
               _ -> 0.0
         in
@@ -2996,8 +3038,14 @@ class ['node_t, 'tree_t] c
 (* end of method _get_adjacency_score *)
 
 
-  method get_adjacency_score ?(anchor=None) nd1 nd2 =
-    let s, _ = self#_get_adjacency_score ~anchor nd1 nd2 in
+  method get_adjacency_score
+      ?(anchor=None)
+      ?(excluded1=[])
+      ?(excluded2=[])
+      nd1
+      nd2
+      =
+    let s, _ = self#_get_adjacency_score ~anchor ~excluded1 ~excluded2 nd1 nd2 in
     s
 
 
@@ -3695,6 +3743,42 @@ class ['node_t, 'tree_t] c
                 ancsim_old, ancsim_new, true
               end
 
+              else if
+                try
+                  let stmt2old = get_stmt nd2old in
+                  let stmt2new = get_stmt nd2new in
+                  let stmt1 = get_stmt nd1old in
+
+                  let pnd2 = stmt2old#initial_parent in
+                  pnd2 == stmt2new#initial_parent &&
+
+                  let pnd1 = nmapping#inv_find pnd2 in
+                  pnd1 == stmt1#initial_parent &&
+
+                  let pos2old = stmt2old#initial_pos in
+                  let pos2new = stmt2new#initial_pos in
+
+                  let pos2st = min pos2old pos2new in
+                  let pos2ed = max pos2old pos2new in
+
+                  let pos1 = stmt1#initial_pos in
+
+                  let children2 = pnd2#initial_children in
+                  let children1 = pnd1#initial_children in
+
+                  (try
+                    nmapping#inv_find children2.(pos2st-1) == children1.(pos1-1)
+                  with _ -> true) &&
+                  (try
+                    nmapping#inv_find children2.(pos2ed+1) == children1.(pos1+1)
+                  with _ -> true)
+                with
+                  _ -> false
+              then begin
+                [%debug_log "@"];
+                ancsim_old, ancsim_new, true
+              end
+
               else
                 ancsim_old, ancsim_new, false
 
@@ -3758,6 +3842,42 @@ class ['node_t, 'tree_t] c
                 nd1new#data#is_named_orig &&
                 get_orig_name nd1old = get_orig_name nd2old &&
                 get_orig_name nd1new = get_orig_name nd2new
+              then begin
+                [%debug_log "@"];
+                ancsim_old, ancsim_new, true
+              end
+
+              else if
+                try
+                  let stmt1old = get_stmt nd1old in
+                  let stmt1new = get_stmt nd1new in
+                  let stmt2 = get_stmt nd2old in
+
+                  let pnd1 = stmt1old#initial_parent in
+                  pnd1 == stmt1new#initial_parent &&
+
+                  let pnd2 = nmapping#find pnd1 in
+                  pnd2 == stmt2#initial_parent &&
+
+                  let pos1old = stmt1old#initial_pos in
+                  let pos1new = stmt1new#initial_pos in
+
+                  let pos1st = min pos1old pos1new in
+                  let pos1ed = max pos1old pos1new in
+
+                  let pos2 = stmt2#initial_pos in
+
+                  let children1 = pnd1#initial_children in
+                  let children2 = pnd2#initial_children in
+
+                  (try
+                    nmapping#find children1.(pos1st-1) == children2.(pos2-1)
+                  with _ -> true) &&
+                  (try
+                    nmapping#find children1.(pos1ed+1) == children2.(pos2+1)
+                  with _ -> true)
+                with
+                  _ -> false
               then begin
                 [%debug_log "@"];
                 ancsim_old, ancsim_new, true

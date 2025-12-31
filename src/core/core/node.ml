@@ -28,8 +28,12 @@ type t = Tbl.key
 
 type 'a cenv_t =
     <
-    get_adjacency_score : ?anchor:((node_t * node_t) option) -> t -> t -> float;
-    _get_adjacency_score : ?anchor:((node_t * node_t) option) -> t -> t -> float * (t * t) list;
+    get_adjacency_score :
+      ?anchor:((node_t * node_t) option) ->
+        ?excluded1:node_t list -> ?excluded2:node_t list -> t -> t -> float;
+    _get_adjacency_score :
+      ?anchor:((node_t * node_t) option) ->
+        ?excluded1:node_t list -> ?excluded2:node_t list -> t -> t -> float * (t * t) list;
     ..> as 'a
 
 
