@@ -9007,7 +9007,14 @@ end;
                     let nd2 = Info.get_node info2 in
                     let is_root = nd1 == rt1 &&  nd2 == rt2 in
                     [%debug_log "%a-%a (is_root=%B) %a - %a" nups nd1 nups nd2 is_root labps nd1 labps nd2];
+
+                    let single_move_of_op =
+                      is_root && tsz = 1 &&
+                      nd1#data#is_op && nd2#data#is_op
+                    in
+                    [%debug_log "single_move_of_op=%B" single_move_of_op];
                     let b =
+                      single_move_of_op ||
                       (
                        (*check_parent nd1 nd2 && *)
                        is_xxx_pair nd1 nd2 ||
