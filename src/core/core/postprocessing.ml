@@ -5720,14 +5720,11 @@ end;
     let added_pairs = ref [] in
 
     let is_crossing_with_added n1 n2 =
-      let not_cross_boundary_flag = not (is_cross_boundary nmapping n1 n2) in
       let b =
         try
           List.iter
             (fun (n1', n2') ->
-              if not_cross_boundary_flag && is_cross_boundary nmapping n1' n2' then
-                ()
-              else if cenv#is_crossing_or_incompatible n1 n2 n1' n2' then begin
+              if cenv#is_crossing_or_incompatible n1 n2 n1' n2' then begin
                 [%debug_log "found: %a-%a [%a]-[%a] %a" nups n1' nups n2'
                   locps n1' locps n2' labps n1'];
                 raise Exit
