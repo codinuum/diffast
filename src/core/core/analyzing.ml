@@ -3253,20 +3253,20 @@ end;
                     in
                     SMP.get_stable_matches cmpr cca1 cca2
                   in
+                  let rec matchx ccx1 ccx2 =
+                    ignore (pre_nmapping#add_settled ~stable ccx1 ccx2);
+                    pre_nmapping#add_to_pre_boundary_mapping ccx1 ccx2;
+                    if ccx1#initial_nchildren = 1 && ccx2#initial_nchildren = 1 then begin
+                      let cccx1 = ccx1#initial_children.(0) in
+                      let cccx2 = ccx2#initial_children.(0) in
+                      if cccx1#data#anonymized_label = cccx2#data#anonymized_label then begin
+                        matchx cccx1 cccx2
+                      end
+                    end
+                  in
                   List.iter
                     (fun (cc1, cc2) ->
-                      ignore (pre_nmapping#add_settled ~stable cc1 cc2);
-                      pre_nmapping#add_to_pre_boundary_mapping cc1 cc2;
-
-                      if cc1#initial_nchildren = 1 && cc2#initial_nchildren = 1 then begin
-                        let ccc1 = cc1#initial_children.(0) in
-                        let ccc2 = cc2#initial_children.(0) in
-                        if ccc1#data#anonymized_label = ccc2#data#anonymized_label then begin
-                          ignore (pre_nmapping#add_unsettled ccc1 ccc2);
-                          pre_nmapping#add_to_pre_boundary_mapping ccc1 ccc2
-                        end
-                      end
-
+                      matchx cc1 cc2
                     ) selected_child_child_pair_list
                 end
                 end
