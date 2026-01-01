@@ -10929,7 +10929,7 @@ end;
                   (try
                     not n1#data#is_order_insensitive && not n1#data#is_order_insensitive &&
                     nmapping#find n1#initial_parent == n2#initial_parent &&
-                    n1#data#equals n2#data
+                    n1#data#subtree_equals n2#data
                   with
                     _ -> false)
               in

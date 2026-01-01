@@ -1506,6 +1506,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     self#prune_deferred nodes;
 
+    [%debug_log "performing deferred deletes..."];
     List.iter (fun f -> f()) deferred_delete_list;
 
     (*Printf.printf "*** begin1\n";
@@ -5845,7 +5846,10 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                     [%debug_log "x=%a" nps x];
                     Xset.add finally_deleted_nodes x#uid
                   );
-                self#add_deferred_delete (fun () -> subtree#prune_initial_nodes [rt])
+                self#add_deferred_delete
+                  (fun () ->
+                    [%debug_log "rt=%a" nps rt];
+                    subtree#prune_initial_nodes [rt])
               end
               else(* if rt != pnd then*) begin
                 scan_initial_cluster rt nds'
@@ -5853,7 +5857,26 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                     [%debug_log "x=%a" nps x];
                     Xset.add finally_deleted_nodes x#uid
                   );
-                self#add_deferred_delete (fun () -> subtree#prune_initial_cluster rt nds')
+                self#add_deferred_delete
+                  (fun () ->
+                    [%debug_log "rt=%a nds'=[%a]" nps rt nsps nds'];
+                    let nds' =
+                      List.map
+                        (fun n ->
+                          [%debug_log "n=%s" n#to_string];
+                          try
+                            let n' =
+                              let pn = n#parent in
+                              [%debug_log "pn=%s" pn#initial_to_string];
+                              pn#initial_children.(n#pos)
+                            in
+                            if n' != n then
+                              [%debug_log "%a -> %a" nps n nps n'];
+                            n'
+                          with _ -> n
+                        ) nds'
+                    in
+                    subtree#prune_initial_cluster rt nds')
               end
               (*self#prune_cluster pnd pos nds'*)
             end
