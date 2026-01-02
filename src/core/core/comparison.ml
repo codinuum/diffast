@@ -6400,7 +6400,7 @@ class ['node_t, 'tree_t] c
 
       count := 0;
 
-      multiple_node_matches#iter
+      multiple_node_matches#iter_topdown
         (fun (_lab, nds1, nds2) ->
           let l1 =
             List.filter
