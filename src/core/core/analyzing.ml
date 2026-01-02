@@ -3324,13 +3324,30 @@ end;
                 begin
                   [%debug_log "[%a]-[%a]" nsps nds1 nsps nds2];
                   let get_uniq_child_ntuple n =
-                    let xl = ref [] in
-                    Array.iter
-                      (fun c ->
-                        if c#data#is_ntuple then
-                          xl := c :: !xl
-                      ) n#initial_children;
-                    match !xl with
+                    let xl =
+                      Array.fold_left
+                        (fun xl c ->
+                          if c#data#is_ntuple then
+                            c :: xl
+                          else
+                            xl
+                        ) [] n#initial_children
+                    in
+                    match xl with
+                    | [x] -> [%debug_log "%a -> %a" nups n nups x]; x
+                    | _ -> raise Not_found
+                  in
+                  let get_uniq_child_named_seq n =
+                    let xl =
+                      Array.fold_left
+                        (fun xl c ->
+                          if c#data#is_named && c#data#is_sequence then
+                            c :: xl
+                          else
+                            xl
+                        ) [] n#initial_children
+                    in
+                    match xl with
                     | [x] -> [%debug_log "%a -> %a" nups n nups x]; x
                     | _ -> raise Not_found
                   in
@@ -3340,15 +3357,26 @@ end;
                         nd1#data#is_boundary && nd1#data#is_named_orig &&
                         not nd1#data#is_sequence && not nd1#data#is_ntuple &&
                         try
-                          let cnd1 = get_uniq_child_ntuple nd1 in
-                          let cnd2 = get_uniq_child_ntuple nd2 in
-                          not (cnd1#data#subtree_equals cnd2#data)
+                          let ntpl1 = get_uniq_child_ntuple nd1 in
+                          let ntpl2 = get_uniq_child_ntuple nd2 in
+                          not (ntpl1#data#subtree_equals ntpl2#data)
                         with _ -> false
                       then begin
                         [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
                           nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
 
                         setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
+                      end
+                      else if
+                        nd1#data#is_boundary && nd1#data#is_named_orig &&
+                        not nd1#data#is_sequence && not nd1#data#is_ntuple
+                      then begin
+                        try
+                          let seq1 = get_uniq_child_named_seq nd1 in
+                          let seq2 = get_uniq_child_named_seq nd2 in
+                          ignore (pre_nmapping#add_unsettled seq1 seq2)
+                        with
+                          _ -> ()
                       end
                   end
                   | _ -> ()
