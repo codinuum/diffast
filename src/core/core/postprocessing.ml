@@ -1363,7 +1363,7 @@ module F (Label : Spec.LABEL_T) = struct
       =
     let cands = ref [] in
 
-    nmapping#iter_unsettled_topdown
+    nmapping#iter_unsettled(*_topdown*)
       (fun nd1 nd2 ->
 
         if filt nd1 nd2 then begin

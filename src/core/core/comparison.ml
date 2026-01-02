@@ -251,17 +251,33 @@ class ['node_t] multiple_node_matches (label_to_string : Obj.t -> string) = obje
     Hashtbl.remove tbl _lab
 
   method iter (f : Obj.t * 'node_t list * 'node_t list -> unit) =
-    let cmp0 n1 n2 = Stdlib.compare n1#gindex n2#gindex in
     let list =
       Hashtbl.fold
         (fun _lab (nds1, nds2) l ->
-          (_lab, List.fast_sort cmp0 nds1, List.fast_sort cmp0 nds2)::l
+          (_lab, nds1, nds2)::l
         ) tbl []
     in
     let cmp (_, nds11, nds21) (_, nds12, nds22) =
       let gip1 = (List.hd nds11)#gindex, (List.hd nds21)#gindex in
       let gip2 = (List.hd nds12)#gindex, (List.hd nds22)#gindex in
       Stdlib.compare gip1 gip2
+
+    in
+    List.iter f (List.fast_sort cmp list)
+
+  method iter_topdown (f : Obj.t * 'node_t list * 'node_t list -> unit) =
+    let cmp0 n1 n2 = Stdlib.compare n2#gindex n1#gindex in
+    let sort0 = List.fast_sort cmp0 in
+    let list =
+      Hashtbl.fold
+        (fun _lab (nds1, nds2) l ->
+          (_lab, sort0 nds1, sort0 nds2)::l
+        ) tbl []
+    in
+    let cmp (_, nds11, nds21) (_, nds12, nds22) =
+      let gip1 = (List.hd nds11)#gindex, (List.hd nds21)#gindex in
+      let gip2 = (List.hd nds12)#gindex, (List.hd nds22)#gindex in
+      Stdlib.compare gip2 gip1
 
     in
     List.iter f (List.fast_sort cmp list)
@@ -6579,6 +6595,55 @@ class ['node_t, 'tree_t] c
                   end
 
                 end (* of if multi_node *)
+                else if
+                  List.for_all
+                    (fun l ->
+                      List.for_all
+                        (fun x ->
+                          x#data#is_sequence &&
+                          try
+                            let px = x#initial_parent in
+                            px#data#is_boundary
+                          with
+                            _ -> false
+                        ) l
+                    ) [l1; l2]
+                then begin
+                  let tbl1 = Hashtbl.create 0 in
+                  let tbl2 = Hashtbl.create 0 in
+                  List.iter
+                    (fun (tbl, l) ->
+                      List.iter
+                        (fun x ->
+                          let key = x#initial_parent#data#_label in
+                          try
+                            let xl = Hashtbl.find tbl key in
+                            Hashtbl.replace tbl key (x::xl)
+                          with Not_found -> Hashtbl.add tbl key [x]
+                        ) l
+                    ) [tbl1, l1; tbl2, l2];
+                  Hashtbl.iter
+                    (fun key xl1 ->
+                      try
+                        let xl2 = Hashtbl.find tbl2 key in
+                        match xl1, xl2 with
+                        | [x1], [x2] -> begin
+                            [%debug_log "node match (%s): |xl1|=1 |xl2|=1"
+                               (multiple_node_matches#label_to_string key)];
+
+                            [%debug_log "adding: %a-%a (%a-%a)"
+                               nups x1 nups x2 GI.ps x1#gindex GI.ps x2#gindex];
+
+                            incr count;
+                            check x1 x2;
+                            ignore (nmapping#add_unsettled x1 x2);
+                            added_pairs := (x1, x2) :: !added_pairs
+                        end
+                        | _ -> ()
+                      with
+                        _ -> ()
+                    ) tbl1
+                end
               end (* of nd1#data#is_named *)
           end
         );

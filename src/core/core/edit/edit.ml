@@ -267,6 +267,40 @@ let combine_node_lists
     =
   [%debug_log "cands1=[%a]" nsps cands1];
   [%debug_log "cands2=[%a]" nsps cands2];
+
+  let cands1, cands2 =
+    let cands2_ =
+      List.fold_left
+        (fun nl2 n1 ->
+          try
+            let n1' = nmapping#find n1 in
+            if not (List.memq n1' cands2) then
+              n1' :: nl2
+            else
+              nl2
+          with
+            Not_found -> nl2
+        ) cands2 cands1
+    in
+    let cands1_ =
+      List.fold_left
+        (fun nl1 n2 ->
+          try
+            let n2' = nmapping#inv_find n2 in
+            if not (List.memq n2' cands1) then
+              n2' :: nl1
+            else
+              nl1
+          with
+            Not_found -> nl1
+        ) cands1 cands2
+    in
+    cands1_, cands2_
+  in
+
+  [%debug_log "cands1=[%a]" nsps cands1];
+  [%debug_log "cands2=[%a]" nsps cands2];
+
   match cands1, cands2 with
   | [], _ | _, [] -> []
   | [nd1], [nd2] -> [nd1, nd2]

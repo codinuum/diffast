@@ -106,8 +106,8 @@ let set_dump_src_flag() =
   options#set_no_collapse_flag
 
 let set_dump_delta_flag () =
-  options#set_dump_delta_flag(*;
-  options#set_java_anon_ctor_body_flag*)
+  options#set_dump_delta_flag;
+  options#set_java_anon_ctor_body_flag
 
 let set_dump_delta_out s =
   options#set_dump_delta_out s;
