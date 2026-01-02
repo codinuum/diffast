@@ -268,13 +268,19 @@ let combine_node_lists
   [%debug_log "cands1=[%a]" nsps cands1];
   [%debug_log "cands2=[%a]" nsps cands2];
 
-  let cands1, cands2 =
+  (*let cands1, cands2 =
     let cands2_ =
       List.fold_left
         (fun nl2 n1 ->
           try
             let n1' = nmapping#find n1 in
-            if not (List.memq n1' cands2) then
+            if
+              not (List.memq n1' cands2) &&
+              not (cenv#is_bad_pair n1 n1') &&
+              not (cenv#is_too_bad_pair n1 n1') &&
+              (*n1#data#subtree_equals n1'#data &&*)
+              not (Misc.is_cross_boundary nmapping n1 n1')
+            then
               n1' :: nl2
             else
               nl2
@@ -287,7 +293,13 @@ let combine_node_lists
         (fun nl1 n2 ->
           try
             let n2' = nmapping#inv_find n2 in
-            if not (List.memq n2' cands1) then
+            if
+              not (List.memq n2' cands1) &&
+              not (cenv#is_bad_pair n2' n2) &&
+              not (cenv#is_too_bad_pair n2' n2) &&
+              (*n2'#data#subtree_equals n2#data &&*)
+              not (Misc.is_cross_boundary nmapping n2' n2)
+            then
               n2' :: nl1
             else
               nl1
@@ -297,9 +309,8 @@ let combine_node_lists
     in
     cands1_, cands2_
   in
-
   [%debug_log "cands1=[%a]" nsps cands1];
-  [%debug_log "cands2=[%a]" nsps cands2];
+  [%debug_log "cands2=[%a]" nsps cands2];*)
 
   match cands1, cands2 with
   | [], _ | _, [] -> []
