@@ -700,7 +700,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     m#iter_unsettled check;
     m#iter_settled check
 
-  method merge_checked (m : 'self) = (* only applicable to pre_uidmapping *)
+  method merge_checked (m : 'self) = (* only applicable to pre_nmapping *)
     let invalidated_settled_root_tbl = Hashtbl.create 0 in
 
     let check adder n1 n2 =

@@ -3357,22 +3357,25 @@ end;
                         nd1#data#is_boundary && nd1#data#is_named_orig &&
                         not nd1#data#is_sequence && not nd1#data#is_ntuple
                       then begin
-                        if
-                          try
+                        try
+                          if
                             let ntpl1 = get_uniq_child_ntuple nd1 in
                             let ntpl2 = get_uniq_child_ntuple nd2 in
                             not (ntpl1#data#subtree_equals ntpl2#data)
-                          with _ -> false
-                        then begin
-                          [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
-                             nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
+                          then begin
+                            [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
+                               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
 
-                          setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
-                        end
-                        else begin
-                          try
+                            setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
+                          end
+                          else begin
+                            [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
+                               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
+
                             let seq1 = get_uniq_child_named_seq nd1 in
                             let seq2 = get_uniq_child_named_seq nd2 in
+                            [%debug_log "seq1=%a" nps seq1];
+                            [%debug_log "seq2=%a" nps seq2];
                             let _lab1 = getlab seq1 in
                             let _lab2 = getlab seq2 in
                             if
@@ -3384,11 +3387,15 @@ end;
                               | [] | [_] -> false
                               | _ -> true)
                             then begin
-                              ignore (pre_nmapping#add_unsettled seq1 seq2)
+                              ignore (pre_nmapping#add_unsettled seq1 seq2);
+                              pre_nmapping#add_to_pre_boundary_mapping seq1 seq2;
+                              ignore (pre_nmapping#add_settled nd1 nd2);
+                              pre_nmapping#add_to_pre_boundary_mapping nd1 nd2;
+                              pre_nmapping#finalize_mapping nd1 nd2;
                             end
-                          with
-                            _ -> ()
-                        end
+                          end
+                        with
+                          _ -> ()
                       end
                   end
                   | _ -> ()
