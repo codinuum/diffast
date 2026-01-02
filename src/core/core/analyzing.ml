@@ -3355,28 +3355,40 @@ end;
                   | [nd1], [nd2] -> begin
                       if
                         nd1#data#is_boundary && nd1#data#is_named_orig &&
-                        not nd1#data#is_sequence && not nd1#data#is_ntuple &&
-                        try
-                          let ntpl1 = get_uniq_child_ntuple nd1 in
-                          let ntpl2 = get_uniq_child_ntuple nd2 in
-                          not (ntpl1#data#subtree_equals ntpl2#data)
-                        with _ -> false
-                      then begin
-                        [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
-                          nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
-
-                        setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
-                      end
-                      else if
-                        nd1#data#is_boundary && nd1#data#is_named_orig &&
                         not nd1#data#is_sequence && not nd1#data#is_ntuple
                       then begin
-                        try
-                          let seq1 = get_uniq_child_named_seq nd1 in
-                          let seq2 = get_uniq_child_named_seq nd2 in
-                          ignore (pre_nmapping#add_unsettled seq1 seq2)
-                        with
-                          _ -> ()
+                        if
+                          try
+                            let ntpl1 = get_uniq_child_ntuple nd1 in
+                            let ntpl2 = get_uniq_child_ntuple nd2 in
+                            not (ntpl1#data#subtree_equals ntpl2#data)
+                          with _ -> false
+                        then begin
+                          [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
+                             nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
+
+                          setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
+                        end
+                        else begin
+                          try
+                            let seq1 = get_uniq_child_named_seq nd1 in
+                            let seq2 = get_uniq_child_named_seq nd2 in
+                            let _lab1 = getlab seq1 in
+                            let _lab2 = getlab seq2 in
+                            if
+                              _lab1 = _lab2 &&
+                              (match try Hashtbl.find ltbl1 _lab1 with _ -> [] with
+                              | [] | [_] -> false
+                              | _ -> true) &&
+                              (match try Hashtbl.find ltbl2 _lab2 with _ -> [] with
+                              | [] | [_] -> false
+                              | _ -> true)
+                            then begin
+                              ignore (pre_nmapping#add_unsettled seq1 seq2)
+                            end
+                          with
+                            _ -> ()
+                        end
                       end
                   end
                   | _ -> ()
