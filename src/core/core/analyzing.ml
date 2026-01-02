@@ -3380,12 +3380,14 @@ end;
                             let _lab2 = getlab seq2 in
                             if
                               _lab1 = _lab2 &&
-                              (match try Hashtbl.find ltbl1 _lab1 with _ -> [] with
-                              | [] | [_] -> false
-                              | _ -> true) &&
-                              (match try Hashtbl.find ltbl2 _lab2 with _ -> [] with
-                              | [] | [_] -> false
-                              | _ -> true)
+                              let nl1 =
+                                try List.length (Hashtbl.find ltbl1 _lab1) with _ -> 0
+                              in
+                              let nl2 =
+                                try List.length (Hashtbl.find ltbl2 _lab2) with _ -> 0
+                              in
+                              [%debug_log "nl1=%d nl2=%d" nl1 nl2];
+                              nl1 > 1 && nl1 = nl2
                             then begin
                               ignore (pre_nmapping#add_unsettled seq1 seq2);
                               pre_nmapping#add_to_pre_boundary_mapping seq1 seq2;
