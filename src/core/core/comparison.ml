@@ -251,10 +251,11 @@ class ['node_t] multiple_node_matches (label_to_string : Obj.t -> string) = obje
     Hashtbl.remove tbl _lab
 
   method iter (f : Obj.t * 'node_t list * 'node_t list -> unit) =
+    let cmp0 n1 n2 = Stdlib.compare n1#gindex n2#gindex in
     let list =
       Hashtbl.fold
         (fun _lab (nds1, nds2) l ->
-          (_lab, nds1, nds2)::l
+          (_lab, List.fast_sort cmp0 nds1, List.fast_sort cmp0 nds2)::l
         ) tbl []
     in
     let cmp (_, nds11, nds21) (_, nds12, nds22) =

@@ -573,6 +573,14 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
   method iter_settled_sorted cmp f =
     self#_iter_sorted cmp self#dom_settled f
 
+  method iter_unsettled_topdown f =
+    let cmp n1 n2 = Stdlib.compare n2#gindex n1#gindex in
+    self#iter_unsettled_sorted cmp f
+
+  method iter_settled_topdown f =
+    let cmp n1 n2 = Stdlib.compare n2#gindex n1#gindex in
+    self#iter_settled_sorted cmp f
+
 
   method iter_rev f =
     begin
