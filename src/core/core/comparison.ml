@@ -965,7 +965,10 @@ class ['node_t, 'tree_t] c
       Xset.add rename_pat sp
     end
   method is_rename_pat (s1, s2) =
-    let b = Xset.mem rename_pat (s1, s2) in
+    let b =
+      (*s1 <> s2 && String.lowercase_ascii s1 = String.lowercase_ascii s2 ||*)
+      Xset.mem rename_pat (s1, s2)
+    in
     [%debug_log "\"%s\"-\"%s\" -> %B" s1 s2 b];
     b
 
@@ -3693,6 +3696,9 @@ class ['node_t, 'tree_t] c
             b
           in
 
+          let stmt_pair_old = ref None in
+          let stmt_pair_new = ref None in
+
           let ancsim_old, ancsim_new, prefer_sim =
             if nd1old == nd1new then
               if
@@ -3760,11 +3766,14 @@ class ['node_t, 'tree_t] c
                 ancsim_old, ancsim_new, true
               end
 
-              else if
+              (*else if
                 try
                   let stmt2old = get_stmt nd2old in
                   let stmt2new = get_stmt nd2new in
                   let stmt1 = get_stmt nd1old in
+
+                  let _ = stmt_pair_old := Some (stmt1, stmt2old) in
+                  let _ = stmt_pair_new := Some (stmt1, stmt2new) in
 
                   let pnd2 = stmt2old#initial_parent in
                   pnd2 == stmt2new#initial_parent &&
@@ -3794,10 +3803,14 @@ class ['node_t, 'tree_t] c
               then begin
                 [%debug_log "@"];
                 ancsim_old, ancsim_new, true
-              end
+              end*)
 
-              else
+              else begin
+                [%debug_log "@"];
+                stmt_pair_old := None;
+                stmt_pair_new := None;
                 ancsim_old, ancsim_new, false
+              end
 
             else if nd2old == nd2new then
               if
@@ -3864,11 +3877,14 @@ class ['node_t, 'tree_t] c
                 ancsim_old, ancsim_new, true
               end
 
-              else if
+              (*else if
                 try
                   let stmt1old = get_stmt nd1old in
                   let stmt1new = get_stmt nd1new in
                   let stmt2 = get_stmt nd2old in
+
+                  let _ = stmt_pair_old := Some (stmt1old, stmt2) in
+                  let _ = stmt_pair_new := Some (stmt1new, stmt2) in
 
                   let pnd1 = stmt1old#initial_parent in
                   pnd1 == stmt1new#initial_parent &&
@@ -3898,10 +3914,15 @@ class ['node_t, 'tree_t] c
               then begin
                 [%debug_log "@"];
                 ancsim_old, ancsim_new, true
+              end*)
+
+              else begin
+                [%debug_log "@"];
+                stmt_pair_old := None;
+                stmt_pair_new := None;
+                ancsim_old, ancsim_new, false
               end
 
-              else
-                ancsim_old, ancsim_new, false
             else
               ancsim_old, ancsim_new, false
           in
@@ -3928,8 +3949,25 @@ class ['node_t, 'tree_t] c
 
           [%debug_log "prefer_sim: %B" prefer_sim];
 
-          let subtree_sim_old = self#get_similarity_score nd1old nd2old in
-          let subtree_sim_new = self#get_similarity_score nd1new nd2new in
+          let subtree_sim_old, subtree_sim_new =
+            match !stmt_pair_old, !stmt_pair_new with
+            | Some (stmt1old, stmt2old), Some (stmt1new, stmt2new) when begin
+                prefer_sim &&
+                List.for_all
+                  (fun x ->
+                    Array.for_all
+                      (fun y ->
+                        not y#data#is_block && not y#data#is_statement
+                      ) x#initial_children
+                  ) [stmt1old; stmt2old; stmt1new; stmt2new]
+            end -> begin
+              self#get_similarity_score stmt1old stmt2old,
+              self#get_similarity_score stmt1new stmt2new
+            end
+            | _ ->
+                self#get_similarity_score nd1old nd2old,
+                self#get_similarity_score nd1new nd2new
+          in
 
           [%debug_log "subtree similarity: %f --> %f" subtree_sim_old subtree_sim_new];
 

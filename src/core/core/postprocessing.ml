@@ -4867,16 +4867,20 @@ end;
                         if
                           not (nmapping#is_final_mapping n1 n2) &&
                           nmapping#is_final_mapping n1 n1'
-                        then
+                        then begin
+                          [%debug_log "@"];
                           false, None
+                        end
                         else if
                           n1#data#is_named_orig &&
                           n1'#data#is_named_orig &&
                           n1#data#eq n1'#data &&
                           not (n1#data#eq n2#data) &&
                           not (is_cross_boundary nmapping n1 n1')
-                        then
+                        then begin
+                          [%debug_log "@"];
                           false, None(*, None*)
+                        end
                         else if
                           n1#data#eq n1'#data &&
                           n1#data#eq n2#data &&
@@ -4933,6 +4937,7 @@ end;
                           Some b*)
                       end
                       else begin
+                        [%debug_log "@"];
                         already_mapped1 := true;
                         false, None(*, None*)
                       end
@@ -4951,16 +4956,20 @@ end;
                         if
                           not (nmapping#is_final_mapping n1 n2) &&
                           nmapping#is_final_mapping n2' n2
-                        then
+                        then begin
+                          [%debug_log "@"];
                           false, None
+                        end
                         else if
                           n2#data#is_named_orig &&
                           n2'#data#is_named_orig &&
                           n2#data#eq n2'#data &&
                           not (n1#data#eq n2#data) &&
                           not (is_cross_boundary nmapping n2' n2)
-                        then
+                        then begin
+                          [%debug_log "@"];
                           false, None(*, None*)
+                        end
                         else if
                           n2#data#eq n2'#data &&
                           n1#data#eq n2#data &&
@@ -5017,6 +5026,7 @@ end;
                           Some b*)
                       end
                       else begin
+                        [%debug_log "@"];
                         already_mapped2 := true;
                         false, None(*, None*)
                       end
@@ -5048,7 +5058,9 @@ end;
                        with _ -> false) ||
                        (try
                          n1#data#is_named_orig && n1#data#eq n2#data &&
-                         cenv#is_rename_pat (pn1#data#get_stripped_name, pn2#data#get_stripped_name)
+                         let pnm1 = pn1#data#get_stripped_name in
+                         let pnm2 = pn2#data#get_stripped_name in
+                         cenv#is_rename_pat (pnm1, pnm2)
                        with _ -> false)
                       )
                     with
