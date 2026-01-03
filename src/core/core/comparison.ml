@@ -4748,7 +4748,6 @@ class ['node_t, 'tree_t] c
 
           else if
             let b =
-              not options#moderate_moves_flag &&
               nd1old#data#is_statement && nd2old#data#is_statement &&
               nd1old#data#_anonymized_label = nd2old#data#_anonymized_label &&
               (
@@ -4770,7 +4769,6 @@ class ['node_t, 'tree_t] c
           end
           else if
             let b =
-              not options#moderate_moves_flag &&
               nd1new#data#is_statement && nd2new#data#is_statement &&
               nd1new#data#_anonymized_label = nd2new#data#_anonymized_label &&
               (
