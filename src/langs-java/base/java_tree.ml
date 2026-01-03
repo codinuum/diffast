@@ -1988,7 +1988,7 @@ class translator options =
       let resolved =
         if options#partial_name_resolution_flag then
           if unqualified then
-            L.conv_name ~resolve:false ~unqualified:false n
+            L.conv_name ~resolve:false ~unqualified(*:false*) n
           else
             unresolved
         else
@@ -2027,7 +2027,7 @@ class translator options =
             fun x -> L.Primary.Name x
         in
         let mknd ?(children=[]) =
-          name_to_node ~children mkplab
+          name_to_node ~children ~unqualified:true mkplab
         in
         let rec doit n =
           try
