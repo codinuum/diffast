@@ -7910,7 +7910,7 @@ end;
       ?(force=false)
       ?(weak=false)
       ?(thresh=0.1)
-      is_xxx_pair (*options*)_ edits nmapping size_limit =
+      is_xxx_pair options edits nmapping size_limit =
     let _ = thresh in
 
     [%debug_log "nmapping before move decomposition:\n%s\n" nmapping#to_string];
@@ -8418,6 +8418,7 @@ end;
         end
 
         else if
+          not options#moderate_moves_flag &&
           not force &&
           sz > 0 &&
           not rt1#data#is_boundary && not rt2#data#is_boundary &&
