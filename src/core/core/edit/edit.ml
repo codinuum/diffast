@@ -2587,7 +2587,8 @@ let rectify_renames_d
   let get_orig_name = Comparison.get_orig_name in
   let is_extract_or_inline def1 def2 n1 n2 =
     let b =
-      def1#data#is_parameter && def2#data#is_parameter &&
+      def1#initial_parent#data#is_parameter &&
+      def2#initial_parent#data#is_parameter &&
       try
         let bdef1 = get_bn def1 in
         let bdef2 = get_bn def2 in

@@ -745,7 +745,7 @@ let is_local_use ?(exclude_params=true) tree n =
   let b =
     try
       let d = get_def_node tree n in
-      (not exclude_params || not d#data#is_parameter) &&
+      (not exclude_params || not d#initial_parent#data#is_parameter) &&
       is_local_def d
     with _ -> false
   in
