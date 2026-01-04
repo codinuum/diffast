@@ -412,7 +412,7 @@ class visitor options bid_gen static_vdtors tree = object (self)
       nd#data#set_scope_node tree#root
     end;
 
-    (*if L.is_parameter lab then begin
+    if L.is_parameter lab then begin
       let name = L.get_name lab in
       let bid = bid_gen#gen in
       tree#add_to_bid_tbl bid name;
@@ -436,7 +436,7 @@ class visitor options bid_gen static_vdtors tree = object (self)
         self#set_scope_node nd;
         stack#register name nd
       end
-    end;*)
+    end;
 
     if L.is_catch_parameter lab then begin
       let name = L.get_name lab in
@@ -1180,7 +1180,7 @@ class translator options =
         let vdtor_nd =
           self#mknode
             ~ordinal_tbl_opt:(Some (new ordinal_tbl [0])) ~id_loc
-            (L.VariableDeclarator(name, ndims)) []
+            (L.VariableDeclaratorId(name, ndims)) []
         in
         vdtor_nd#data#set_loc id_loc;
         let nd =

@@ -2069,6 +2069,7 @@ type t = (* Label *)
   | Block of tie_id
   | LocalVariableDeclaration of bool (* is stmt *) * (name * dims) list
   | VariableDeclarator of name * dims
+  | VariableDeclaratorId of name * dims
   | CatchClause of tie_id
   | Finally
   | ForInit of tie_id
@@ -2211,6 +2212,7 @@ let to_string = function
   | LocalVariableDeclaration(isstmt, vdids) ->
       sprintf "LocalVariableDeclaration(%B,%s)" isstmt (vdids_to_string vdids)
   | VariableDeclarator(name, dims)          -> sprintf "VariableDeclarator(%s,%d)" name dims
+  | VariableDeclaratorId(name, dims)        -> sprintf "VariableDeclaratorId(%s,%d)" name dims
   | CatchClause tid                         -> sprintf "CatchClause(%s)" (tid_to_string tid)
   | Finally                                 -> "Finally"
   | ForInit tid                             -> sprintf "ForInit(%s)" (tid_to_string tid)
@@ -2338,6 +2340,7 @@ let strip = function (* strip non-name attributes from label *)
   | LocalVariableDeclaration(_, l) -> LocalVariableDeclaration(true, List.map (fun (n, _) -> n, 0) l)
   | FieldDeclaration l             -> FieldDeclaration (List.map (fun (n, _) -> n, 0) l)
   | VariableDeclarator(name, _)    -> VariableDeclarator(name, 0)
+  | VariableDeclaratorId(name, _)  -> VariableDeclaratorId(name, 0)
 
   | TypeArguments(_, name)  -> TypeArguments(1, name)
   | Parameter(name, _, _)   -> Parameter(name, 0, false)
@@ -2356,6 +2359,7 @@ let anonymize ?(more=false) = function
   | LocalVariableDeclaration _ when more -> VariableDeclaration
   | FieldDeclaration _ when more         -> VariableDeclaration
   | VariableDeclarator(_, _) when more -> VariableDeclarator("", 0)
+  | VariableDeclaratorId(_, _) when more -> VariableDeclaratorId("", 0)
   | Modifiers _ when more -> Modifiers Kany
 
   | Type ty                        -> Type (Type.anonymize ty)
@@ -2406,6 +2410,7 @@ let anonymize ?(more=false) = function
 
   | LocalVariableDeclaration(b, _) -> LocalVariableDeclaration(b, [])
   | VariableDeclarator(_, _)       -> VariableDeclarator("", 0)
+  | VariableDeclaratorId(_, _)     -> VariableDeclaratorId("", 0)
   | NamedArguments _               -> NamedArguments ""
   | TypeArguments(_, _)            -> TypeArguments(1, "")
   | Parameters _                   -> Parameters ""
@@ -2484,6 +2489,7 @@ let anonymize2 = function
 
   | Qualifier _                                                -> Primary (Primary.Name "")
   | VariableDeclarator _                                       -> Primary (Primary.Name "")
+  | VariableDeclaratorId _                                     -> Primary (Primary.Name "")
   | Interface _ | Enum _                                       -> Class ""
   | InterfaceBody _ | EnumBody _                               -> ClassBody ""
   | Constructor _ | ConstructorBody _ | Method _ | MethodBody _ as lab -> anonymize ~more:false lab
@@ -2541,6 +2547,7 @@ let to_simple_string = function
   | Block _                     -> "<block>"
   | LocalVariableDeclaration(_, _) -> "<vdecl>"
   | VariableDeclarator(name, dims) -> name^(if dims = 0 then "" else sprintf "[%d" dims)
+  | VariableDeclaratorId(name, dims) -> name^(if dims = 0 then "" else sprintf "[%d" dims)
   | CatchClause _             -> "catch"
   | Finally                   -> "finally"
   | ForInit _                 -> "<for_init>"
@@ -2771,6 +2778,7 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | TypeName name -> combo 120 [name]
 
   | VariableDeclaration -> mkstr 121
+  | VariableDeclaratorId(name, dims) -> combo 122 [name; string_of_int dims]
 
 
 let sig_attr_name = "___signature"
@@ -2811,6 +2819,7 @@ let to_tag ?(strip=false) l =
     | Block _ when strip          -> "Block", []
     | Block tid                   -> "Block", mktidattr tid
     | VariableDeclarator(name, d) -> "VariableDeclarator", ["name",xmlenc name;dims_attr_name,string_of_int d;]
+    | VariableDeclaratorId(name, d) -> "VariableDeclaratorId", ["name",xmlenc name;dims_attr_name,string_of_int d;]
     | CatchClause tid             -> "CatchClause", mktidattr tid
     | Finally                     -> "Finally", []
     | ForInit _ when strip        -> "ForInit", []
@@ -3067,6 +3076,7 @@ let to_char lab =
     | Permits -> 124
     | TypeName _ -> 125
     | VariableDeclaration -> 126
+    | VariableDeclaratorId(_, _) -> 127
   in
   char_pool.(to_index lab)
 
@@ -3394,6 +3404,9 @@ let relabel_allowed (lab1, lab2) =
     | Parameter _, InferredFormalParameter _
     | InferredFormalParameter _, Parameter _
 
+    | VariableDeclarator _, VariableDeclaratorId _
+    | VariableDeclaratorId _, VariableDeclarator _
+
     | Parameters _, InferredFormalParameters
     | InferredFormalParameters, Parameters _
 
@@ -3490,6 +3503,7 @@ let is_named = function
   | Constructor _
   | ConstructorBody _
   | VariableDeclarator _
+  | VariableDeclaratorId _
   | NamedArguments _
   | TypeArguments _
   | Parameters _
@@ -3553,6 +3567,7 @@ let is_named_orig = function
   | ElementValuePair _
   | Constructor _
   | VariableDeclarator _
+  | VariableDeclaratorId _
   | FieldDeclaration _ (* for merging (potential duplication detection) *)
   | Parameter _
   | TypeParameter _
@@ -3969,6 +3984,10 @@ let is_variabledeclarator = function
   | VariableDeclarator _ -> true
   | _ -> false
 
+let is_variabledeclaratorid = function
+  | VariableDeclaratorId _ -> true
+  | _ -> false
+
 let is_literal = function
   | Primary (Primary.Literal _)
   | Expression (Expression.Primary (Primary.Literal _)) -> true
@@ -4380,6 +4399,7 @@ let get_name ?(strip=false) lab =
     | Constructor(name, _)
     | ConstructorBody(name, _)
     | VariableDeclarator(name, _)
+    | VariableDeclaratorId(name, _)
     | TypeArguments(_, name)
     | NamedArguments name
     | Parameters name
@@ -4848,6 +4868,7 @@ let of_elem_data =
     "LocalVariableDeclaration",  (fun a -> LocalVariableDeclaration(false, find_vdids ~attr_name:"name" a));
     "LocalVariableDeclarationStatement",  (fun a -> LocalVariableDeclaration(true, find_vdids ~attr_name:"name" a));
     "VariableDeclarator",        (fun a -> VariableDeclarator(find_name a, find_dims a));
+    "VariableDeclaratorId",      (fun a -> VariableDeclaratorId(find_name a, find_dims a));
     "CatchClause",               (fun a -> CatchClause(find_tid a));
     "Finally",                   (fun _ -> Finally);
     "ForInit",                   (fun a -> ForInit(find_tid a));
