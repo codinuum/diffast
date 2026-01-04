@@ -1159,9 +1159,9 @@ class translator options =
         let dims_have_annot = Ast.annot_exists dims in
         let otbl_spec =
           if dims_have_annot then
-            [List.length mod_nodes; 1; 1; List.length dims]
+            [List.length mod_nodes; 1; List.length dims]
           else
-            [List.length mod_nodes; 1; 1]
+            [List.length mod_nodes; 1]
         in
         let ordinal_tbl_opt = Some (new ordinal_tbl otbl_spec) in
         let id_loc =
@@ -1176,17 +1176,10 @@ class translator options =
           else
             []
         in
-        let ndims = List.length dims in
-        let vdtor_nd =
-          self#mknode
-            ~ordinal_tbl_opt:(Some (new ordinal_tbl [0])) ~id_loc
-            (L.VariableDeclaratorId(name, ndims)) []
-        in
-        vdtor_nd#data#set_loc id_loc;
         let nd =
           self#mknode ~ordinal_tbl_opt ~id_loc
-            (L.Parameter(name, ndims, param.Ast.fp_variable_arity))
-            (mod_nodes @ [self#of_javatype [] param.Ast.fp_type] @ (vdtor_nd::dim_nds))
+            (L.Parameter(name, List.length dims, param.Ast.fp_variable_arity))
+            (mod_nodes @ [self#of_javatype [] param.Ast.fp_type] @ dim_nds)
         in
         set_loc nd param.Ast.fp_loc;
         nd
@@ -1538,8 +1531,7 @@ class translator options =
         conv_loc iloc
     in
     let nd =
-      self#mknode ~ordinal_tbl_opt ~id_loc
-        (L.VariableDeclarator(name, List.length dims)) children
+      self#mknode ~ordinal_tbl_opt ~id_loc (L.VariableDeclarator(name, List.length dims)) children
     in
     nd#data#set_loc loc;
     if is_static then

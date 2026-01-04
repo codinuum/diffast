@@ -1137,9 +1137,6 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
         pr_selected ~fail_on_error L.is_arrayinitializer children
       end
 
-  | L.VariableDeclaratorId(i, dims) ->
-      pr_id i; pr_dims dims
-
 
 and pr_selected
     ?(fail_on_error=true)
