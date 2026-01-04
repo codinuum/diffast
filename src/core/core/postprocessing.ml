@@ -34,10 +34,6 @@ module Nodetbl = Node.Tbl
 
 open Misc
 
-let is_use n = B.is_use n#data#binding
-let get_def_node tree n = tree#search_node_by_uid (B.get_uid n#data#binding)
-let is_local_def n = B.is_local_def n#data#binding
-
 
 [%%capture_path
 module F (Label : Spec.LABEL_T) = struct

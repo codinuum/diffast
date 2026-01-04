@@ -724,11 +724,10 @@ let mkfilt getlab is_x nd =
   with
     Not_found -> false
 
-
-let is_def nd = B.is_def nd#data#binding
-let is_non_local_def nd = B.is_non_local_def nd#data#binding
-let is_use nd = B.is_use nd#data#binding
-let get_def_node tree n = tree#search_node_by_uid (B.get_uid n#data#binding)
+let is_use n = Misc.is_use n
+let is_def n = Misc.is_def n
+let is_local_def n = Misc.is_local_def n
+let get_def_node tree n = Misc.get_def_node tree n
 let get_bid nd = B.get_bid nd#data#binding
 let get_bid_opt nd = B.get_bid_opt nd#data#binding
 
@@ -2407,7 +2406,7 @@ let rectify_renames_u
             (def_flag &&
              (
               nd1#data#_anonymized_label = nd2#data#_anonymized_label ||
-              B.is_local_def nd1#data#binding = B.is_local_def nd2#data#binding
+              is_local_def nd1 = is_local_def nd2
              )
             )
           then begin
@@ -2874,7 +2873,7 @@ let rectify_renames_d
       [%debug_log "conflicting_use_mapping_count1=%d" conflicting_use_mapping_count1];
       [%debug_log "conflicting_use_mapping_count2=%d" conflicting_use_mapping_count2];
 
-      let local_def_flag = B.is_local_def def1#data#binding && B.is_local_def def2#data#binding in
+      let local_def_flag = is_local_def def1 && is_local_def def2 in
       [%debug_log "local_def_flag=%B" local_def_flag];
 
       let compatible_scope_flag = Misc.is_scope_compatible nmapping def1 def2 in
@@ -3034,35 +3033,55 @@ let rectify_renames_d
         in
         [%debug_log "non_rename_def_plausible_flag=%B" non_rename_def_plausible_flag];
         let chk_def1 n1 n2 =
-          is_use n1 && is_use n2 &&
-          let _ = [%debug_log "%a-%a" nups n1 nups n2] in
-          let d1 = get_def_node cenv#tree1 n1 in
-          try
-            let d1' = nmapping#find d1 in
-            Misc.is_cross_scope nmapping d1 d1' &&
-            not (Misc.is_scope_compatible nmapping d1 d1')
-          with
-            Not_found -> true
+          let b =
+            is_use n1 && is_use n2 &&
+            let d1 = get_def_node cenv#tree1 n1 in
+            try
+              let d1' = nmapping#find d1 in
+              Misc.is_cross_scope nmapping d1 d1' &&
+              not (Misc.is_scope_compatible nmapping d1 d1')
+            with
+              Not_found -> is_local_def d1
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
         in
         let chk_def2 n1 n2 =
-          is_use n1 && is_use n2 &&
-          let _ = [%debug_log "%a-%a" nups n1 nups n2] in
-          let d2 = get_def_node cenv#tree2 n2 in
-          try
-            let d2' = nmapping#inv_find d2 in
-            Misc.is_cross_scope nmapping d2' d2 &&
-            not (Misc.is_scope_compatible nmapping d2' d2)
-          with
-            Not_found -> true
+          let b =
+            is_use n1 && is_use n2 &&
+            let d2 = get_def_node cenv#tree2 n2 in
+            try
+              let d2' = nmapping#inv_find d2 in
+              Misc.is_cross_scope nmapping d2' d2 &&
+              not (Misc.is_scope_compatible nmapping d2' d2)
+            with
+              Not_found -> is_local_def d2
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
         in
         let name_cond n1 n2 =
-          non_rename_def_plausible_flag &&
-          Comparison.get_orig_name n1 <> Comparison.get_orig_name n2
+          let b =
+            non_rename_def_plausible_flag &&
+            Comparison.get_orig_name n1 <> Comparison.get_orig_name n2 &&
+            try
+              let d1 = get_def_node cenv#tree1 n1 in
+              let d2 = get_def_node cenv#tree2 n2 in
+              is_local_def d1 && is_local_def d2
+            with
+              _ -> false
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
         in
         let lhs_cond n1 n2 =
-          try
-            n1#initial_parent#data#is_assignment <> n2#initial_parent#data#is_assignment
-          with _ -> false
+          let b =
+            try
+              n1#initial_parent#data#is_assignment <> n2#initial_parent#data#is_assignment
+            with _ -> false
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
         in
         let conflicting_mapping_list1_, conflicting_mapping_list2_ =
           let filt chk_def =
@@ -3208,7 +3227,7 @@ let rectify_renames_d
 
         let nds1__, nds2__ =
           if
-            B.is_local_def def1#data#binding && B.is_local_def def2#data#binding &&
+            is_local_def def1 && is_local_def def2 &&
             (nds1_ <> [] || nds2_ <> [])
           then begin
             List.iter2

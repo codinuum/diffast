@@ -23,6 +23,14 @@ module UID = Diffast_misc.UID
 module GI = Diffast_misc.GIndex
 module Otree = Diffast_misc.Otree
 module Loc = Diffast_misc.Loc
+module B   = Diffast_misc.Binding
+
+
+let is_use n = B.is_use n#data#binding
+let is_def n = B.is_def n#data#binding
+let is_local_def n = B.is_local_def n#data#binding
+let is_non_local_def n = B.is_non_local_def n#data#binding
+let get_def_node tree n = tree#search_node_by_uid (B.get_uid n#data#binding)
 
 
 [%%capture_path
@@ -516,6 +524,21 @@ let is_cross_boundary ?(filt=fun _ _ -> true) nmapping n1 n2 =
     try
       let a1 = get_p_ancestor (fun x -> x#data#is_boundary) n1 in
       let a2 = get_p_ancestor (fun x -> x#data#is_boundary) n2 in
+      filt a1 a2 &&
+      not (try nmapping#find a1 == a2 with _ -> false)
+    with
+      _ -> false
+  in
+  [%debug_log "%a - %a -> %B" nps n1 nps n2 b];
+  b
+]
+
+[%%capture_path
+let is_cross_stmt ?(filt=fun _ _ -> true) nmapping n1 n2 =
+  let b =
+    try
+      let a1 = get_p_ancestor (fun x -> x#data#is_statement) n1 in
+      let a2 = get_p_ancestor (fun x -> x#data#is_statement) n2 in
       filt a1 a2 &&
       not (try nmapping#find a1 == a2 with _ -> false)
     with
