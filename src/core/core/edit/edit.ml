@@ -939,10 +939,12 @@ let collect_use_renames ?(filt=fun _ _ -> true) cenv nmapping edits is_possible_
       let k = name1, name2 in
       if
         not node1#data#is_order_insensitive && not node2#data#is_order_insensitive &&
+        node1#initial_nchildren = 1 && node2#initial_nchildren = 1 &&
         try
           let pnd1 = node1#initial_parent in
           let pnd2 = node2#initial_parent in
           not pnd1#data#is_order_insensitive && not pnd2#data#is_order_insensitive &&
+          pnd1#initial_nchildren = 1 && pnd2#initial_nchildren = 1 &&
           nmapping#find pnd1 == pnd2 &&
           let ppnd1 = pnd1#initial_parent in
           let ppnd2 = pnd2#initial_parent in

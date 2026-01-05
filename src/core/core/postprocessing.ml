@@ -5839,6 +5839,7 @@ end;
                         cenv#get_similarity_score nd1 nd2
                     end
                     else begin
+                      [%debug_log "@"];
                       (*if Comparison.next_to_each_other p2 pnd2 then
                         false
                       else!!!NG!!!*)
@@ -5938,6 +5939,7 @@ end;
                         cenv#get_similarity_score nd1 nd2
                     end
                     else begin
+                      [%debug_log "@"];
                       (*if Comparison.next_to_each_other p1 pnd1 then
                         false
                       else!!!NG!!!*)

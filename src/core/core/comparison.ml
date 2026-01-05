@@ -4893,6 +4893,7 @@ class ['node_t, 'tree_t] c
             ancsim_old > 1.0 && ancsim_new < 1.0 && subtree_sim_new = 1.0
               && all_in_no_seq() && boundary_mapped nmapping#find nd1old nd2old
           ||
+            let _ = [%debug_log "@"] in
             ancsim_old = 1.0 && subtree_sim_old = 1.0 && ancsim_new < 1.0 && subtree_sim_new < 1.0
           (*||
             size_old > 4 && size_new > 4 &&
@@ -4902,23 +4903,32 @@ class ['node_t, 'tree_t] c
             self#is_scope_consistent_mapping nmapping nd1old nd2old &&
             not (self#is_scope_consistent_mapping nmapping nd1new nd2new)*)
           ||
+            let _ = [%debug_log "@"] in
             anc_sim_almost_same && subtree_sim_old = 1.0 && subtree_sim_new < 1.0 && chk_for_old()
           ||
+            let _ = [%debug_log "@"] in
             is_plausible nd1old nd2old && not (is_plausible nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             tid_eq nd1old nd2old && not (tid_eq nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             not (anc_each_other()) &&
             has_same_subtree nd1old nd2old && not (has_same_subtree nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             in_similar_context nd1old nd2old && not (in_similar_context nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             nmapping#is_stable_pair nd1old nd2old && not (nmapping#is_stable_pair nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             prefer_sim && subtree_sim_old > subtree_sim_new
           ||
+            let _ = [%debug_log "@"] in
             is_stable_ntuple nd1old nd2old && not (is_stable_ntuple nd1new nd2new)
           ||
+            let _ = [%debug_log "@"] in
             anc_each_other() &&
             nd1old#data#is_named &&
             nd1old#data#is_named_orig = nd2old#data#is_named_orig &&
@@ -4930,6 +4940,7 @@ class ['node_t, 'tree_t] c
              with _ -> false
             )
           ||
+            let _ = [%debug_log "@"] in
             nd1old == nd1new && nd1old#data#is_named &&
             nd1old#data#eq nd2old#data && not (nd1old#data#eq nd2new#data) &&
             (try
@@ -4940,6 +4951,7 @@ class ['node_t, 'tree_t] c
               pnd1old#data#eq pnd2old#data && not (pnd1old#data#eq pnd2new#data)
             with _ -> false)
           ||
+            let _ = [%debug_log "@"] in
             nd2old == nd2new && nd2old#data#is_named &&
             nd2old#data#eq nd1old#data && not (nd2old#data#eq nd1new#data) &&
             (try
@@ -5034,6 +5046,7 @@ class ['node_t, 'tree_t] c
             ancsim_new > 1.0 && ancsim_old < 1.0 && subtree_sim_old = 1.0
               && all_in_no_seq() && boundary_mapped nmapping#find nd1new nd2new
           ||
+            let _ = [%debug_log "@"] in
             ancsim_new = 1.0 && subtree_sim_new = 1.0 && ancsim_old < 1.0 && subtree_sim_old < 1.0
           (*||
             size_old > 4 && size_new > 4 &&
@@ -5043,23 +5056,32 @@ class ['node_t, 'tree_t] c
             self#is_scope_consistent_mapping nmapping nd1new nd2new &&
             not (self#is_scope_consistent_mapping nmapping nd1old nd2old)*)
           ||
+            let _ = [%debug_log "@"] in
             anc_sim_almost_same && subtree_sim_new = 1.0 && subtree_sim_old < 1.0 && chk_for_new()
           ||
+            let _ = [%debug_log "@"] in
             is_plausible nd1new nd2new && not (is_plausible nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             tid_eq nd1new nd2new && not (tid_eq nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             not (anc_each_other()) &&
             has_same_subtree nd1new nd2new && not (has_same_subtree nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             in_similar_context nd1new nd2new && not (in_similar_context nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             nmapping#is_stable_pair nd1new nd2new && not (nmapping#is_stable_pair nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             prefer_sim && subtree_sim_new > subtree_sim_old
           ||
+            let _ = [%debug_log "@"] in
             is_stable_ntuple nd1new nd2new && not (is_stable_ntuple nd1old nd2old)
           ||
+            let _ = [%debug_log "@"] in
             anc_each_other() &&
             nd1new#data#is_named &&
             nd1new#data#is_named_orig = nd2new#data#is_named_orig &&
@@ -5071,6 +5093,7 @@ class ['node_t, 'tree_t] c
              with _ -> false
             )
           ||
+            let _ = [%debug_log "@"] in
             nd1old == nd1new && nd1old#data#is_named &&
             nd1new#data#eq nd2new#data && not (nd1new#data#eq nd2old#data) &&
             (try
@@ -5081,6 +5104,7 @@ class ['node_t, 'tree_t] c
               pnd1new#data#eq pnd2new#data && not (pnd1new#data#eq pnd2old#data)
             with _ -> false)
           ||
+            let _ = [%debug_log "@"] in
             nd2old == nd2new && nd2old#data#is_named &&
             nd2new#data#eq nd1new#data && not (nd2new#data#eq nd1old#data) &&
             (try
@@ -5091,6 +5115,7 @@ class ['node_t, 'tree_t] c
               pnd2new#data#eq pnd1new#data && not (pnd2new#data#eq pnd1old#data)
             with _ -> false)
           ||
+            let _ = [%debug_log "@"] in
             nd1old == nd1new && nd1old#data#is_named &&
             nd1old#data#eq nd2old#data && nd1old#data#eq nd2new#data &&
             (
