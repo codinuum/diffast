@@ -4637,7 +4637,7 @@ class ['node_t, 'tree_t] c
                  [%debug_log "bn1=%a" nps bn1];
                  if bn1#data#is_named_orig then
                    let bname = get_orig_name bn1 in
-                   let nl = get_names_from_children (nmapping#find nd2old#initial_parent) in
+                   let nl = get_names_from_children (nmapping#inv_find nd2old#initial_parent) in
                    List.mem bname nl
                  else
                    false
@@ -4715,7 +4715,7 @@ class ['node_t, 'tree_t] c
                  [%debug_log "bn1=%a" nps bn1];
                  if bn1#data#is_named_orig then
                    let bname = get_orig_name bn1 in
-                   let nl = get_names_from_children (nmapping#find nd2new#initial_parent) in
+                   let nl = get_names_from_children (nmapping#inv_find nd2new#initial_parent) in
                    List.mem bname nl
                  else
                    false
