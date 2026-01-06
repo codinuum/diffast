@@ -3091,6 +3091,19 @@ let rectify_renames_d
               (fun (n1, n2) ->
                 let b =
                   not (Misc.is_cross_boundary nmapping n1 n2) &&
+                  not
+                    (
+                     n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
+                     try
+                       let pn1 = n1#initial_parent in
+                       let pn2 = n2#initial_parent in
+                       nmapping#has_mapping pn1 pn2 &&
+                       let ppn1 = pn1#initial_parent in
+                       let ppn2 = pn2#initial_parent in
+                       nmapping#has_mapping ppn1 ppn2
+                     with
+                       _ -> false
+                    ) &&
                   (
                    strict_flag ||
                    (try

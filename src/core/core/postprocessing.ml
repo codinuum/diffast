@@ -7147,7 +7147,10 @@ end;
                 [%debug_log "def2=%a" nps def2];
                 (is_local_def def1 || is_local_def def2) &&
                 try
-                  nmapping#find def1 != def2
+                  if not (nmapping#mem_dom def1) || not (nmapping#mem_cod def2) then
+                    false
+                  else
+                    nmapping#find def1 != def2
                 with _ -> true
               with _ -> false
             then begin
@@ -9009,6 +9012,20 @@ end;
                 cenv#is_rename_pat (n1#data#get_stripped_name, n2#data#get_stripped_name)
               with _ -> false
             in
+            let has_child_match n1 n2 =
+              let b =
+                Array.exists
+                  (fun c1 ->
+                    try
+                      let c1' = nmapping#find c1 in
+                      c1'#data#eq c1#data &&
+                      c1'#initial_parent == n2
+                    with _ -> false
+                  ) n1#initial_children
+              in
+              [%debug_log "%a-%a -> %B" nps n1 nps n2 b];
+              b
+            in
             List.for_all
               (function
                 | (Edit.Move(_, _, (info1, _), (info2, _)) as mov) -> begin
@@ -9240,6 +9257,8 @@ end;
                      ||
                        is_root && sz > 0 && nd1#data#is_statement && nd2#data#is_statement &&
                        get_move_density1 mid = 1.0 && get_move_density2 mid = 1.0
+                     ||
+                       has_child_match nd1 nd2
                      then
                        false
                      else
