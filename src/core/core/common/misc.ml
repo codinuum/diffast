@@ -278,7 +278,13 @@ let contract tree1 tree2 clusters =
   in
 
   let contract_cluster cluster =
-    let cluster = filter_cluster cluster in
+    let cluster_ = filter_cluster cluster in
+    let cluster =
+      if cluster_ = [] then
+        cluster
+      else
+        cluster_
+    in
 
     let clu1, clu2 = List.split cluster in
 
