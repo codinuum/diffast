@@ -5498,6 +5498,41 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               | Some (x1, x2) -> map_add map x1 x2
               | None -> map_add map n1 n2
             end
+            else if self#mem_mov12 n1 n2 then begin
+              [%debug_log "@"];
+              begin
+                try
+                  let bn1 = get_bn n1 in
+                  let bn2 = get_bn n2 in
+                  let name1 = bn1#data#get_orig_name in
+                  let name2 = bn2#data#get_orig_name in
+                  if
+                    name1 = name2 &&
+                    (
+                     nmapping#mem_dom bn1 &&
+                     (nmapping#find bn1)#data#get_orig_name = name1 &&
+                     self#mem_ins bn2
+                    ||
+                     nmapping#mem_cod bn2 &&
+                     (nmapping#inv_find bn2)#data#get_orig_name = name2 &&
+                     self#mem_del bn1
+                    )
+                  then begin
+                    [%debug_log "@"];
+                    let siba1 = n1#initial_parent#initial_children in
+                    let siba2 = n2#initial_parent#initial_children in
+                    let next1 = siba1.(n1#initial_pos + 1) in
+                    let next2 = siba2.(n2#initial_pos + 1) in
+                    if next1#data#eq next2#data then begin
+                      [%debug_log "@"];
+                      map_add map next1 next2
+                    end
+                  end
+                with
+                  _ -> ()
+              end;
+              map_add map n1 n2
+            end
             else begin
               [%debug_log "@"];
               map_add map n1 n2

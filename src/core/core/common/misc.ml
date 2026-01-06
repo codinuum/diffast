@@ -18,6 +18,7 @@
 [%%prepare_logger]
 
 module Xlist = Diffast_misc.Xlist
+module Xset = Diffast_misc.Xset
 module Xfile = Diffast_misc.Xfile
 module UID = Diffast_misc.UID
 module GI = Diffast_misc.GIndex
@@ -87,174 +88,6 @@ let get_uqn n =
   uqn, List.length nl > 1
 ]
 
-
-[%%capture_path
-let contract tree1 tree2 clusters =
-
-  let deferred_cluster = ref None in
-  let pruned_clusters = ref [] in
-
-  let contract_cluster cluster =
-    let clu1, clu2 = List.split cluster in
-
-    begin %debug_block
-      let clu1u = List.map (fun i -> (tree1#get i)#uid) clu1 in
-      let clu2u = List.map (fun i -> (tree2#get i)#uid) clu2 in
-      [%debug_log "clu1=[%s](%d/%d)"
-         (Xlist.to_string UID.to_string ";" clu1u) (List.length clu1) tree1#size];
-      [%debug_log "clu2=[%s](%d/%d)"
-         (Xlist.to_string UID.to_string ";" clu2u) (List.length clu2) tree2#size]
-    end;
-
-    let ftr1 = tree1#frontier_of_cluster clu1 in
-    let ftr2 = tree2#frontier_of_cluster clu2 in
-
-    begin %debug_block
-      let ftr1u = List.map (fun i -> (tree1#get i)#uid) ftr1 in
-      let ftr2u = List.map (fun i -> (tree2#get i)#uid) ftr2 in
-      [%debug_log "ftr1=[%s]" (Xlist.to_string UID.to_string ";" ftr1u)];
-      [%debug_log "ftr2=[%s]" (Xlist.to_string UID.to_string ";" ftr2u)]
-    end;
-
-    let path_cands1, topnd_list1, is_rclu1 =
-      tree1#contraction_candidates clu1 ftr1
-    in
-    let path_cands2, topnd_list2, is_rclu2 =
-      tree2#contraction_candidates clu2 ftr2
-    in
-
-    begin %debug_block
-      [%debug_log "topnd_list1=[%s]"
-         (Xlist.to_string
-            (fun nd -> UID.to_string nd#uid)
-            ";" topnd_list1)];
-      [%debug_log "topnd_list2=[%s]"
-         (Xlist.to_string
-            (fun nd -> UID.to_string nd#uid)
-            ";" topnd_list2)];
-      [%debug_log "path_cands1={%s}"
-         (Xlist.to_string
-            (fun (i, c) ->
-              let u = (tree1#get i)#uid in
-              let us = List.map (fun i -> (tree1#get i)#uid) c in
-              Printf.sprintf "%a:[%s]"
-                UID.ps u (Xlist.to_string UID.to_string ";" us))
-            "," path_cands1)];
-      [%debug_log "path_cands2={%s}"
-         (Xlist.to_string
-            (fun (i, c) ->
-              let u = (tree2#get i)#uid in
-              let us = List.map (fun i -> (tree2#get i)#uid) c in
-              Printf.sprintf "%a:[%s]"
-                UID.ps u (Xlist.to_string UID.to_string ";" us))
-            "," path_cands2)]
-    end;
-
-
-    if is_rclu1 || is_rclu2 then
-      deferred_cluster := Some cluster
-    else begin
-      let prune_cands1 = ref
-          (List.concat_map
-             (fun tnd ->
-               tree1#fast_subtree_members tnd#index
-             ) topnd_list1
-          )
-      in
-      let prune_cands2 = ref
-          (List.concat_map
-             (fun tnd ->
-               tree2#fast_subtree_members tnd#index
-             ) topnd_list2
-          )
-      in
-
-      begin %debug_block
-        let num_pruned1 =
-          match ftr1, ftr2 with
-          | [], [] ->
-              List.fold_left
-                (fun s nd ->
-                  s + (tree1#whole_initial_subtree_size nd)
-                ) 0 topnd_list1
-          | _ ->
-              if path_cands1 = [] || path_cands2 = [] then
-                0
-              else
-                List.length (List.filter (fun i -> List.mem i clu1) !prune_cands1)
-        in
-        let f x = (float num_pruned1) /. (float x) in
-        let r1 = f tree1#size in
-        let r2 = f tree2#size in
-        [%debug_log "num of nodes to be pruned: %d (%d/%d=%f) (%d/%d=%f) %f"
-           num_pruned1
-           num_pruned1 tree1#size r1
-           num_pruned1 tree2#size r2
-           (if r1 = 0.0 && r2 = 0.0 then 0.0 else (max r1 r2) /. (min r1 r2))]
-      end;
-
-
-      begin (* prune nodes *)
-        match ftr1, ftr2 with
-        | [], [] ->
-            tree1#prune_nodes topnd_list1;
-            tree2#prune_nodes topnd_list2
-        | _ ->
-            if path_cands1 = [] || path_cands2 = [] then begin
-              prune_cands1 := [];
-              prune_cands2 := []
-            end
-            else begin
-              tree1#contract path_cands1 topnd_list1;
-              prune_cands1 := List.filter (fun i -> List.mem i clu1) !prune_cands1;
-              tree2#contract path_cands2 topnd_list2;
-              prune_cands2 := List.filter (fun j -> List.mem j clu2) !prune_cands2
-            end
-      end;
-
-      let pruned_cluster = ref [] in
-
-      begin %debug_block
-        let pc1 = List.map (fun i -> (tree1#get i)#uid) !prune_cands1 in
-        let pc2 = List.map (fun i -> (tree2#get i)#uid) !prune_cands2 in
-        [%debug_log "|prune_cands1|=%d |prune_cands2|=%d" (List.length pc1) (List.length pc2)];
-        [%debug_log "prune_cands1=[%s]" (Xlist.to_string UID.to_string ";" pc1)];
-        [%debug_log "prune_cands2=[%s]" (Xlist.to_string UID.to_string ";" pc2)]
-      end;
-
-      let is_correct =
-        (List.length !prune_cands1) = (List.length !prune_cands2) &&
-        List.for_all
-          (fun i ->
-            let j = List.assoc i cluster in
-            pruned_cluster := (i, j)::!pruned_cluster;
-            List.mem j !prune_cands2
-          ) !prune_cands1
-      in
-      if is_correct then
-        pruned_clusters := !pruned_cluster::!pruned_clusters
-      else
-        failwith "prune_cands mismatch";
-    end
-  in (* end of contract_cluster *)
-
-  List.iter contract_cluster clusters;
-
-
-  let mk_nd_cluster cluster =
-    List.map (fun (i, j) -> (tree1#get i), (tree2#get j)) cluster
-  in
-  let deferred_nd_cluster =
-    match !deferred_cluster with
-      Some clu -> Some (mk_nd_cluster clu) | None -> None
-  in
-  let pruned_nd_clusters =
-    List.map (fun clu -> mk_nd_cluster clu) !pruned_clusters
-  in
-
-  deferred_nd_cluster, pruned_nd_clusters
-(* end of func contract *)
-]
 
 
 let get_collapsed_children nd =
@@ -390,6 +223,211 @@ let ndps  () = node_to_data_string
 let nps () = node_to_string
 let ups = UID.ps
 let gps = GI.ps
+
+[%%capture_path
+let contract tree1 tree2 clusters =
+
+  let deferred_cluster = ref None in
+  let pruned_clusters = ref [] in
+
+  let is_extracted_or_inlined_boundary n =
+    if n#data#is_boundary && n#data#is_named_orig then begin
+      let name = n#data#get_orig_name in
+      try
+        Array.exists
+          (fun sib ->
+            sib != n && sib#data#is_named_orig && sib#data#get_orig_name = name
+          ) n#initial_parent#initial_children
+      with _ -> false
+    end
+    else
+      false
+  in
+
+  let filter_cluster cluster =
+    let to_be_removed = Xset.create 0 in
+    List.iter
+      (fun (i1, i2) ->
+        let n1 = tree1#get i1 in
+        let n2 = tree2#get i2 in
+        if
+          is_extracted_or_inlined_boundary n1 ||
+          is_extracted_or_inlined_boundary n2
+        then
+          Xset.add to_be_removed (n1, n2)
+      ) cluster;
+    List.filter
+      (fun (i1, i2) ->
+        let n1 = tree1#get i1 in
+        let n2 = tree2#get i2 in
+        let b =
+          if Xset.mem to_be_removed (n1, n2) then
+            false
+          else
+            not
+              (Xset.exists
+                 (fun (r1, r2) ->
+                   tree1#is_initial_ancestor r1 n1 &&
+                   tree2#is_initial_ancestor r2 n2
+                 ) to_be_removed)
+        in
+        if not b then
+          [%debug_log "filtered out %a-%a" nups n1 nups n2];
+        b
+      ) cluster
+  in
+
+  let contract_cluster cluster =
+    let cluster = filter_cluster cluster in
+
+    let clu1, clu2 = List.split cluster in
+
+    begin %debug_block
+      let clu1n = List.map tree1#get clu1 in
+      let clu2n = List.map tree2#get clu2 in
+      [%debug_log "clu1=[%a](%d/%d)" nsps clu1n (List.length clu1) tree1#size];
+      [%debug_log "clu2=[%a](%d/%d)" nsps clu2n (List.length clu2) tree2#size]
+    end;
+
+    let ftr1 = tree1#frontier_of_cluster clu1 in
+    let ftr2 = tree2#frontier_of_cluster clu2 in
+
+    begin %debug_block
+      let ftr1n = List.map tree1#get ftr1 in
+      let ftr2n = List.map tree2#get ftr2 in
+      [%debug_log "ftr1=[%a]" nsps ftr1n];
+      [%debug_log "ftr2=[%a]" nsps ftr2n]
+    end;
+
+    let path_cands1, topnd_list1, is_rclu1 =
+      tree1#contraction_candidates clu1 ftr1
+    in
+    let path_cands2, topnd_list2, is_rclu2 =
+      tree2#contraction_candidates clu2 ftr2
+    in
+
+    begin %debug_block
+      [%debug_log "topnd_list1=[%a]" nsps topnd_list1];
+      [%debug_log "topnd_list2=[%a]" nsps topnd_list2];
+      [%debug_log "path_cands1={%s}"
+         (Xlist.to_string
+            (fun (i, c) ->
+              let n = tree1#get i in
+              let ns = List.map tree1#get c in
+              Printf.sprintf "%a:[%a]" nups n nsps ns) "," path_cands1)];
+
+      [%debug_log "path_cands2={%s}"
+         (Xlist.to_string
+            (fun (i, c) ->
+              let n = tree2#get i in
+              let ns = List.map tree2#get c in
+              Printf.sprintf "%a:[%a]" nups n nsps ns) "," path_cands2)]
+    end;
+
+    if is_rclu1 || is_rclu2 then
+      deferred_cluster := Some cluster
+    else begin
+      let prune_cands1 = ref
+          (List.concat_map
+             (fun tnd ->
+               tree1#fast_subtree_members tnd#index
+             ) topnd_list1
+          )
+      in
+      let prune_cands2 = ref
+          (List.concat_map
+             (fun tnd ->
+               tree2#fast_subtree_members tnd#index
+             ) topnd_list2
+          )
+      in
+
+      begin %debug_block
+        let num_pruned1 =
+          match ftr1, ftr2 with
+          | [], [] ->
+              List.fold_left
+                (fun s nd ->
+                  s + (tree1#whole_initial_subtree_size nd)
+                ) 0 topnd_list1
+          | _ ->
+              if path_cands1 = [] || path_cands2 = [] then
+                0
+              else
+                List.length (List.filter (fun i -> List.mem i clu1) !prune_cands1)
+        in
+        let f x = (float num_pruned1) /. (float x) in
+        let r1 = f tree1#size in
+        let r2 = f tree2#size in
+        [%debug_log "num of nodes to be pruned: %d (%d/%d=%f) (%d/%d=%f) %f"
+           num_pruned1
+           num_pruned1 tree1#size r1
+           num_pruned1 tree2#size r2
+           (if r1 = 0.0 && r2 = 0.0 then 0.0 else (max r1 r2) /. (min r1 r2))]
+      end;
+
+
+      begin (* prune nodes *)
+        match ftr1, ftr2 with
+        | [], [] ->
+            tree1#prune_nodes topnd_list1;
+            tree2#prune_nodes topnd_list2
+        | _ ->
+            if path_cands1 = [] || path_cands2 = [] then begin
+              prune_cands1 := [];
+              prune_cands2 := []
+            end
+            else begin
+              tree1#contract path_cands1 topnd_list1;
+              prune_cands1 := List.filter (fun i -> List.mem i clu1) !prune_cands1;
+              tree2#contract path_cands2 topnd_list2;
+              prune_cands2 := List.filter (fun j -> List.mem j clu2) !prune_cands2
+            end
+      end;
+
+      let pruned_cluster = ref [] in
+
+      begin %debug_block
+        let pc1 = List.map tree1#get !prune_cands1 in
+        let pc2 = List.map tree2#get !prune_cands2 in
+        [%debug_log "|prune_cands1|=%d |prune_cands2|=%d" (List.length pc1) (List.length pc2)];
+        [%debug_log "prune_cands1=[%a]" nsps pc1];
+        [%debug_log "prune_cands2=[%a]" nsps pc2]
+      end;
+
+      let is_correct =
+        (List.length !prune_cands1) = (List.length !prune_cands2) &&
+        List.for_all
+          (fun i ->
+            let j = List.assoc i cluster in
+            pruned_cluster := (i, j)::!pruned_cluster;
+            List.mem j !prune_cands2
+          ) !prune_cands1
+      in
+      if is_correct then
+        pruned_clusters := !pruned_cluster::!pruned_clusters
+      else
+        failwith "prune_cands mismatch";
+    end
+  in (* end of contract_cluster *)
+
+  List.iter contract_cluster clusters;
+
+
+  let mk_nd_cluster cluster =
+    List.map (fun (i, j) -> (tree1#get i), (tree2#get j)) cluster
+  in
+  let deferred_nd_cluster =
+    match !deferred_cluster with
+      Some clu -> Some (mk_nd_cluster clu) | None -> None
+  in
+  let pruned_nd_clusters =
+    List.map (fun clu -> mk_nd_cluster clu) !pruned_clusters
+  in
+
+  deferred_nd_cluster, pruned_nd_clusters
+(* end of func contract *)
+]
 
 let next_to_each_other n1 n2 =
   try
