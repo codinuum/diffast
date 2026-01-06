@@ -3086,23 +3086,43 @@ let rectify_renames_d
           b
         in
         let conflicting_mapping_list1_, conflicting_mapping_list2_ =
+          let is_cross_boundary = Misc.is_cross_boundary nmapping in
+          let tree1 = cenv#tree1 in
+          let tree2 = cenv#tree2 in
           let filt chk_def =
             List.filter
               (fun (n1, n2) ->
                 let b =
-                  not (Misc.is_cross_boundary nmapping n1 n2) &&
+                  not (is_cross_boundary n1 n2) &&
                   not
                     (
-                     n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
-                     try
-                       let pn1 = n1#initial_parent in
-                       let pn2 = n2#initial_parent in
-                       nmapping#has_mapping pn1 pn2 &&
-                       let ppn1 = pn1#initial_parent in
-                       let ppn2 = pn2#initial_parent in
-                       nmapping#has_mapping ppn1 ppn2
-                     with
-                       _ -> false
+                     let b =
+                       n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
+                       try
+                         let pn1 = n1#initial_parent in
+                         let pn2 = n2#initial_parent in
+                         nmapping#has_mapping pn1 pn2 &&
+                         let ppn1 = pn1#initial_parent in
+                         let ppn2 = pn2#initial_parent in
+                         nmapping#has_mapping ppn1 ppn2 &&
+                         let def1 = get_def_node tree1 n1 in
+                         let def2 = get_def_node tree2 n2 in
+                         [%debug_log "def1=%a" nps def1];
+                         [%debug_log "def2=%a" nps def2];
+                         is_local_def def1 && not def1#data#is_parameter &&
+                         is_local_def def2 && not def2#data#is_parameter &&
+                         let mapped1 = nmapping#mem_dom def1 in
+                         let mapped2 = nmapping#mem_cod def2 in
+                         (
+                          not mapped1 && mapped2 && not (is_cross_boundary (nmapping#inv_find def2) def2)
+                         ||
+                          not mapped2 && mapped1 && not (is_cross_boundary def1 (nmapping#find def1))
+                         )
+                       with
+                         _ -> false
+                     in
+                     [%debug_log "%a - %a --> %B" nps n1 nps n2 b];
+                     b
                     ) &&
                   (
                    strict_flag ||

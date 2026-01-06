@@ -9017,9 +9017,16 @@ end;
                 Array.exists
                   (fun c1 ->
                     try
-                      let c1' = nmapping#find c1 in
-                      c1'#data#eq c1#data &&
-                      c1'#initial_parent == n2
+                      let c2 = nmapping#find c1 in
+                      [%debug_log "c1=%a c2=%a" nps c1 nps c2];
+                      c2#data#eq c1#data &&
+                      c2#initial_parent == n2 &&
+                      let d1 = get_def_node tree1 c1 in
+                      let d2 = get_def_node tree2 c2 in
+                      is_local_def d1 && not d1#data#is_parameter &&
+                      is_local_def d2 && not d2#data#is_parameter &&
+                      nmapping#has_mapping d1 d2 &&
+                      nmapping#has_mapping (get_bn d1) (get_bn d2)
                     with _ -> false
                   ) n1#initial_children
               in
