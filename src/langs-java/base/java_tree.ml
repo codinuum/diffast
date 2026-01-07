@@ -1981,7 +1981,7 @@ class translator options =
           (ty_nd :: (List.map self#of_variable_initializer array_initializer))
 
   method of_name loc0 name =
-    let name_to_node ?(children=[]) ?(unqualified=false) mkplab n =
+    let name_to_node ?(children=[]) ?(unqualified=false) mklab n =
       let unresolved =
         L.conv_name ~resolve:false ~unqualified n
       in
@@ -1994,19 +1994,19 @@ class translator options =
         else
           L.conv_name n
       in
-      let orig_lab_opt = Some (L.Primary (mkplab unresolved)) in
-      let nd = self#mknode ~orig_lab_opt (L.Primary (mkplab resolved)) children in
+      let orig_lab_opt = Some (mklab n unresolved) in
+      let nd = self#mknode ~orig_lab_opt (mklab n resolved) children in
       let loc = Ast.Loc.widen loc0 (String.length unresolved) in
       set_loc nd loc;
       nd
     in
     match qualifier_of_name name with
     | None -> begin
-        let mklab =
-          if Ast.is_ambiguous_name name then
-            (fun x -> L.Primary.AmbiguousName x)
+        let mklab n x =
+          if Ast.is_ambiguous_name n then
+            L.Primary (L.Primary.AmbiguousName x)
           else
-            (fun x -> L.Primary.Name x)
+            L.Primary (L.Primary.Name x)
         in
         name_to_node mklab name
     end
@@ -2020,14 +2020,16 @@ class translator options =
         name_to_node mklab name
     end*)
     | Some q -> begin
-        let mkplab =
-          if Ast.is_ambiguous_name q then
-            fun x -> L.Primary.AmbiguousName x
+        let mklab n x =
+          if Ast.is_ambiguous_name n then
+            L.Primary (L.Primary.AmbiguousName x)
+          else if Ast.is_type_name n then
+            L.Type (L.Type.ClassOrInterface x)
           else
-            fun x -> L.Primary.Name x
+            L.Primary (L.Primary.Name x)
         in
         let mknd ?(children=[]) =
-          name_to_node ~children ~unqualified:true mkplab
+          name_to_node ~children(* ~unqualified:true*) mklab
         in
         let rec doit n =
           try
