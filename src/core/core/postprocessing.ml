@@ -8108,7 +8108,7 @@ end;
                      [%debug_log "d2=%a" nps d2];
                      not (is_local_def d1) && not (is_local_def d2)
                    with
-                     _ -> true
+                     _ -> false
                   ) &&
                 cenv#multiple_node_matches#is_uniq_match r1 r2
             end -> ()

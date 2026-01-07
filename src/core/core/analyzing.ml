@@ -3270,7 +3270,9 @@ end;
                         matchx cccx1 cccx2
                       end
                     end
-                    else begin
+                    else if
+                      ccx1#initial_nchildren = ccx2#initial_nchildren
+                    then begin
                       let cccxa1 = ccx1#initial_children in
                       let cccxa2 = ccx2#initial_children in
                       let selected_child_child_child_pair_list =
