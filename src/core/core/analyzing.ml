@@ -3223,6 +3223,7 @@ end;
             in
             List.iter
               (fun (c1, c2) ->
+                [%debug_log "%a-%a" nups c1 nups c2];
                 if not (c1#data#relabel_allowed c2#data) then
                   ()
                 else begin
@@ -3233,6 +3234,7 @@ end;
                   let cc1 = c1#initial_children.(0) in
                   let cc2 = c2#initial_children.(0) in
                   if cc1#data#anonymized_label = cc2#data#anonymized_label then begin
+                    [%debug_log "%a-%a" nups cc1 nups cc2];
                     ignore (pre_nmapping#add_unsettled cc1 cc2);
                     pre_nmapping#add_to_pre_boundary_mapping cc1 cc2
                   end
@@ -3258,6 +3260,7 @@ end;
                     SMP.get_stable_matches cmpr cca1 cca2
                   in
                   let rec matchx ccx1 ccx2 =
+                    [%debug_log "%a-%a" nups ccx1 nups ccx2];
                     ignore (pre_nmapping#add_settled ~stable ccx1 ccx2);
                     pre_nmapping#add_to_pre_boundary_mapping ccx1 ccx2;
                     if ccx1#initial_nchildren = 1 && ccx2#initial_nchildren = 1 then begin
@@ -3266,6 +3269,28 @@ end;
                       if cccx1#data#anonymized_label = cccx2#data#anonymized_label then begin
                         matchx cccx1 cccx2
                       end
+                    end
+                    else begin
+                      let cccxa1 = ccx1#initial_children in
+                      let cccxa2 = ccx2#initial_children in
+                      let selected_child_child_child_pair_list =
+                        let cmpr =
+                          new SMP.ComparatorFloat.c
+                            (fun cccx1 cccx2 ->
+                              if cccx1#data#eq cccx2#data then
+                                1.0
+                              else if cccx1#data#anonymized_label = cccx2#data#anonymized_label then
+                                0.5
+                              else
+                                0.0
+                            ) cccxa1 cccxa2
+                        in
+                        SMP.get_stable_matches cmpr cccxa1 cccxa2
+                      in
+                      List.iter
+                        (fun (cccx1, cccx2) ->
+                          matchx cccx1 cccx2
+                        ) selected_child_child_child_pair_list
                     end
                   in
                   List.iter

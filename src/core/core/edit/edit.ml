@@ -533,12 +533,37 @@ let generate_compatible_edits
           matches;
       end;
 
+      let has_rename_pat n1 n2 =
+        let b =
+          n1#data#is_named_orig && n2#data#is_named_orig &&
+          let nm1 = Comparison.get_orig_name n1 in
+          let nm2 = Comparison.get_orig_name n2 in
+          cenv#is_rename_pat (nm1, nm2)
+        in
+        [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+        b
+      in
+
       List.iter
         (fun (n1, n2) ->
           [%debug_log "%a-%a" nups n1 nups n2];
           let incompat, (*by_non_renames*)_ = is_incompatible n1 n2 in
           if incompat then
             [%debug_log "incompatible"]
+          else if
+            not (has_rename_pat n1 n2) &&
+            (
+             (try
+               let n1' = nmapping#find n1 in
+               n1' != n2 && has_rename_pat n1 n1'
+             with _ -> false) ||
+             (try
+               let n2' = nmapping#inv_find n2 in
+               n2' != n1 && has_rename_pat n2' n2
+             with _ -> false)
+            )
+          then
+            [%debug_log "not a rename pattern"]
           else begin
             (* remove conflicting edits *)
             begin
