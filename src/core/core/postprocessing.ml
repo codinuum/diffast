@@ -7038,6 +7038,8 @@ end;
       Xprint.verbose options#verbose_flag "  odd relabels eliminated."
     end;
 
+    let _ = cenv#elaborate_nmapping(* ~multi:true ~multi_node:true*) nmapping in
+
     begin %debug_block
       [%debug_log "* BEFORE GLUEING *"];
       [%debug_log "nmapping:\n%s\n" nmapping#to_string];
@@ -7045,8 +7047,6 @@ end;
       [%debug_log "T1:\n%s" tree1#to_string];
       [%debug_log "\nT2:\n%s" tree2#to_string];
     end;
-
-    let _ = cenv#elaborate_nmapping(* ~multi:true ~multi_node:true*) nmapping in
 
 (*
       [%debug_log "nmapping (gindex):\n%s" (nmapping#to_string_gid tree1 tree2)];

@@ -2187,6 +2187,10 @@ end;
 
         if options#preprune_flag || options#prematch_flag then begin
 
+          let get_orig_name n =
+            sprintf "%s %s" n#data#get_category (Comparison.get_orig_name n)
+          in
+
           tree1#fast_scan_whole_initial
             (fun nd ->
               add ltbl1 (getlab nd) nd;
@@ -2194,7 +2198,7 @@ end;
                 nd#data#is_boundary && nd#data#is_named_orig &&
                 not nd#data#is_sequence && not nd#data#is_ntuple
               then
-                add b_ltbl1 (Comparison.get_orig_name nd) nd
+                add b_ltbl1 (get_orig_name nd) nd
             );
           tree2#fast_scan_whole_initial
             (fun nd ->
@@ -2203,7 +2207,7 @@ end;
                 nd#data#is_boundary && nd#data#is_named_orig &&
                 not nd#data#is_sequence && not nd#data#is_ntuple
               then
-                add b_ltbl2 (Comparison.get_orig_name nd) nd
+                add b_ltbl2 (get_orig_name nd) nd
             );
 
           begin %debug_block
