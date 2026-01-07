@@ -8095,6 +8095,21 @@ end;
                      pr2#data#get_stripped_name = r2#data#get_stripped_name
                    with _ -> false
                   ) &&
+                not
+                  (tsz = 1 &&
+                   try
+                     let bn1 = get_bn r1 in
+                     let bn2 = get_bn r2 in
+                     bn1#data#is_named_orig && bn2#data#is_named_orig &&
+                     bn1#data#get_stripped_name <> bn2#data#get_stripped_name &&
+                     let d1 = get_def_node tree1 r1 in
+                     let d2 = get_def_node tree2 r2 in
+                     [%debug_log "d1=%a" nps d1];
+                     [%debug_log "d2=%a" nps d2];
+                     not (is_local_def d1) && not (is_local_def d2)
+                   with
+                     _ -> true
+                  ) &&
                 cenv#multiple_node_matches#is_uniq_match r1 r2
             end -> ()
             | _ -> Hashtbl.replace sz_tbl !mid (sz, esz, tsz, k, r1, r2, ml)
