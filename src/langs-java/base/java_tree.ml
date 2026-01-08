@@ -1980,8 +1980,8 @@ class translator options =
         self#mknode ~ordinal_tbl_opt (L.Primary L.Primary.ArrayCreationInit)
           (ty_nd :: (List.map self#of_variable_initializer array_initializer))
 
-  method of_name loc0 name =
-    let name_to_node ?(children=[]) ?(unqualified=false) mkplab n =
+  method of_name name =
+    let name_to_node ?(children=[]) ?(unqualified=false) mklab n =
       let unresolved =
         L.conv_name ~resolve:false ~unqualified n
       in
@@ -1994,19 +1994,19 @@ class translator options =
         else
           L.conv_name n
       in
-      let orig_lab_opt = Some (L.Primary (mkplab unresolved)) in
-      let nd = self#mknode ~orig_lab_opt (L.Primary (mkplab resolved)) children in
-      let loc = Ast.Loc.widen loc0 (String.length unresolved) in
+      let orig_lab_opt = Some (mklab n unresolved) in
+      let nd = self#mknode ~orig_lab_opt (mklab n resolved) children in
+      let loc = n.Ast.n_loc in
       set_loc nd loc;
       nd
     in
     match qualifier_of_name name with
     | None -> begin
-        let mklab =
-          if Ast.is_ambiguous_name name then
-            (fun x -> L.Primary.AmbiguousName x)
+        let mklab n =
+          if Ast.is_ambiguous_name n then
+            fun x -> L.Primary (L.Primary.AmbiguousName x)
           else
-            (fun x -> L.Primary.Name x)
+            fun x -> L.Primary (L.Primary.Name x)
         in
         name_to_node mklab name
     end
@@ -2020,14 +2020,29 @@ class translator options =
         name_to_node mklab name
     end*)
     | Some q -> begin
-        let mkplab =
-          if Ast.is_ambiguous_name q then
-            fun x -> L.Primary.AmbiguousName x
+        let mklab n =
+          if Ast.is_ambiguous_name n then
+            fun x -> L.Primary (L.Primary.AmbiguousName x)
+          else if Ast.is_type_name n then
+            (*fun x -> L.Type (L.Type.ClassOrInterface x)*)
+            fun x -> L.Primary (L.Primary.AmbiguousName x)
           else
-            fun x -> L.Primary.Name x
+            fun x -> L.Primary (L.Primary.Name x)
         in
+        (*(* horizontal construction *)
+        let rec doit n =
+          try
+            let n0, _ = Ast.decompose_name n in
+            (name_to_node ~unqualified:true mklab n)::(doit n0)
+          with
+            _ -> [name_to_node ~unqualified:true mklab n]
+        in
+        let children = List.rev (doit name) in
+        name_to_node ~children mklab name*)
+
+        (* vertical construction *)
         let mknd ?(children=[]) =
-          name_to_node ~children ~unqualified:true mkplab
+          name_to_node ~children(* ~unqualified:true*) mklab
         in
         let rec doit n =
           try
@@ -2072,7 +2087,7 @@ class translator options =
   method of_primary p =
     let nd =
       match p.Ast.p_desc with
-      | Ast.Pname name -> let loc0 = Ast.Loc.collapse_forward p.Ast.p_loc in self#of_name loc0 name
+      | Ast.Pname name -> self#of_name name
       | Ast.Pliteral lit -> self#of_literal lit
       | Ast.PclassLiteral ty -> begin
           let name = P.type_to_string ~resolve:false ~show_attr:false ty in
@@ -2408,8 +2423,7 @@ class translator options =
     end
     | Ast.RfieldAccess fa -> self#of_field_access fa
     | Ast.Rname name -> begin
-        let loc0 = Ast.Loc.collapse_forward r.Ast.r_loc in
-        let nd = self#of_name loc0 name in
+        let nd = self#of_name name in
         set_loc nd r.Ast.r_loc;
         nd
     end

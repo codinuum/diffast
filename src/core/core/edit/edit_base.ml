@@ -347,6 +347,30 @@ class formatters_base
 type move_region_tbl_t = (MID.t, (GI.t*GI.t*GI.t*GI.t)) Hashtbl.t
 
 
+let contains_stably_mapped ?(exact_match=false) tree root nmap find =
+  try
+    tree#fast_scan_whole_initial_subtree root
+      (fun n ->
+        try
+          let n' = nmap n in
+          match find n n' with
+          | [] -> begin
+              [%debug_log "found: %a" nps n];
+              raise Found
+          end
+          | [Relabel _] when not exact_match -> begin
+              [%debug_log "found: %a" nps n];
+              raise Found
+          end
+          | _ -> ()
+        with
+          Not_found -> ()
+      );
+    false
+  with
+    Found -> true
+
+
 [%%capture_path
 class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
@@ -4001,26 +4025,6 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         Otree.Parent_not_found _ -> raise Not_found
     in
 
-    let contain_stably_mapped tree root nmap find =
-      try
-        tree#fast_scan_whole_initial_subtree root
-          (fun n ->
-            try
-              let n' = nmap n in
-              match find n n' with
-              | [] | [Relabel _] -> begin
-                  [%debug_log "found: %a" nps n];
-                  raise Found
-              end
-              | _ -> ()
-            with
-              Not_found -> ()
-          );
-        false
-      with
-        Found -> true
-    in
-
     let full_tree_matcher t1 t2 =
       let _, m, _ = Treediff.find t1 t2 in
       List.filter_map
@@ -4313,7 +4317,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                                 tree2#is_initial_ancestor nd2 n2 ||
                                 (
                                  n2#initial_nchildren > 0 &&
-                                 contain_stably_mapped tree2 n2 nmapping#inv_find self#find21
+                                 contains_stably_mapped tree2 n2 nmapping#inv_find self#find21
                                 )
                                )
                               )
@@ -4464,7 +4468,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                                 tree1#is_initial_ancestor nd1 n1 ||
                                 (
                                  n1#initial_nchildren > 0 &&
-                                 contain_stably_mapped tree1 n1 nmapping#find self#find12
+                                 contains_stably_mapped tree1 n1 nmapping#find self#find12
                                 )
                                )
                               )
@@ -5115,7 +5119,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       iter cmp
         (fun n1 n2 ->
           if tree1#is_statement n1 && tree2#is_statement n2 then begin
-            (*[%debug_log "%a-%a" nps n1 nps n2];*)
+            [%debug_log "%a-%a" nps n1 nps n2];
             if
               n1#data#is_assignment && n2#data#is_assignment &&
               try
@@ -5142,7 +5146,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 else
                   true
               with
-                _ -> false
+                _ ->
+                  contains_stably_mapped ~exact_match:true tree1 n1 nmapping#find self#find12
             then begin
               [%debug_log "@"];
               map_add map n1 n2
