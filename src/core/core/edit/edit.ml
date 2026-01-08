@@ -1349,8 +1349,8 @@ let rectify_renames_u
       let same_name() =
         let b =
           try
-            node1#data#get_name = node2#data#get_name &&
-            node1#data#get_category <> node2#data#get_category
+            node1#data#get_name = node2#data#get_name(* &&
+            node1#data#get_category <> node2#data#get_category*)
           with
             _ -> false
         in
