@@ -3934,6 +3934,21 @@ end;
           b
         in
 
+        let ref_matching_cond n1 n2 =
+          let b =
+            mapped_ratio1 < 0.5 && mapped_ratio2 < 0.5 &&
+            ref_nmapping#has_mapping n1 n2 &&
+            n1#data#is_sequence && n2#data#is_sequence &&
+            try
+              n1#initial_parent#data#is_boundary &&
+              n2#initial_parent#data#is_boundary
+            with
+              _ -> false
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+
         let use_treediff_cond =
           size_cond &&
           (
@@ -3941,7 +3956,8 @@ end;
            subtree_not_mapped ||
            force_treediff ||
            cenv#child_has_use_rename nd1 nd2 ||
-           has_better_desc_match nd1 nd2
+           has_better_desc_match nd1 nd2 ||
+           ref_matching_cond nd1 nd2
           ) &&
           (not go_down_cond)
         in

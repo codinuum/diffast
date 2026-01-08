@@ -511,37 +511,31 @@ module F (Label : Spec.LABEL_T) = struct
         (Xlist.to_string (Diffast_misc.Edit._to_string to_s1 to_s2) "\n" rels)]
     end;
 
-    match rels with
-(*
-  [Diffast_misc.Edit.Relabel(i1, i2)] ->
-  let nd1, nd2 = tree1#get i1, tree2#get i2 in
-  addtree [] nd1 nd2
- *)
-    | _ ->
-        let subs =
-          List.fold_left
-            (fun subs ed ->
-              match ed with
-                Diffast_misc.Edit.Relabel(i1, i2) ->
-                  let nd1, nd2 = tree1#get i1, tree2#get i2 in
-                  if matching_cond options tree1 tree2 nd1 nd2 then
-                    addtree subs nd1 nd2
-                  else
-                    subs
-              | _ -> subs
-            ) [] rels
-        in
-        begin %debug_block
-          let len = (List.length subs) in
-          [%debug_log "%d subtree(s)\n" len];
-          List.iter
-            (fun (t1, t2) ->
-              [%debug_log "T1:\n%s\nT2:\n%s\n"
-                t1#to_string t2#to_string]
-            ) subs
-        end;
+    let subs =
+      List.fold_left
+        (fun subs ed ->
+          match ed with
+            Diffast_misc.Edit.Relabel(i1, i2) ->
+              let nd1 = tree1#get i1 in
+              let nd2 = tree2#get i2 in
+              if matching_cond options tree1 tree2 nd1 nd2 then
+                addtree subs nd1 nd2
+              else
+                subs
+          | _ -> subs
+        ) [] rels
+    in
 
-        subs
+    begin %debug_block
+      let len = (List.length subs) in
+      [%debug_log "%d subtree(s)\n" len];
+      List.iter
+        (fun (t1, t2) ->
+          [%debug_log "T1:\n%s\nT2:\n%s\n"
+             t1#to_string t2#to_string]
+        ) subs
+    end;
+    subs
   (* end of func find_matching_subtrees *)
 
 
