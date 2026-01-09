@@ -2296,7 +2296,13 @@ end;
         let is_parent_anon_seq nd =
           try
             let pnd = nd#initial_parent in
-            pnd#data#is_sequence && not pnd#data#is_named
+            pnd#data#is_sequence &&
+            (
+             not pnd#data#is_named ||
+             try
+               pnd#initial_parent#data#is_boundary
+             with _ -> false
+            )
           with _ -> false
         in
         let prune1 nd =

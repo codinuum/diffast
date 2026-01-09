@@ -4807,6 +4807,20 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               | _ -> assert false
             in
             let pair_weight_list = List.map get_top_pair_len cands in
+            let pair_weight_list =
+              match pair_weight_list with
+              | (_, _, w)::_ when begin
+                  List.for_all (fun (_, _, w0) -> w0 = w) pair_weight_list
+              end -> begin
+                List.map
+                  (fun (n1, n2, _) ->
+                    let a = Stdlib.truncate ((cenv#get_adjacency_score n1 n2) *. 10000.0) in
+                    let w = Comparison.weight_of_int a in
+                    (n1, n2, w)
+                  ) pair_weight_list
+              end
+              | _ -> pair_weight_list
+            in
             let compat, _ =
               cenv#select_compatible_and_not_crossing_pairs pair_weight_list
             in
