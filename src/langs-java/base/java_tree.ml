@@ -605,7 +605,22 @@ class visitor options bid_gen static_vdtors tree = object (self)
       try
         let binder_nd = stack#lookup name in
         (*[%debug_log "binder_nd=%s" binder_nd#data#to_string];*)
-        setup_binding binder_nd nd name
+
+        setup_binding binder_nd nd name;
+
+        if Xset.mem static_vdtors binder_nd then begin
+          try
+            let name_ =
+              let scope = binder_nd#data#scope_node in
+              [%debug_log "scope=%s" scope#data#to_string];
+              sprintf "%s.%s" scope#data#get_name name
+            in
+            let lab' = L.Primary (L.Primary.Name name_) in
+            let obj' = Obj.repr lab' in
+            nd#data#relab obj'
+          with
+            _ -> ()
+        end
       with
         Not_found -> ()
     end;
