@@ -827,8 +827,19 @@ let collect_use_renames ?(filt=fun _ _ -> true) cenv nmapping edits is_possible_
 
   let add_use_rename ?(force=false) ?(bonus=1) ?(strip=false) node1 node2 bid1 bid2 =
     [%debug_log "force=%B bonus=%d strip=%B" force bonus strip];
-    let name1 = if strip then Comparison.get_orig_name node1 else node1#data#get_orig_name in
-    let name2 = if strip then Comparison.get_orig_name node2 else node2#data#get_orig_name in
+    let get_name tree node =
+      if strip then
+        Comparison.get_orig_name node
+      else
+        try
+          let def = get_def_node tree node in
+          def#data#get_name
+        with
+          _ -> node#data#get_orig_name
+    in
+    let name1 = get_name cenv#tree1 node1 in
+    let name2 = get_name cenv#tree2 node2 in
+
     [%debug_log "adding %a -> %a (\"%s\" -> \"%s\")" BID.ps bid1 BID.ps bid2 name1 name2];
     let add tbl bkey bi1 bi2 =
       let bi_tbl =
