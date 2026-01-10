@@ -2791,8 +2791,8 @@ end;
                   [%debug_log "ppn2=%a" nps ppn2];
                   let xpl1 =
                     try
-                      let pn1' = nmapping#find pn1 in
-                      [%debug_log "%a - %a" nps pn1 nps pn1'];
+                      (*let pn1' = nmapping#find pn1 in
+                      [%debug_log "%a - %a" nps pn1 nps pn1'];*)
                       let xpl1 = ref [] in
                       tree1#fast_scan_whole_initial_subtree n1
                         (fun x1 ->
@@ -2821,8 +2821,8 @@ end;
                   in
                   let xpl2 =
                     try
-                      let pn2' = nmapping#inv_find pn2 in
-                      [%debug_log "%a - %a" nps pn2' nps pn2];
+                      (*let pn2' = nmapping#inv_find pn2 in
+                      [%debug_log "%a - %a" nps pn2' nps pn2];*)
                       let xpl2 = ref [] in
                       tree2#fast_scan_whole_initial_subtree n2
                         (fun x2 ->
