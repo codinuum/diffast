@@ -2738,6 +2738,150 @@ end;
 
   let sort_node_pairs ?(reverse=false) = List.fast_sort (cmp_node_pairs ~reverse)
 
+  let recheck_pruned_stmts cenv nmapping =
+    let tree1 = cenv#tree1 in
+    let tree2 = cenv#tree2 in
+    let has_sib_map px1 px2 x1 x2 =
+      let b =
+        let ca1 = px1#initial_children in
+        let ca2 = px2#initial_children in
+        let nca1 = Array.length ca1 in
+        let pos1 = x1#initial_pos in
+        let pos2 = x2#initial_pos in
+        (try
+          for i = 1 to nca1 - pos1 - 1 do
+            if try nmapping#has_mapping ca1.(pos1 + i) ca2.(pos2 + i) with _ -> false then
+              raise Exit
+          done;
+          false
+        with Exit -> true) ||
+        (try
+          for i = 1 to pos1 - 1 do
+            if try nmapping#has_mapping ca1.(pos1 - i) ca2.(pos2 - i) with _ -> false then
+              raise Exit
+          done;
+          false
+        with Exit -> true)
+      in
+      [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
+      b
+    in
+    let pair_list =
+      Nodetbl.fold
+        (fun n1 (n2, sz) pl ->
+          if n1#data#is_statement && n2#data#is_statement then begin
+            try
+              let pn1 = n1#initial_parent in
+              let pn2 = n2#initial_parent in
+              if
+                pn1#data#is_sequence && pn2#data#is_sequence &&
+                not (has_sib_map pn1 pn2 n1 n2)
+              then begin
+                let ppn1 = pn1#initial_parent in
+                let ppn2 = pn2#initial_parent in
+                if
+                  ppn1#data#is_boundary && ppn2#data#is_boundary &&
+                  ppn1#data#is_named_orig && ppn2#data#is_named_orig &&
+                  not (nmapping#has_mapping ppn1 ppn2) &&
+                  not (nmapping#has_mapping pn1 pn2) &&
+                  (nmapping#mem_dom pn1 || nmapping#mem_cod pn2)
+                then begin
+                  [%debug_log "%a - %a (sz=%d)" nps n1 nps n2 sz];
+                  [%debug_log "ppn1=%a" nps ppn1];
+                  [%debug_log "ppn2=%a" nps ppn2];
+                  let xpl1 =
+                    try
+                      let pn1' = nmapping#find pn1 in
+                      [%debug_log "%a - %a" nps pn1 nps pn1'];
+                      let xpl1 = ref [] in
+                      tree1#fast_scan_whole_initial_subtree n1
+                        (fun x1 ->
+                          try
+                            let d1 = get_def_node tree1 x1 in
+                            let d2 = nmapping#find d1 in
+                            if
+                              is_local_def d1 && is_local_def d2 &&
+                              let ul1 = cenv#get_uses_of_def1 d1 in
+                              match List.filter (tree1#is_initial_ancestor n1) ul1 with
+                              | [_] -> true
+                              | _ -> false
+                            then
+                              let ul2 = cenv#get_uses_of_def2 d2 in
+                              match ul2 with
+                              | [x2] -> begin
+                                  [%debug_log "found: %a - %a" nps x1 nps x2];
+                                  xpl1 := (x1, x2) :: !xpl1
+                              end
+                              | _ -> ()
+                          with
+                            _ -> ()
+                        );
+                      !xpl1
+                    with _ -> []
+                  in
+                  let xpl2 =
+                    try
+                      let pn2' = nmapping#inv_find pn2 in
+                      [%debug_log "%a - %a" nps pn2' nps pn2];
+                      let xpl2 = ref [] in
+                      tree2#fast_scan_whole_initial_subtree n2
+                        (fun x2 ->
+                          try
+                            let d2 = get_def_node tree1 x2 in
+                            let d1 = nmapping#inv_find d2 in
+                            if
+                              is_local_def d1 && is_local_def d2 &&
+                              let ul2 = cenv#get_uses_of_def2 d2 in
+                              match List.filter (tree2#is_initial_ancestor n2) ul2 with
+                              | [_] -> true
+                              | _ -> false
+                            then
+                              let ul1 = cenv#get_uses_of_def1 d1 in
+                              match ul1 with
+                              | [x1] -> begin
+                                  [%debug_log "found: %a - %a" nps x1 nps x2];
+                                  xpl2 := (x1, x2) :: !xpl2
+                              end
+                              | _ -> ()
+                          with
+                            _ -> ()
+                        );
+                      !xpl2
+                    with _ -> []
+                  in
+                  xpl1 @ xpl2 @ pl
+                end
+                else
+                  pl
+              end
+              else
+                pl
+            with
+              _ -> pl
+          end
+          else
+            pl
+        ) cenv#subtree_matches []
+    in
+    List.iter
+      (fun (n1, n2) ->
+        begin
+          try
+            ignore (nmapping#remove n1 (nmapping#find n1));
+            let stmt2 = get_stmt n2 in
+            ignore (nmapping#remove (nmapping#inv_find stmt2) stmt2)
+          with _ -> ()
+        end;
+        begin
+          try
+            ignore (nmapping#remove (nmapping#inv_find n2) n2);
+            let stmt1 = get_stmt n1 in
+            ignore (nmapping#remove stmt1 (nmapping#find stmt1))
+          with _ -> ()
+        end;
+        ignore (nmapping#add_unsettled n1 n2)
+      ) pair_list
+
 
  (*
   * glueing deletes and inserts
@@ -7033,6 +7177,7 @@ end;
 
       eliminate_enclaves options cenv keyroots tree1 tree2 nmapping ref_nmapping;
 
+      [%debug_log "enclaves eliminated."];
       Xprint.verbose options#verbose_flag "  enclaves eliminated."
 
     end;
@@ -7049,12 +7194,16 @@ end;
      * eliminate odd relabels
      *)
     if not options#no_odd_relabel_elim_flag then begin
+      [%debug_log "eliminating odd relabels..."];
       Xprint.verbose options#verbose_flag "  eliminating odd relabels...";
       eliminate_odd_relabels cenv tree1 tree2 nmapping;
+      [%debug_log "odd relabels eliminated."];
       Xprint.verbose options#verbose_flag "  odd relabels eliminated."
     end;
 
     let _ = cenv#elaborate_nmapping(* ~multi:true ~multi_node:true*) nmapping in
+
+    recheck_pruned_stmts cenv nmapping;
 
     begin %debug_block
       [%debug_log "* BEFORE GLUEING *"];
