@@ -3230,12 +3230,20 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     not (List.memq nd' !cands) &&
                     (
                      nd'#data#eq nd#data ||
-                     nd'#data#_anonymized_label = nd#data#_anonymized_label &&
-                     try
-                       let name' = Comparison.get_stripped_name nd' in
-                       let name = Comparison.get_stripped_name nd in
-                       cenv#is_rename_pat (name', name)
-                     with _ -> false
+                     (
+                      nd'#data#_anonymized_label = nd#data#_anonymized_label &&
+                      try
+                        let name' = Comparison.get_stripped_name nd' in
+                        let name = Comparison.get_stripped_name nd in
+                        cenv#is_rename_pat (name', name)
+                      with _ -> false
+                     ) ||
+                     pnd#data#is_boundary && pnd'#data#is_boundary &&
+                     pnd#data#is_named_orig && pnd'#data#is_named_orig &&
+                     (
+                      nd#data#is_ntuple && nd'#data#is_ntuple ||
+                      nd#data#is_sequence && nd'#data#is_sequence
+                     )
                     ) &&
                     (mem_del_or_ins nd' || (mem_mov_n' nd' && nd0 != nd'))(* &&
                     try
@@ -3261,6 +3269,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     let cond1 =
                       nd#initial_nchildren = 0 ||
                       let stable_count = ref 0 in
+                      let unstable_count = ref 0 in
                       try
                         tree#fast_scan_whole_initial_subtree nd
                           (fun n ->
@@ -3276,12 +3285,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                                     stable_node_pairs := (n, n') :: !stable_node_pairs;
                                     incr stable_count
                                   end
-                                  else
-                                    raise Exit
+                                  else begin
+                                    [%debug_log "unstable?: %a - %a" nps n nps n'];
+                                    incr unstable_count;
+                                    (*raise Exit*)
+                                  end
                               with
                                 Not_found -> ()
                           );
-                        !stable_count > 0
+                        [%debug_log "stable_count=%d unstable_count=%d"
+                           !stable_count !unstable_count];
+                        !stable_count > 0 && !stable_count > !unstable_count
                       with
                         Exit -> false
                     in
@@ -3678,6 +3692,22 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                   ) px1#initial_children px2#initial_children
             with
               _ -> false
+            in
+            let b =
+              b ||
+              (
+               x1#data#is_ntuple && x2#data#is_ntuple ||
+               x1#data#is_sequence && x2#data#is_sequence
+              ) &&
+              try
+                let px1 = x1#initial_parent in
+                let px2 = x2#initial_parent in
+                px1#data#is_boundary && px2#data#is_boundary &&
+                px1#data#is_named_orig && px2#data#is_named_orig &&
+                nmapping#has_mapping px1 px2 &&
+                not (self#mem_mov12 px1 px2)
+              with
+                _ -> false
             in
             [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
             b
