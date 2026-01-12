@@ -347,6 +347,7 @@ class formatters_base
 type move_region_tbl_t = (MID.t, (GI.t*GI.t*GI.t*GI.t)) Hashtbl.t
 
 
+[%%capture_path
 let contains_stably_mapped ?(exact_match=false) tree root nmap find =
   try
     tree#fast_scan_whole_initial_subtree root
@@ -369,6 +370,26 @@ let contains_stably_mapped ?(exact_match=false) tree root nmap find =
     false
   with
     Found -> true
+]
+
+[%%capture_path
+let accompanies_p_boundaries pred x1 x2 =
+  let b =
+    (
+     x1#data#is_ntuple && x2#data#is_ntuple ||
+     x1#data#is_sequence && x2#data#is_sequence
+    ) &&
+    try
+      let px1 = x1#initial_parent in
+      let px2 = x2#initial_parent in
+      px1#data#is_boundary && px2#data#is_boundary &&
+      pred px1 px2
+    with
+      _ -> false
+  in
+  [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
+  b
+]
 
 
 [%%capture_path
@@ -3211,14 +3232,14 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       if !cands = [] then begin
         try
           let pnd = nd#initial_parent in
-          [%debug_log "pnd: %a" nps pnd];
+          [%debug_log "pnd=%a" nps pnd];
           if
             not nd#data#is_op &&
             not pnd#data#is_sequence && not pnd#data#is_op
           then begin
             try
               let pnd' = nmap pnd in
-              [%debug_log "pnd'=%a" nups pnd'];
+              [%debug_log "pnd'=%a" nps pnd'];
               if not (mem_mov_nn pnd pnd') then begin
                 [%debug_log "@"];
                 if
@@ -3238,12 +3259,22 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                         cenv#is_rename_pat (name', name)
                       with _ -> false
                      ) ||
+                     let b =
                      pnd#data#is_boundary && pnd'#data#is_boundary &&
                      pnd#data#is_named_orig && pnd'#data#is_named_orig &&
                      (
                       nd#data#is_ntuple && nd'#data#is_ntuple ||
                       nd#data#is_sequence && nd'#data#is_sequence
-                     )
+                     ) &&
+                     try
+                       let nd_ = nmap nd in
+                       nd#data#is_named && nd_#data#is_named &&
+                       Comparison.get_stripped_name nd_ <> Comparison.get_stripped_name nd
+                     with _ -> true
+                     in
+                     if b then
+                       [%debug_log "@@@@@"];
+                     b
                     ) &&
                     (mem_del_or_ins nd' || (mem_mov_n' nd' && nd0 != nd'))(* &&
                     try
@@ -3695,19 +3726,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             in
             let b =
               b ||
-              (
-               x1#data#is_ntuple && x2#data#is_ntuple ||
-               x1#data#is_sequence && x2#data#is_sequence
-              ) &&
-              try
-                let px1 = x1#initial_parent in
-                let px2 = x2#initial_parent in
-                px1#data#is_boundary && px2#data#is_boundary &&
+              let pred px1 px2 =
                 px1#data#is_named_orig && px2#data#is_named_orig &&
                 nmapping#has_mapping px1 px2 &&
                 not (self#mem_mov12 px1 px2)
-              with
-                _ -> false
+              in
+              accompanies_p_boundaries pred x1 x2
             in
             [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
             b
