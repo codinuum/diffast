@@ -3300,33 +3300,45 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     let cond1 =
                       nd#initial_nchildren = 0 ||
                       let stable_count = ref 0 in
-                      let unstable_count = ref 0 in
+                      let relabel_count = ref 0 in
+                      let move_count = ref 0 in
                       try
                         tree#fast_scan_whole_initial_subtree nd
                           (fun n ->
                             if n != nd then
                               try
                                 let n' = nmap n in
-                                if not (mem_mov_nn n n') then
+                                if mem_mov_nn n n' then begin
+                                  if tree'#is_initial_ancestor nd' n' then begin
+                                    [%debug_log "inner move: %a - %a" nps n nps n'];
+                                    incr move_count
+                                  end
+                                end
+                                else begin
                                   if
-                                    n#data#eq n'#data &&
                                     tree'#is_initial_ancestor nd' n'
                                   then begin
-                                    [%debug_log "stable: %a - %a" nps n nps n'];
-                                    stable_node_pairs := (n, n') :: !stable_node_pairs;
-                                    incr stable_count
+                                    if n#data#eq n'#data then begin
+                                      [%debug_log "stable: %a - %a" nps n nps n'];
+                                      stable_node_pairs := (n, n') :: !stable_node_pairs;
+                                      incr stable_count
+                                    end
+                                    else begin
+                                      [%debug_log "relabel: %a - %a" nps n nps n'];
+                                      incr relabel_count
+                                    end
                                   end
                                   else begin
                                     [%debug_log "unstable?: %a - %a" nps n nps n'];
-                                    incr unstable_count;
-                                    (*raise Exit*)
+                                    raise Exit
                                   end
+                                end
                               with
                                 Not_found -> ()
                           );
-                        [%debug_log "stable_count=%d unstable_count=%d"
-                           !stable_count !unstable_count];
-                        !stable_count > 0 && !stable_count > !unstable_count
+                        [%debug_log "stable_count=%d relabel_count=%d move_count=%d"
+                           !stable_count !relabel_count !move_count];
+                        !stable_count > 0 && !move_count = 0 && !stable_count > !relabel_count
                       with
                         Exit -> false
                     in
@@ -3726,6 +3738,8 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
             in
             let b =
               b ||
+              x1#data#is_named && x2#data#is_named &&
+              Comparison.get_stripped_name x1 <> Comparison.get_stripped_name x2 &&
               let pred px1 px2 =
                 px1#data#is_named_orig && px2#data#is_named_orig &&
                 nmapping#has_mapping px1 px2 &&
