@@ -3922,7 +3922,7 @@ class ['node_t, 'tree_t] c
               ancsim_old, ancsim_new, false
           in
 
-          let anc_each_other1 = anc_each_other1 tree2 in
+          let anc_each_other1 = anc_each_other1 tree1 in
           let anc_each_other2 = anc_each_other2 tree2 in
 
           let prefer_sim =
