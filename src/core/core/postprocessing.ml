@@ -5877,6 +5877,10 @@ end;
     let resolved_cands = List.map (fun (p, _) -> p) resolved_cands in
 
     let final_cands = good_cands @ resolved_cands in
+    let final_cands =
+      let cmp (n1, _) (n2, _) = compare n2#gindex n1#gindex in
+      List.fast_sort cmp final_cands
+    in
 
     begin %debug_block
       [%debug_log "%d CANDIDATES (final):" (List.length final_cands)];
@@ -10905,6 +10909,19 @@ end;
       nmapping
       pre_nmapping
       =
+    let reg_mid, find_mid =
+      let mid_tbl = Hashtbl.create 0 in
+      let reg npair mid =
+        [%debug_log "%a-%a --> %a" nups (fst npair) nups (snd npair) MID.ps mid];
+        Hashtbl.add mid_tbl npair mid
+      in
+      let find npair =
+        let mid = Hashtbl.find mid_tbl npair in
+        [%debug_log "%a-%a --> %a" nups (fst npair) nups (snd npair) MID.ps mid];
+        mid
+      in
+      reg, find
+    in
     let extend_move n1 n2 =
       [%debug_log "n1=%a n2=%a" nups n1 nups n2];
       try
@@ -10942,7 +10959,8 @@ end;
                 fun () ->
                   let mov = Edit._make_move !mid !k (mkinfo n1) (mkinfo n2) in
                   [%debug_log "generated move: %s" (Edit.to_string mov)];
-                  edits#add_edit mov
+                  edits#add_edit mov;
+                  reg_mid (n1, n2) !mid
               else
                 failwith "extend_move"
           end
@@ -10959,10 +10977,24 @@ end;
     in
     let add_move n1 n2 =
       fun () ->
-        let mid = options#moveid_generator#gen in
+        let mid =
+          try
+            let pn1 = n1#initial_parent in
+            let pn2 = n2#initial_parent in
+            if
+              pn1#initial_nchildren = 1 &&
+              pn2#initial_nchildren = 1
+            then
+              find_mid (pn1, pn2)
+            else
+              failwith ""
+          with
+            _ -> options#moveid_generator#gen
+        in
         let mov = Edit.make_move_permutation mid (mkinfo n1) (mkinfo n2) in
         [%debug_log "generated move: %s" (Edit.to_string mov)];
-        edits#add_edit mov
+        edits#add_edit mov;
+        reg_mid (n1, n2) mid
     in
 
     let use_binding_info = lang#elaborate_edits <> None in
