@@ -373,6 +373,8 @@ module Edit = struct
       val mutable _filter = fun _ -> true
       val filt_blacklist = Xset.create 0 (* node set *)
 
+      val mutable hunk_count = 0
+
       val staying_moves = Xset.create 0
       val remote_stable_tbl = Hashtbl.create 0
 
@@ -568,6 +570,8 @@ module Edit = struct
         failwith ("Delta.Edit.seq#"^mes)
 
       method private filter ed = _filter ed
+
+      method hunk_count = hunk_count
 
       method private is_node_to_be_lifted = Hashtbl.mem nodes_to_be_lifted_tbl
       method private get_key_of_node_to_be_lifted k =
@@ -10122,8 +10126,9 @@ module Edit = struct
               in
               let sorted =
                 List.fast_sort
-                  (fun (_, _, ln0, cn0, _, _) (_, _, ln1, cn1, _, _) -> compare (ln0, cn0) (ln1, cn1))
-                  l
+                  (fun (_, _, ln0, cn0, _, _) (_, _, ln1, cn1, _, _) ->
+                    compare (ln0, cn0) (ln1, cn1)
+                  ) l
               in
               let dest = Xchannel.Destination.of_file info_file_name in
               let info_ch = new Xchannel.out_channel dest in
@@ -12064,6 +12069,8 @@ module Edit = struct
           ch;
 
         List.iter (dump ch) fmtl;
+
+        hunk_count <- List.length fmtl;
 
         output_ed_elem_root ch;
 

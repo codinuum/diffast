@@ -54,7 +54,8 @@ class seq options = object (self)
       ~extra_ns_decls
       ~comp
       ~info_file_path
-      nmapping fname
+      nmapping fname;
+    hunk_count <- dedits#hunk_count
 
 end (* of class seq *)
 

@@ -411,11 +411,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
   val mutable indivisible_moves = (Xset.create 0 : MID.t Xset.t)
 
+  val mutable hunk_count = 0
+
   method _init =
       tables <- [del_tbl; ins_tbl; rel1_tbl; rel2_tbl; mov1_tbl; mov2_tbl]
 
   initializer
     self#_init
+
+  method hunk_count = hunk_count
 
   method _indivisible_moves = indivisible_moves
   method _set_indivisible_moves s = indivisible_moves <- s
@@ -2242,6 +2246,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       s_units            = nunits;
       s_unmodified_units = nunmodified;
       s_total_changes    = total;
+      s_total_hunks      = self#hunk_count;
       s_similarity       = sim;
       s_change_ratio     = cr;
       s_unmodified_rate  = ur;

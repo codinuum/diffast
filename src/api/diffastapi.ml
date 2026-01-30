@@ -830,6 +830,7 @@ class c options = object (self)
     stat.SD.s_movrels     <- stat.SD.s_movrels     + s.SF.s_movrels;
     stat.SD.s_moves       <- stat.SD.s_moves       + s.SF.s_moves;
     stat.SD.s_moves_gr    <- stat.SD.s_moves_gr    + s.SF.s_moves_gr;
+    stat.SD.s_hunks       <- stat.SD.s_hunks       + s.SF.s_total_hunks;
     stat.SD.s_mapping     <- stat.SD.s_mapping     + s.SF.s_mapping;
     stat.SD.s_units       <- stat.SD.s_units       + s.SF.s_units;
     stat.SD.s_unmodified_units <- stat.SD.s_unmodified_units + s.SF.s_unmodified_units;
