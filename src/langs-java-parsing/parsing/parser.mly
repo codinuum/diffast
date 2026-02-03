@@ -2656,8 +2656,8 @@ method_invocation:
           end
           else begin
             if
-              is_type_name q ||
-              not (is_static_member q) &&
+              is_type_name q(* ||
+              not (is_static_member q) && (* static field can be the last member *)
               (
                Ast.is_simple q &&
                (
@@ -2665,7 +2665,7 @@ method_invocation:
                 not env#rely_on_naming_convention_flag && not env#surrounding_class_has_super
                ) ||
                env#rely_on_naming_convention_flag && Ast.is_rightmost_id_capitalized q
-              )
+              )*)
             then begin
               try
                 let fqn = get_type_fqn q in

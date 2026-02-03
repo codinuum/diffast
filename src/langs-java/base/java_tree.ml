@@ -1868,27 +1868,12 @@ class translator options =
           let plab = L.Primary.SimpleMethodInvocation (deco rightmost args) in
           create ~orig_lab_opt plab children otbl
 
-      | Ast.MIprimary(prim, targs_opt, ident, args) ->
-(*
-  let hash = self#digest_of_arguments args in
-  let ident = self#addhash ident hash in
- *)
-          let prim_nd = self#of_primary prim in
-          let orig_lab_opt = Some (L.Primary.PrimaryMethodInvocation ident) in
-          let plab =
-            (*if L.is_ambiguous_name (getlab prim_nd) then
-              L.Primary.AmbiguousMethodInvocation (deco ident args)
-            else*)
-              L.Primary.PrimaryMethodInvocation (deco ident args)
-          in
-          let ta_nodes = self#of_type_arguments_opt ident targs_opt in
-          let otbl = [1; List.length ta_nodes; 1] in
-          let children =
-            prim_nd :: (ta_nodes @ [self#of_named_arguments ident args])
-          in
-          create ~orig_lab_opt plab children otbl
+      | Ast.MItypeName(name, targs_opt, ident, args)
+      | Ast.MIprimary(
+        {Ast.p_desc=Ast.Pname({Ast.n_desc=Ast.Nsimple({contents=Ast.NAtype _},_);_} as name);_},
+        targs_opt, ident, args)
+        ->
 
-      | Ast.MItypeName(name, targs_opt, ident, args) ->
           let n = L.conv_name name in
 (*
   let hash = self#digest_of_arguments args in
@@ -1910,6 +1895,26 @@ class translator options =
           let otbl = [1; List.length ta_nodes; 1] in
           let children =
             ty_node :: ta_nodes @ [self#of_named_arguments (orig_ty_name^"."^ident) args]
+          in
+          create ~orig_lab_opt plab children otbl
+
+      | Ast.MIprimary(prim, targs_opt, ident, args) ->
+(*
+  let hash = self#digest_of_arguments args in
+  let ident = self#addhash ident hash in
+ *)
+          let prim_nd = self#of_primary prim in
+          let orig_lab_opt = Some (L.Primary.PrimaryMethodInvocation ident) in
+          let plab =
+            (*if L.is_ambiguous_name (getlab prim_nd) then
+              L.Primary.AmbiguousMethodInvocation (deco ident args)
+            else*)
+              L.Primary.PrimaryMethodInvocation (deco ident args)
+          in
+          let ta_nodes = self#of_type_arguments_opt ident targs_opt in
+          let otbl = [1; List.length ta_nodes; 1] in
+          let children =
+            prim_nd :: (ta_nodes @ [self#of_named_arguments ident args])
           in
           create ~orig_lab_opt plab children otbl
 
