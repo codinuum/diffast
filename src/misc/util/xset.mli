@@ -29,6 +29,7 @@ val mem : 'a t -> 'a -> bool
 val copy : 'a t -> 'a t
 val to_list : 'a t -> 'a list
 val from_list : 'a list -> 'a t
+val from_array : 'a array -> 'a t
 val for_all : ('a -> bool) -> 'a t -> bool
 val exists : ('a -> bool) -> 'a t -> bool
 val subset_eq : 'a t -> 'a t -> bool

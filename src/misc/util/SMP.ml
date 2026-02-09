@@ -86,7 +86,7 @@ let get_stable_matches ?(check=false) cmpr array1 array2 =
     pref_array1.(i) <- stack;
     List.iter
       (fun x -> Stack.push x stack)
-      (List.fast_sort (cmpr#compare_LR i) (Xlist.range sz2))
+      (List.stable_sort (cmpr#compare_LR i) (Xlist.range sz2))
   done;
 
 (*

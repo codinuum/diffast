@@ -3265,7 +3265,16 @@ end;
                       end
                     end
                     else if
-                      ccx1#initial_nchildren = ccx2#initial_nchildren
+                      let nc1 = ccx1#initial_nchildren in
+                      let nc2 = ccx2#initial_nchildren in
+                      nc1 = nc2 &&
+                      let count_distinct ca =
+                        let s = Xset.create 0 in
+                        Array.iter (fun n -> Xset.add s n#data#_label) ca;
+                        Xset.size s
+                      in
+                      count_distinct ccx1#initial_children = nc1 &&
+                      count_distinct ccx2#initial_children = nc2
                     then begin
                       let cccxa1 = ccx1#initial_children in
                       let cccxa2 = ccx2#initial_children in

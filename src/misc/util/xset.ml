@@ -44,7 +44,12 @@ let to_list (set : 'a t) = Hashtbl.fold (fun x _ l -> x::l) set []
 
 let from_list l =
   let s = create (List.length l) in
-  List.iter (fun x -> add s x) l;
+  List.iter (add s) l;
+  s
+
+let from_array a =
+  let s = create (Array.length a) in
+  Array.iter (add s) a;
   s
 
 exception Found
