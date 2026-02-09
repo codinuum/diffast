@@ -2797,7 +2797,7 @@ let to_tag ?(strip=false) l =
 (* element value *)
     | EVconditional               -> "ConditionalElementValue", []
     | EVannotation                -> "AnnotationElementValue", []
-    | EVarrayInit                 -> "ArrayInitElementValue", []
+    | EVarrayInit                 -> "ElementValueArrayInitializer", []
     | ElementValuePair name       -> "ElementValuePair", ["name",xmlenc name]
 
 (* class body declaration *)
@@ -3173,9 +3173,11 @@ let is_collapse_target options lab =
     | NamedArguments _
     | Modifiers _
     | Annotations
+    | Annotation _
     | FieldDeclarations _
     | InferredFormalParameters
     | ArrayInitializer
+    | EVarrayInit
     | SLconstant _
 (*    | CatchParameter _*)
 (*    | CatchClause _*)
@@ -4249,6 +4251,13 @@ let is_elementvalue = function
   | EVconditional
   | EVannotation
   | EVarrayInit -> true
+
+  | Primary _
+  | Expression _
+  | HugeExpr _ -> true
+
+  | Annotation _ -> true
+
   | _ -> false
 
 let is_ctor = function
@@ -4838,7 +4847,7 @@ let of_elem_data =
     "DefaultRuleLabel",          (fun _ -> SRLdefault);
     "ConditionalElementValue",   (fun _ -> EVconditional);
     "AnnotationElementValue",    (fun _ -> EVannotation);
-    "ArrayInitElementValue",     (fun _ -> EVarrayInit);
+    "ElementValueArrayInitializer", (fun _ -> EVarrayInit);
     "ElementValuePair",          (fun a -> ElementValuePair(find_name a));
     "ConstructorDeclaration",    (fun a -> Constructor(find_name a, find_sig a));
     "ConstructorBody",           (fun a -> ConstructorBody(find_name a, find_sig a));

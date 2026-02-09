@@ -3460,8 +3460,8 @@ class translator options =
   method of_element_value ev =
     let nd =
       match ev.Ast.ev_desc with
-      | Ast.EVconditional e -> self#mknode L.EVconditional [self#of_expression e]
-      | Ast.EVannotation a -> self#mknode L.EVannotation [self#of_annotation a]
+      | Ast.EVconditional e -> (*self#mknode L.EVconditional [self#of_expression e]*)self#of_expression e
+      | Ast.EVannotation a -> (*self#mknode L.EVannotation [self#of_annotation a]*)self#of_annotation a
       | Ast.EVarrayInit [ev] when options#ast_reduction_flag -> self#of_element_value ev
       | Ast.EVarrayInit evs ->
           self#mknode L.EVarrayInit (List.map self#of_element_value evs)
