@@ -24,6 +24,7 @@ module Astml = Diffast_core.Astml
 module Spec = Diffast_core.Spec
 module Lang_base = Diffast_core.Lang_base
 module Charpool = Diffast_core.Charpool
+module Misc = Diffast_core.Misc
 
 module Ast = Java_parsing.Ast
 module Printer = Java_parsing.Printer
@@ -2358,6 +2359,8 @@ let anonymize ?(more=false) = function
   | VariableDeclarator(_, _) when more -> VariableDeclarator("", 0)
   | Modifiers _ when more -> Modifiers Kany
 
+  | IDsingle _ when more -> IDsingle ""
+
   | Type ty                        -> Type (Type.anonymize ty)
   | Primary p                      -> Primary (Primary.anonymize ~more p)
 
@@ -2429,7 +2432,8 @@ let anonymize ?(more=false) = function
   | AnnotationTypeBody _           -> AnnotationTypeBody ""
   | InterfaceBody _                -> InterfaceBody ""
   | PackageDeclaration _           -> PackageDeclaration ""
-  | IDsingle _                     -> IDsingle ""
+  (*| IDsingle _                     -> IDsingle ""*)
+  | IDsingle n                     -> IDsingle (let uqn, flag = Misc.get_uqn n in if flag then uqn else "")
   | IDtypeOnDemand _               -> IDtypeOnDemand ""
   | IDsingleStatic _               -> IDsingleStatic("", "")
   | IDstaticOnDemand _             -> IDstaticOnDemand ""

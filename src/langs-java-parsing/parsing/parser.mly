@@ -2397,6 +2397,28 @@ assert_statement:
     }
 ;
 
+%inline
+type_name:
+| n=name
+    {
+     let rr =
+       try
+         mkresolved (get_type_fqn n)
+       with
+       | _ -> env#resolve n
+     in
+     set_attribute_PT_T rr n;
+     if env#in_method then begin
+       try
+         register_qname_as_typename_at_class ~outer:1 n
+       with
+         Not_found -> ()
+     end
+     else
+       register_qname_as_typename n;
+     n
+    }
+;
 
 primary:
 | p=primary_no_new_array  { p }
@@ -2417,11 +2439,10 @@ primary_no_new_array:
 | f=field_access       { mkprim $startpos $endpos (PfieldAccess f) }
 | m=method_invocation  { mkprim $startpos $endpos (PmethodInvocation m) }
 | a=array_access       { mkprim $startpos $endpos (ParrayAccess a) }
-| n=name DOT this      { register_qname_as_typename n; mkprim $startpos $endpos (PqualifiedThis n) }
-| n=name DOT CLASS     { register_qname_as_typename n; mkprim $startpos $endpos (PclassLiteral (name_to_ty [] n)) }
-| n=name d=ann_dims DOT CLASS 
+| n=type_name DOT this      { mkprim $startpos $endpos (PqualifiedThis n) }
+| n=type_name DOT CLASS     { mkprim $startpos $endpos (PclassLiteral (name_to_ty [] n)) }
+| n=type_name d=ann_dims DOT CLASS
     { 
-      register_qname_as_typename n;
       let ty = _mkty (Loc.merge n.n_loc (Xlist.last d).Ast.ad_loc) (Tarray(name_to_ty [] n, d)) in
       mkprim $startpos $endpos (PclassLiteral ty) 
     }

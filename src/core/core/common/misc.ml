@@ -88,7 +88,22 @@ let get_uqn n =
   uqn, List.length nl > 1
 ]
 
-
+[%%capture_path
+let uqn_matches nm1 nm2 =
+  let b =
+    let uqn1, flag1 = get_uqn nm1 in
+    if flag1 then
+      let uqn2, flag2 = get_uqn nm2 in
+      if flag2 then
+        uqn1 = uqn2
+      else
+        false
+    else
+      false
+  in
+  [%debug_log "\"%s\" \"%s\" --> %B" nm1 nm2 b];
+  b
+]
 
 let get_collapsed_children nd =
   List.filter (fun n -> n#pos >= 0) (Array.to_list nd#initial_children)

@@ -4623,6 +4623,17 @@ end;
                   (*let a3_flag = not (is_move nd1 nd2) && no_moves in*)
                   let a3_flag = nd1#data#is_boundary && nd2#data#is_boundary && anon3_all_once() in
                   [%debug_log "a3_flag=%B" a3_flag];
+
+                  let a_flag =
+                    if Array.length cld1a > 1 && Array.length cld2a > 1 then
+                      let all_has_cat cat = Array.for_all (fun n -> n#data#get_category = cat) in
+                      let cat = cld1a.(0)#data#get_category in
+                      all_has_cat cat cld1a && all_has_cat cat cld2a
+                    else
+                      true
+                  in
+                  [%debug_log "a_flag=%B" a_flag];
+
                   let f2 m m' cldd clda =
                     Array.iteri
                       (fun i (_, _) ->
@@ -4631,6 +4642,8 @@ end;
                             let ci = clda.(i) in
                             if a3_flag && ci#data#is_sequence then
                               ci#data#_anonymized3_label
+                            else if a_flag then
+                              ci#data#_anonymized_label
                             else
                               ci#data#_anonymized2_label
                           in
@@ -4942,7 +4955,15 @@ end;
                 else if
                   n1#data#is_order_insensitive && n2#data#is_order_insensitive &&
                   n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
-                  not (cenv#has_uniq_match n1 n2) && not (is_stable n1 n2)
+                  not (cenv#has_uniq_match n1 n2) &&
+                  not (is_stable n1 n2) &&
+                  not
+                    (
+                     n1#data#is_named_orig && n2#data#is_named_orig &&
+                     let nm1 = get_orig_name n1 in
+                     let nm2 = get_orig_name n2 in
+                     uqn_matches nm1 nm2
+                    )
                 then begin
                   [%debug_log "not so good mapping: %a-%a" nups n1 nups n2];
                   if n1#initial_nchildren > 0 || n2#initial_nchildren > 0 then
@@ -9598,7 +9619,7 @@ end;
                              with _ -> false
                            with _ -> false*)
                           ) &&
-                          cenv#is_rename_pat (nm1, nm2) &&
+                          (cenv#is_rename_pat (nm1, nm2)(* || uqn_matches nm1 nm2*)) &&
                           not (is_cross_boundary nmapping nd1 nd2)
                         with
                           _ -> false

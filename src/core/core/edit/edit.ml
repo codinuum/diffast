@@ -2150,8 +2150,8 @@ let rectify_renames_u
           if incompat then begin
             [%debug_log "incompatible relabel%s: %s"
               (if by_non_renames then "[by non-renames]" else "") (Editop.to_string rel)];
-            let is_good = is_good_relabel nd1 nd2 in
-            if is_good then begin
+
+            if is_good_relabel nd1 nd2 then begin
               if
                 nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
                 nd1#initial_nchildren = 0 && nd2#initial_nchildren = 0
@@ -2170,6 +2170,27 @@ let rectify_renames_u
                 end
               end
             end
+            (*else if
+              nd1#data#is_named_orig && nd2#data#is_named_orig &&
+              let nm1 = Comparison.get_orig_name nd1 in
+              let nm2 = Comparison.get_orig_name nd2 in
+              Misc.uqn_matches nm1 nm2
+            then begin
+              if
+                is_incompatible_def nd1 nd2
+              then begin
+                [%debug_log "not so good relabel: %a-%a" nups nd1 nups nd2];
+                to_be_removed := (nd1, nd2, by_non_renames) :: !to_be_removed;
+                remove_from_rename_tbls nd1 nd2
+              end
+              else begin
+                [%debug_log "good relabel"];
+                if is_use nd1 && is_use nd2 then begin
+                  Xset.add good1 nd1;
+                  Xset.add good2 nd2
+                end
+              end
+            end*)
             else begin
               [%debug_log "bad relabel: %a-%a" nups nd1 nups nd2];
               to_be_removed := (nd1, nd2, by_non_renames) :: !to_be_removed;
@@ -2938,15 +2959,7 @@ let rectify_renames_d
            use_delete_count > 0 && use_insert_count = 0 && conflicting_use_mapping_count1 > 0 ||
            use_insert_count > 0 && use_delete_count = 0 && conflicting_use_mapping_count2 > 0
          then
-           let uqn1, flag1 = Misc.get_uqn def_orig_name1 in
-           if flag1 then
-             let uqn2, flag2 = Misc.get_uqn def_orig_name2 in
-             if flag2 then
-               uqn1 <> uqn2
-             else
-               true
-           else
-             true
+           not (Misc.uqn_matches def_orig_name1 def_orig_name2)
          else
            true) &&
          (use_delete_count + conflicting_use_mapping_count1)

@@ -833,7 +833,8 @@ class translator options =
         end
         else if L.is_type lab then begin
           let rec getn = function
-            | L.Type.ClassOrInterface n | L.Type.Class n | L.Type.Interface n -> n
+            | L.Type.ClassOrInterface n | L.Type.Class n | L.Type.Interface n ->
+                String.map (function '$' -> '.' | c -> c) n
             | L.Type.Array(t, _) -> getn t
             | _ -> raise Not_found
           in
