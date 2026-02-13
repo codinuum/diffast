@@ -10743,6 +10743,11 @@ module Edit = struct
                   info_add pnd1#initial_parent;
                 with _ -> ()
               end;
+              begin
+                try
+                  info_add nd1#initial_children.(0);
+                with _ -> ()
+              end;
 
               let remote_stable_tbl1 =
                 get_remote_stable_tbl self#is_stable1 excluded1
