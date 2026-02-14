@@ -2091,30 +2091,6 @@ end;
       Stat.dump_file_info options file1 tree1;
       Stat.dump_file_info options file2 tree2;
 
-      if options#fact_flag then begin
-        let extract_fact1 = lang#extract_fact options cache_path1 in
-        let extract_fact2 = lang#extract_fact options cache_path2 in
-
-        begin
-          try
-            let r = options#fact_proj_roots.(0) in
-            tree1#set_proj_root r
-        with
-          Invalid_argument _ -> ()
-        end;
-        begin
-          try
-            let r = options#fact_proj_roots.(1) in
-            tree2#set_proj_root r
-        with
-          Invalid_argument _ -> ()
-        end;
-
-        extract_fact1 tree1;
-        extract_fact2 tree2;
-
-      end;
-
 (*
       Xprint.verbose options#verbose_flag "line terminator of T1: %s"
         tree1#line_terminator_name;
@@ -2130,6 +2106,8 @@ end;
 
       Xprint.verbose options#verbose_flag "digest of T1: %s" (Xhash.to_hex digest1);
       Xprint.verbose options#verbose_flag "digest of T2: %s" (Xhash.to_hex digest2);
+
+      let diff_status =
 
       if digest1 = digest2 then begin
         [%debug_log "genarating trivial mapping..."];
@@ -3474,6 +3452,34 @@ end;
           tree1 tree2
 
       end
+
+      in
+
+      if options#fact_flag then begin
+        let extract_fact1 = lang#extract_fact options cache_path1 in
+        let extract_fact2 = lang#extract_fact options cache_path2 in
+
+        begin
+          try
+            let r = options#fact_proj_roots.(0) in
+            tree1#set_proj_root r
+        with
+          Invalid_argument _ -> ()
+        end;
+        begin
+          try
+            let r = options#fact_proj_roots.(1) in
+            tree2#set_proj_root r
+        with
+          Invalid_argument _ -> ()
+        end;
+
+        extract_fact1 tree1;
+        extract_fact2 tree2;
+
+      end;
+
+      diff_status
 (*
     with
     | Sys_error msg -> Xprint.error "%s" msg; exit 1
