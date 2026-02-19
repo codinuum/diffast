@@ -3456,8 +3456,15 @@ end;
       in
 
       if options#fact_flag then begin
-        let extract_fact1 = lang#extract_fact options cache_path1 in
-        let extract_fact2 = lang#extract_fact options cache_path2 in
+        let fact_path1, fact_path2 =
+          if options#fact_into_directory = "" then
+            cache_path1, cache_path2
+          else
+            Filename.concat options#fact_into_directory (options#get_cache_name_for_file1 file1),
+            Filename.concat options#fact_into_directory (options#get_cache_name_for_file1 file2)
+        in
+        let extract_fact1 = lang#extract_fact options fact_path1 in
+        let extract_fact2 = lang#extract_fact options fact_path2 in
 
         begin
           try
