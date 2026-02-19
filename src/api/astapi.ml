@@ -468,7 +468,18 @@ class c options = object (self)
     if options#fact_flag then begin
       let cache_path = self#get_cache_path1 file in
       self#verbose_msg "extracting source fact...";
-      lang#extract_fact options cache_path tree;
+      let fact_path =
+        if options#fact_into_directory = "" then
+          cache_path
+        else
+          let mk = Triple._create_cache_path_lv2 options#fact_into_directory in
+          let path = mk (options#get_cache_name_for_file1 file) in
+          let d = Filename.dirname path in
+          if not (Xfile.dir_exists d) then
+            Xfile.mkdir d;
+          path
+      in
+      lang#extract_fact options fact_path tree;
       self#verbose_msg "done.";
     end;
 
