@@ -3461,8 +3461,15 @@ end;
             cache_path1, cache_path2
           else
             let mk = Triple._create_cache_path_lv2 options#fact_into_directory in
-            mk (options#get_cache_name_for_file1 file1),
-            mk (options#get_cache_name_for_file1 file2)
+            let path1 = mk (options#get_cache_name_for_file1 file1) in
+            let path2 = mk (options#get_cache_name_for_file1 file2) in
+            let d1 = Filename.dirname path1 in
+            let d2 = Filename.dirname path2 in
+            if not (Xfile.dir_exists d1) then
+              Xfile.mkdir d1;
+            if not (Xfile.dir_exists d2) then
+              Xfile.mkdir d2;
+            path1, path2
         in
         let extract_fact1 = lang#extract_fact options fact_path1 in
         let extract_fact2 = lang#extract_fact options fact_path2 in
