@@ -130,14 +130,20 @@ class fact_store ?(lock=true) options cache_path =
   let _ = [%debug_log "cache_path: %s" cache_path] in
   let _ = [%debug_log "fact_file_path: %s" fact_file_path] in
   let cache_name = Cache.get_cache_name options cache_path in
+  let into_virtuoso = options#fact_into_virtuoso <> "" in
+  let into_directory = options#fact_into_directory <> "" in
   let lock_fd = ref None in
   let acquire_lock() =
     if lock then
-      let fd = Triple.lock_fact cache_path in
+      let lock_path =
+        if into_directory then
+          Triple._create_cache_path_lv2 options#fact_into_directory cache_name
+        else
+          cache_path
+      in
+      let fd = Triple.lock_fact lock_path in
       lock_fd := Some fd
   in
-  let into_virtuoso = options#fact_into_virtuoso <> "" in
-  let into_directory = options#fact_into_directory <> "" in
   object (self)
 
     method id = ""
