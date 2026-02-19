@@ -3460,8 +3460,9 @@ end;
           if options#fact_into_directory = "" then
             cache_path1, cache_path2
           else
-            Filename.concat options#fact_into_directory (options#get_cache_name_for_file1 file1),
-            Filename.concat options#fact_into_directory (options#get_cache_name_for_file1 file2)
+            let mk = Triple._create_cache_path_lv2 options#fact_into_directory in
+            mk (options#get_cache_name_for_file1 file1),
+            mk (options#get_cache_name_for_file1 file2)
         in
         let extract_fact1 = lang#extract_fact options fact_path1 in
         let extract_fact2 = lang#extract_fact options fact_path2 in
