@@ -141,6 +141,9 @@ class fact_store ?(lock=true) options cache_path =
         else
           cache_path
       in
+      let lock_dir = Filename.dirname lock_path in
+      if not (Xfile.dir_exists lock_dir) then
+        Xfile.mkdir lock_dir;
       let fd = Triple.lock_fact lock_path in
       lock_fd := Some fd
   in
