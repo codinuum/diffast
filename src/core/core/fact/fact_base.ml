@@ -16,6 +16,7 @@
 (* fact_base.ml *)
 
 module Xhash = Diffast_misc.Xhash
+module Xfile = Diffast_misc.Xfile
 module Xprint = Diffast_misc.Xprint
 module Otree = Diffast_misc.Otree
 module Loc = Diffast_misc.Loc
