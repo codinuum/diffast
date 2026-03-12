@@ -4408,6 +4408,44 @@ class ['node_t, 'tree_t] c
                 b
           in
 
+          let is_part_of_inline_or_extract nd1 nd2 =
+            let b =
+              try
+                nd1#data#is_sequence && nd2#data#is_sequence &&
+                let pnd1 = nd1#initial_parent in
+                let pnd2 = nd2#initial_parent in
+                pnd1#data#is_boundary && pnd2#data#is_boundary &&
+                pnd1#data#is_named_orig && pnd1#data#is_named_orig &&
+                not (pnd1#data#eq pnd2#data) &&
+                pnd1#data#get_name = pnd2#data#get_name &&
+                Array.for_all
+                  (fun c1 ->
+                    c1#data#is_statement &&
+                    try
+                      let c2 = nmapping#find c1 in
+                      c2#initial_parent == nd2
+                    with _ -> false
+                  ) nd1#initial_children
+              with _ -> false
+            in
+            [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
+            b
+          in
+          let parents_are_same_boundary nd1 nd2 =
+            let b =
+              try
+                nd1#data#is_sequence && nd2#data#is_sequence &&
+                let pnd1 = nd1#initial_parent in
+                let pnd2 = nd2#initial_parent in
+                pnd1#data#is_boundary && pnd2#data#is_boundary &&
+                pnd1#data#is_named_orig && pnd1#data#is_named_orig &&
+                pnd1#data#eq pnd2#data
+              with _ -> false
+            in
+            [%debug_log "%a-%a --> %B" nups nd1 nups nd2 b];
+            b
+          in
+
           let parent_adj_score_old = ref 0.0 in
           let parent_adj_score_new = ref 0.0 in
 
@@ -4435,6 +4473,30 @@ class ['node_t, 'tree_t] c
             in
             add_cache false b ncd ncsim
           end
+
+          else if
+            is_part_of_inline_or_extract nd1old nd2old &&
+            parents_are_same_boundary nd1new nd2new
+          then begin
+            nmapping#finalize_mapping nd1old nd2old;
+            let b, ncd, ncsim =
+              action_old None None false;
+              false, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+          else if
+            is_part_of_inline_or_extract nd1new nd2new &&
+            parents_are_same_boundary nd1old nd2old
+          then begin
+            nmapping#finalize_mapping nd1new nd2new;
+            let b, ncd, ncsim =
+              action_new None None false;
+              true, None, None
+            in
+            add_cache false b ncd ncsim
+          end
+
           else if
             try
               let pnd1old = nd1old#initial_parent in
@@ -4643,12 +4705,23 @@ class ['node_t, 'tree_t] c
                    false
                with _ -> false)
               ||
+               (try
+                 let bn2 = get_bn nd2old in
+                 [%debug_log "bn2=%a" nps bn2];
+                 if bn2#data#is_named_orig then
+                   let bname = get_orig_name bn2 in
+                   let nl = get_names_from_children nd2new in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+              ||
                 (try
-                  let bn2 = get_bn nd2old in
+                  let bn2 = get_bn nd2new in
                   [%debug_log "bn2=%a" nps bn2];
                   if bn2#data#is_named_orig then
                     let bname = get_orig_name bn2 in
-                    let nl = get_names_from_children ~add_self:true nd2new in
+                    let nl = get_names_from_children ~add_self:true nd2old in
                     List.mem bname nl
                   else
                     false
@@ -4716,6 +4789,17 @@ class ['node_t, 'tree_t] c
                  if bn1#data#is_named_orig then
                    let bname = get_orig_name bn1 in
                    let nl = get_names_from_children (nmapping#inv_find nd2new#initial_parent) in
+                   List.mem bname nl
+                 else
+                   false
+               with _ -> false)
+              ||
+               (try
+                 let bn2 = get_bn nd2old in
+                 [%debug_log "bn1=%a" nps bn2];
+                 if bn2#data#is_named_orig then
+                   let bname = get_orig_name bn2 in
+                   let nl = get_names_from_children nd2new in
                    List.mem bname nl
                  else
                    false
