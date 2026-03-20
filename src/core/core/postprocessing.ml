@@ -2123,7 +2123,31 @@ module F (Label : Spec.LABEL_T) = struct
 
                     let cat_cond = n_nodes_of_same_cat_not_matched = 2 in
 
-                    let cond = parent_cond && cat_cond in
+                    let anc_cond () =
+                      let b =
+                      nd1#data#is_literal && nd2#data#is_literal &&
+                      nd1#data#_anonymized_label = nd2#data#_anonymized_label &&
+                      (
+                       try
+                         let stmt1 = get_stmt nd1 in
+                         let stmt2 = get_stmt nd2 in
+                         [%debug_log "stmt1=%a stmt2=%a" nups stmt1 nups stmt2];
+                         try
+                           nmapping#find stmt1 == stmt2
+                         with _ ->
+                           try
+                             (List.assq stmt1 relabels_checked) == stmt2
+                           with Not_found ->
+                             (List.assq stmt1 matches_and_extra_matches_) == stmt2
+                       with
+                         _ -> false
+                      )
+                      in
+                      [%debug_log "%B" b];
+                      b
+                    in
+
+                    let cond = parent_cond && cat_cond || anc_cond() in
 begin %debug_block
   [%debug_log "relabel: %a-%a (parent: %a-%a, num of children of same category not matched: %d)"
                nups nd1 nups nd2 nups pnd1 nups pnd2 n_nodes_of_same_cat_not_matched];
@@ -5967,6 +5991,14 @@ end;
                   [%debug_log "         --> stable"];
                   false, None, None
                 end
+                else if
+                  nd1#data#is_literal && not nd2#data#is_literal &&
+                  anc_each_other2 n2 nd2 &&
+                  nd1#data#_anonymized_label = n2#data#_anonymized_label
+                then begin
+                  [%debug_log "         --> literal"];
+                  false, None, None
+                end
                 else if can_override nd1 nd2 nd1 n2 then begin
                   [%debug_log "@"];
                   to_be_removed := (nd1, n2) :: !to_be_removed;
@@ -6065,6 +6097,14 @@ end;
                 end
                 else if no_moves && nmapping#is_stable_pair n1 nd2 then begin
                   [%debug_log "         --> stable"];
+                  false, None, None
+                end
+                else if
+                  nd2#data#is_literal && not nd1#data#is_literal &&
+                  anc_each_other1 n1 nd1 &&
+                  nd2#data#_anonymized_label = n1#data#_anonymized_label
+                then begin
+                  [%debug_log "         --> literal"];
                   false, None, None
                 end
                 else if can_override nd1 nd2 n1 nd2 then begin
