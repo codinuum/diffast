@@ -2906,6 +2906,25 @@ class ['node_t, 'tree_t] c
               let context = 3 in
               let nds1, lv1 = get_sibl ~context 1 nd1 in
               let nds2, lv2 = get_sibl ~context 1 nd2 in
+              let nds1, nds2 =
+                match nds1, nds2 with
+                | [n1], [n2] -> begin
+                    if
+                      not n1#data#is_named && not n2#data#is_named &&
+                      not n1#data#is_sequence && not n2#data#is_sequence &&
+                      not n1#data#is_ntuple && not n2#data#is_ntuple &&
+                      n1#data#eq n2#data &&
+                      let nc1 = n1#initial_nchildren in
+                      nc1 > 0 &&
+                      nc1 = n2#initial_nchildren
+                    then
+                      n1::(Array.to_list n1#initial_children),
+                      n2::(Array.to_list n2#initial_children)
+                    else
+                      nds1, nds2
+                end
+                | _ -> nds1, nds2
+              in
               [%debug_log "context=%d lv1=%d lv2=%d" context lv1 lv2];
               let s = _incr_score ~bonus_named:true ~bonus_named_more:true nds1 nds2 in
               if s >= 0.0 then
@@ -4532,8 +4551,9 @@ class ['node_t, 'tree_t] c
              not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
              nd1old#data#_anonymized_label = nd2old#data#_anonymized_label*)
             ) &&
-            not (is_cross_boundary nmapping nd1old nd2old) &&
-            is_cross_boundary nmapping nd1new nd2new
+            let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
+            not (is_cross_boundary ~filt nmapping nd1old nd2old) &&
+            is_cross_boundary ~filt nmapping nd1new nd2new
           then begin
             [%debug_log "@"];
             let b, ncd, ncsim =
@@ -4556,8 +4576,9 @@ class ['node_t, 'tree_t] c
              not nd1new#data#is_named_orig && not nd2new#data#is_named_orig &&
              nd1new#data#_anonymized_label = nd2new#data#_anonymized_label*)
             ) &&
-            is_cross_boundary nmapping nd1old nd2old &&
-            not (is_cross_boundary nmapping nd1new nd2new)
+            let filt x1 x2 = nmapping#mem_dom x1 && nmapping#mem_cod x2 in
+            is_cross_boundary ~filt nmapping nd1old nd2old &&
+            not (is_cross_boundary ~filt nmapping nd1new nd2new)
           then begin
             [%debug_log "@"];
             let b, ncd, ncsim =

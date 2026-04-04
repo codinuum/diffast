@@ -233,6 +233,7 @@ module Type = struct
     List.iter (Xset.add s)
       ["java.lang.Object";
        "java.lang.Void";
+       "java.lang.Class";
        "java.lang.Character";
        "java.lang.String";
        "java.lang.Byte";
@@ -3465,6 +3466,7 @@ let is_common = function (* common constracts that have names or non-trivial val
   (*| Statement (Statement.If _(* | Return*)) -> true*)
 
   | IDsingle n -> Xset.mem Type.common_classes n
+
   | _ -> false
 
 let is_order_insensitive = function

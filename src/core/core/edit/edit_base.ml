@@ -1660,12 +1660,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 not minimal ||
                 n1#data#is_named_orig && n2#data#is_named_orig ||
                 (not n1#data#is_named && n2#data#is_named || n1#data#is_named && not n2#data#is_named) ||
+                (not n1#data#is_named && not n2#data#is_named) ||
                 (not (n1#data#is_compatible_with ?weak:(Some true) n2#data) &&
                  n1#data#more_anonymized_label <> n2#data#more_anonymized_label) ||
-                 n1#data#has_value && n2#data#has_value && n1#data#get_value <> n2#data#get_value ||
-                 match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
-                 | Some o1, Some o2 -> o1 <> o2
-                 | _ -> false
+                n1#data#has_value && n2#data#has_value && n1#data#get_value <> n2#data#get_value ||
+                match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
+                | Some o1, Some o2 -> o1 <> o2
+                | _ -> false
               in
               if ok then begin
                 if !movrel || n1#data#_anonymized_label <> n2#data#_anonymized_label then
