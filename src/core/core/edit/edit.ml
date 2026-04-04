@@ -2241,7 +2241,7 @@ let rectify_renames_u
           (
            is_def nd &&
            (*non_rename non_rename_bid_tbl1 bid &&*)
-           subtree_or_node_eq nd (nmapping#find nd)
+           try subtree_or_node_eq nd (nmapping#find nd) with _ -> false
           )
       then begin
         let bid_ = Hashtbl.find rename_tbl1 bid in
@@ -2267,7 +2267,7 @@ let rectify_renames_u
           (
            is_def nd &&
            (*non_rename non_rename_bid_tbl2 bid &&*)
-           subtree_or_node_eq (nmapping#inv_find nd) nd
+           try subtree_or_node_eq (nmapping#inv_find nd) nd with _ -> false
           )
       then begin
         let _bid = Hashtbl.find rename_tbl2 bid in
@@ -2327,7 +2327,7 @@ let rectify_renames_u
     );
 
   begin %debug_block
-    [%debug_log "cands pair table:"];
+    [%debug_log "cands_pair_tbl:"];
     Hashtbl.iter
       (fun (bid1, bid2) (cands1, cands2) ->
         [%debug_log "  (%a,%a) [%a]-[%a]" BID.ps bid1 BID.ps bid2 nugsps cands1 nugsps cands2]
