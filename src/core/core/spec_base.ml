@@ -170,7 +170,7 @@ class type [ 'node ] tree_t_shared = object ('self)
   method make_subtree_from_node    : 'node -> 'self
   method make_subtree_from_path    : Path.t -> 'self
   method make_subtree_copy         : ?find_hook:('node -> 'node -> unit) -> 'node -> 'self
-  method dump_subtree_for_delta_ch : 'node -> 'node list -> Xchannel.out_channel -> unit
+  method dump_subtree_for_delta_ch : ?add_info:bool -> ?node_map:('node -> 'node) -> 'node -> 'node list -> Xchannel.out_channel -> unit
   method unparse_ch                : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> OutChannel.t -> unit
   method extra_namespaces          : (string * string) list (* for subtrees in delta *)
   method is_statement              : 'node -> bool

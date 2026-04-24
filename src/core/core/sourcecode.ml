@@ -2060,6 +2060,8 @@ module Tree (L : Spec.LABEL_T) = struct
       !labs
 
     method dump_subtree_for_delta_ch
+        ?(add_info=false)
+        ?(node_map=(fun _ -> raise Not_found: node_t -> node_t))
         (root : node_t)
         (except : node_t list)
         (ch : Xchannel.out_channel)
@@ -2075,11 +2077,26 @@ module Tree (L : Spec.LABEL_T) = struct
       let rec doit nd =
         if not (List.memq nd except) then
           let name, attrs, _ = nd#data#orig_to_elem_data_for_delta in
+          let extra_attrs =
+            if add_info then begin
+              try
+                let nd' =
+                  if Binding.is_use nd#data#binding then
+                    node_map (Misc.get_def_node self nd)
+                  else
+                    node_map nd
+                in
+                sprintf " bid=\"%a\"" BID.ps (Binding.get_bid nd'#data#binding)
+              with _ -> ""
+            end
+            else
+              ""
+          in
           if nd#is_leaf then begin
-            fprintf ch "<%s%s/>" name (attrs_to_string attrs)
+            fprintf ch "<%s%s%s/>" name (attrs_to_string attrs) extra_attrs
           end
           else begin
-            fprintf ch "<%s%s>" name (attrs_to_string attrs);
+            fprintf ch "<%s%s%s>" name (attrs_to_string attrs) extra_attrs;
             Array.iter doit nd#initial_children;
             fprintf ch "</%s>" name
           end
