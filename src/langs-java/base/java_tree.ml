@@ -2288,7 +2288,7 @@ class translator options =
                 scan t#root;
                 let nc = List.length !children in
                 [%debug_log "nc=%d" nc];
-                if nc > 3 then
+                if nc > 2 then
                   self#mklnode (L.Expression L.Expression.NaryAdd) !children
                 else
                   nd
