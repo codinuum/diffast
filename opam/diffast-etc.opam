@@ -20,6 +20,7 @@ depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.18"}
   "odoc" {with-doc}
+  "menhir" {>= "20180523"}
 ]
 build: [
   ["dune" "subst"] {dev}

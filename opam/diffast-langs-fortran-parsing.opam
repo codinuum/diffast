@@ -21,7 +21,7 @@ depends: [
   "ocaml" {>= "4.14"}
   "camlp-streams"
   "sedlex"
-  "menhir"
+  "menhir" {>= "20180523"}
   "diffast-langs-common" {= version}
   "vlt" {>= "0.2.4"}
   "odoc" {with-doc}

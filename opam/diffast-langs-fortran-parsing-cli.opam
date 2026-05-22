@@ -22,6 +22,7 @@ depends: [
   "diffast-langs-fortran-parsing" {= version}
   "diffast-etc" {= version}
   "odoc" {with-doc}
+  "menhir" {>= "20180523"}
 ]
 build: [
   ["dune" "subst"] {dev}
