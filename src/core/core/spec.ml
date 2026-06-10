@@ -28,7 +28,6 @@ module Loc = Diffast_misc.Loc
 module SB = Spec_base
 
 
-
 class type node_data_t = object ('self)
   inherit SB.node_data_t_shared
 
@@ -74,9 +73,11 @@ class type node_data_t = object ('self)
   method is_real_literal   : bool
   method is_literal        : bool
   method is_statement      : bool
+  method is_assignment     : bool
   method is_block          : bool
   method is_primary        : bool
   method is_op             : bool
+  method is_parameter      : bool
 
   method is_scope_creating : bool
 
@@ -124,12 +125,31 @@ class type tree_t = object ('self)
   method unparse_subtree_ch       : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> node_t -> SB.OutChannel.t -> unit
   method unparse_ch               : ?no_boxing:bool -> ?no_header:bool -> ?fail_on_error:bool -> SB.OutChannel.t -> unit
 
+
+  method find_true_category : node_t -> string
+  method set_true_category_tbl : (node_t, string) Hashtbl.t -> unit
+
+  method find_true_loc : node_t -> Loc.t
+  method set_true_loc_tbl : (node_t, Loc.t) Hashtbl.t -> unit
+
+  (*method is_virtual_node : node_t -> bool
+  method set_virtual_nodes : node_t Xset.t -> unit*)
+
+  (*method set_final_label_tbl : (node_t, Obj.t) Hashtbl.t -> unit
+  method has_final_label : node_t -> bool
+  method setup_final_labels : unit -> unit*)
+
+  method scan_false_subtree : node_t -> (node_t -> unit) -> unit
+  method true_children_recovered : bool
+
   method set_true_parent_tbl      : (UID.t, node_t) Hashtbl.t -> unit
   method find_true_parent         : UID.t -> node_t
 
   method set_true_children_tbl    : (node_t, node_t array) Hashtbl.t -> unit
-  method recover_true_children    : initial_only:bool -> unit -> node_t list
+  method recover_true_children    : initial_only:bool -> unit -> node_t list * node_t list
   method has_true_children        : node_t -> bool
+  method set_false_nodes          : node_t Xset.t -> unit
+  method is_false_node            : node_t -> bool
 
   method set_source_info          : Storage.file -> unit
 
@@ -305,6 +325,7 @@ class type nmapping_t = object ('self)
   method dump : string -> unit
 
   method dump_with_info : ?comp:Compression.c -> string -> unit
+  method dump_map_json : ?comp:Compression.c -> string -> unit
 
   method print_status : unit
 
@@ -388,14 +409,20 @@ module type LABEL_T = sig
   val anonymize          : ?more:bool -> t -> t
   val anonymize2         : t -> t
   val anonymize3         : t -> t
+
   val get_ident_use      : t -> string
 
   val get_category       : t -> string
   val get_name           : ?strip:bool -> t -> string
+
+  val get_nparams : t -> int
+  val get_nargs   : t -> int
+
   val get_value          : t -> string
   val has_value          : t -> bool
   val has_non_trivial_value : t -> bool
   val has_non_trivial_tid   : t -> bool
+
   val cannot_be_keyroot  : node_t -> bool
 
   val is_phantom         : t -> bool
@@ -406,9 +433,11 @@ module type LABEL_T = sig
   val is_real_literal    : t -> bool
 
   val is_statement       : t -> bool
+  val is_assignment      : t -> bool
   val is_block           : t -> bool
   val is_primary         : t -> bool
   val is_op              : t -> bool
+  val is_parameter       : t -> bool
 
   val is_scope_creating : t -> bool
 

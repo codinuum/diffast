@@ -319,10 +319,10 @@ class [ 'a ] node (d : 'a) =
 
 
     method to_rep =
-      let chldrn_to_string = 
+      (*let chldrn_to_string =
         Xarray.to_string (fun c -> string_of_int c#index) ";"
       in
-      let chldrn_str = 
+      let chldrn_str =
         let s = chldrn_to_string self#children in
         if s = "" then
           ""
@@ -333,11 +333,18 @@ class [ 'a ] node (d : 'a) =
         sprintf "<%d:%s ps=%d prnt=%d%s>"
           self#index self#data#to_rep self#pos
           self#parent#index chldrn_str
-      with 
+      with
         Parent_not_found _ ->
           sprintf "<%d:%s%s>"
-            self#index self#data#to_rep chldrn_str
-
+            self#index self#data#to_rep chldrn_str*)
+      let cs_str =
+        if self#children = [||] then
+          ""
+        else
+          sprintf " [%s]"
+            (Xarray.to_string (fun c -> string_of_int c#index) ";" self#children)
+      in
+      sprintf "<%d %s%s>" self#index self#data#to_rep cs_str
 
       
     method to_string =
@@ -603,6 +610,19 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
           sprintf "$%s(%d)" self#data#digest_string self#data#weight
         else
           "")
+
+
+    method initial_to_rep =
+      let cs_str =
+        if self#initial_children = [||] then
+          ""
+        else
+          sprintf " [%s]"
+            (Xarray.to_string
+               (fun c -> string_of_int c#index) ";" self#initial_children)
+      in
+      sprintf "<%d %s%s>" self#index self#data#to_rep cs_str
+
 
     val mutable collapse_locked = false
 
@@ -1431,7 +1451,7 @@ class [ 'node ] otree (root : 'node) =
       in do_scan node
 
     method preorder_scan_subtree node (f : 'node -> unit) =
-      let rec do_scan nd = 
+      let rec do_scan nd =
         let c = nd#children in
         f nd; Array.iter (fun nd -> do_scan nd) c
       in
@@ -2123,6 +2143,32 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
           [%warn_log "not found: %a[%s]" UID.ps pruned_node#uid
             (Xlist.to_string (fun n -> UID.to_string n#uid) ";" excluded_nodes)]
     (* end of method prune_cluster *)
+
+    (* excluded_nodes must preserve the left-to-right relation *)
+    method prune_initial_cluster (pruned_node : 'node) (excluded_nodes : 'node list) : unit =
+      try
+        self#prune_initial_nodes excluded_nodes;
+
+        let excluded_nodes_a = Array.of_list excluded_nodes in
+
+        [%debug_log "excluded_nodes_a: [%s]"
+          (Xlist.to_string
+             (fun nd -> UID.to_string nd#uid) "," excluded_nodes)];
+
+        try
+          let p = pruned_node#initial_parent in
+          p#_replace_children ~initial:true [pruned_node#initial_pos, excluded_nodes_a];
+          pruned_node#set_initial_pos (-1);
+          self#unregister_uid pruned_node#uid
+        with
+          Parent_not_found _ ->
+            internal_error
+              "Otree.otree2#prune_cluster: parent not found: uid=%a" UID.p pruned_node#uid
+      with
+        Not_found ->
+          [%warn_log "not found: %a[%s]" UID.ps pruned_node#uid
+            (Xlist.to_string (fun n -> UID.to_string n#uid) ";" excluded_nodes)]
+    (* end of method prune_initial_cluster *)
 
     (* excluded_uids must preserve the left-to-right relation *)
     method prune_cluster_by_uid uid excluded_uids =
@@ -2870,16 +2916,24 @@ class [ 'node ] otree2 ?(hash=Xhash.MD5) (root : 'node) (is_whole : bool) =
         (fun _ -> initial_size <- initial_size + 1)
 
 
-    method preorder_scan_whole_initial_subtree nd (f : 'node -> unit) =
+    method preorder_scan_whole_initial_subtree
+        nd
+        ?(after=(fun _ -> () : 'node -> unit))
+        (f : 'node -> unit)
+        =
       let rec do_scan nd =
         let c = nd#initial_children in
         f nd;
-        Array.iter do_scan c
+        Array.iter do_scan c;
+        after nd
       in
       do_scan nd
 
-    method preorder_scan_whole_initial (f : 'node -> unit) =
-      self#preorder_scan_whole_initial_subtree self#root f
+    method preorder_scan_whole_initial
+        ?(after=(fun _ -> () : 'node -> unit))
+        (f : 'node -> unit)
+        =
+      self#preorder_scan_whole_initial_subtree self#root ~after f
 
     method setup_initial_parent =
       self#preorder_scan_whole_initial_subtree self#root

@@ -37,6 +37,7 @@ type node_t = Spec.node_t
 
 let nps = Misc.nps
 let nups = Misc.nups
+let nsps = Misc.nsps
 
 
 let is_crossing nd1 nd2 n1 n2 =
@@ -65,7 +66,10 @@ let add map1 map1rev map2 map2rev nd1 nd2 =
   begin
     try
       let nd1' = Nodetbl.find map1 nd1 in
-      if nd1' != nd2 then begin
+      if nd1' == nd2 then begin
+        [%debug_log "already mapped!"]
+      end
+      else begin
 
         Nodetbl.replace map1 nd1 nd2;
         Nodetbl.remove map1rev nd1';
@@ -353,6 +357,17 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
 
   val mutable starting_pairs_for_glueing = ([] : ('node_t * 'node_t) list)
 
+  (*val mutable mod_callbacks = []
+
+  method add_mod_callback f =
+    mod_callbacks <- f :: mod_callbacks
+
+  method call_mod_callbacks () =
+    List.iter (fun f -> f()) mod_callbacks
+
+  initializer
+    self#add_mod_callback cenv#invalidate_mapping_comparison_cache*)
+
   method clear_starting_pairs_for_glueing =
     [%debug_log "@"];
     starting_pairs_for_glueing <- []
@@ -372,6 +387,59 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
       starting_pairs_for_glueing <- p :: starting_pairs_for_glueing
 
   method starting_pairs_for_glueing = starting_pairs_for_glueing
+
+  method get_unmapped_use_pairs n1 n2 = (* assumes scope-creating node pair *)
+    let pair_list = ref [] in
+    let proc_def_pair def1 def2 =
+      let uses1 = cenv#get_uses_of_def1 def1 in
+      [%debug_log "uses1: [%a]" nsps uses1];
+      let uses1 = List.filter (fun x -> not (self#mem_dom x)) uses1 in
+      [%debug_log "unmapped uses1: [%a]" nsps uses1];
+      let uses2 = cenv#get_uses_of_def2 def2 in
+      [%debug_log "uses2: [%a]" nsps uses2];
+      let uses2 = List.filter (fun x -> not (self#mem_cod x)) uses2 in
+      [%debug_log "unmapped uses2: [%a]" nsps uses2];
+      match uses1, uses2 with
+      | [], _ | _, [] -> ()
+      | [use1], [use2] -> pair_list := (use1, use2) :: !pair_list
+      | [use1], _ -> begin
+          let l =
+            List.fast_sort
+              (fun (_, x) (_, y) -> compare y x)
+              (List.map (fun u -> u, cenv#get_adjacency_score use1 u) uses2)
+          in
+          match l  with
+          | (use2, _)::_ -> pair_list := (use1, use2) :: !pair_list
+          | _ -> ()
+      end
+      | _, [use2] -> begin
+          let l =
+            List.fast_sort
+              (fun (_, x) (_, y) -> compare y x)
+              (List.map (fun u -> u, cenv#get_adjacency_score u use2) uses1)
+          in
+          match l  with
+          | (use1, _)::_ -> pair_list := (use1, use2) :: !pair_list
+          | _ -> ()
+      end
+      | _ -> ()
+    in
+    let defs1 = cenv#get_defs1 (n1 : 'node_t) in
+    let defs2 = cenv#get_defs2 (n2 : 'node_t) in
+    List.iteri
+      (fun i def1 ->
+        [%debug_log "def1[%d]: %a" i nps def1];
+        try
+          let def2 = self#find def1 in
+          [%debug_log "def2[%d]: %a" i nps def2];
+          if List.memq def2 defs2 then
+            proc_def_pair def1 def2
+        with
+          _ -> ()
+      ) defs1;
+    [%debug_log "%a-%a --> [%s]" nups n1 nups n2
+       (Xlist.to_string (fun (x1, x2) -> sprintf "%a-%a" nups x1 nups x2) ";" !pair_list)];
+    !pair_list
 
   val mutable locked_nodes = (Nodetbl.create 0 : Key.t Nodetbl.t)
 
@@ -431,17 +499,23 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
   method stable_pairs = stable_pairs
   method set_stable_pairs ps = stable_pairs <- ps
   method is_stable_pair n1 n2 =
+    let b =
     try
       let ns = Nodetbl.find_all stable_pairs n1 in
       List.memq n2 ns
     with
       Not_found -> false
+    in
+    [%debug_log "%a-%a -> %B" nups n1 nups n2 b];
+    b
 
   method add_stable_pair n1 n2 =
     try
       let n1' = Nodetbl.find stable_pairs n1 in
-      if n1' != n2 then
+      if n1' != n2 then begin
+        [%debug_log "adding %a-%a" nups n1 nups n2];
         Nodetbl.add stable_pairs n1 n2
+      end
     with
       Not_found -> Nodetbl.add stable_pairs n1 n2
 
@@ -484,12 +558,9 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     let doma = Array.of_seq dom in
     Array.fast_sort cmp doma;
     Array.iter
-      (fun u1 ->
-        try
-          let u2 = self#find u1 in
-          f u1 u2
-        with
-          Not_found -> assert false
+      (fun n1 ->
+        let n2 = self#find n1 in
+        f n1 n2
       ) doma
 
   method iter_sorted cmp f =
@@ -501,6 +572,14 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
 
   method iter_settled_sorted cmp f =
     self#_iter_sorted cmp self#dom_settled f
+
+  method iter_unsettled_topdown f =
+    let cmp n1 n2 = Stdlib.compare n2#gindex n1#gindex in
+    self#iter_unsettled_sorted cmp f
+
+  method iter_settled_topdown f =
+    let cmp n1 n2 = Stdlib.compare n2#gindex n1#gindex in
+    self#iter_settled_sorted cmp f
 
 
   method iter_rev f =
@@ -536,6 +615,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     let conflict = add map rev_map s_map rev_s_map nd1 nd2 in
     self#clear_crossing_or_incompatible_matches_count_cache;
     self#clear_reptbl();
+    (*self#call_mod_callbacks();*)
     conflict
 
 
@@ -558,6 +638,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     in
     self#clear_crossing_or_incompatible_matches_count_cache;
     self#clear_reptbl();
+    (*self#call_mod_callbacks();*)
     conflict
 
 
@@ -619,7 +700,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     m#iter_unsettled check;
     m#iter_settled check
 
-  method merge_checked (m : 'self) = (* only applicable to pre_uidmapping *)
+  method merge_checked (m : 'self) = (* only applicable to pre_nmapping *)
     let invalidated_settled_root_tbl = Hashtbl.create 0 in
 
     let check adder n1 n2 =
@@ -634,26 +715,39 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
         let n1' = try self#find n1 with _ -> n2 in
         let n2' = try self#inv_find n2 with _ -> n1 in
         if n1' != n2 || n2' != n1 then begin (* conflict *)
-          let score = cenv#get_adjacency_score n1 n2 in
-          let cond1 =
-            if mem1 then begin
-              [%debug_log "conflict with %a-%a" nups n1 nups n1'];
-              let score' = cenv#get_adjacency_score n1 n1' in
-              score > score'
-            end
-            else
-              true
+          if mem1 then
+            [%debug_log "conflict with %a-%a" nups n1 nups n1'];
+          if mem2 then
+            [%debug_log "conflict with %a-%a" nups n2' nups n2];
+
+          let cond =
+            cenv#in_subtree_matches n1 n2 &&
+            (
+             mem1 && not (cenv#in_subtree_matches n1 n1') ||
+             mem2 && not (cenv#in_subtree_matches n2' n2)
+            )
+          ||
+            let score = cenv#get_adjacency_score n1 n2 in
+            let cond1 =
+              if mem1 then begin
+                let score' = cenv#get_adjacency_score n1 n1' in
+                score > score'
+              end
+              else
+                true
+            in
+            let cond2 =
+              if mem2 then begin
+                let score' = cenv#get_adjacency_score n2' n2 in
+                score > score'
+              end
+              else
+                true
+            in
+            [%debug_log "cond1=%B cond2=%B" cond1 cond2];
+            cond1 && cond2
           in
-          let cond2 =
-            if mem2 then begin
-              [%debug_log "conflict with %a-%a" nups n2' nups n2];
-              let score' = cenv#get_adjacency_score n2' n2 in
-              score > score'
-            end
-            else
-              true
-          in
-          if cond1 && cond2 then
+          if cond then
             adder n1 n2
           else begin
             let cl1 = Array.to_list n1#initial_children in
@@ -745,6 +839,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
         self#clear_reptbl();
         self#unlock_node nd1;
         self#unlock_node nd2;
+        (*self#call_mod_callbacks();*)
         true
       end
       else
@@ -784,7 +879,8 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
               _ -> ()
           ) ca1;
         self#clear_crossing_or_incompatible_matches_count_cache;
-        self#clear_reptbl()
+        self#clear_reptbl();
+        (*self#call_mod_callbacks();*)
       end
     with
       Not_found -> ()
@@ -998,7 +1094,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     with
       Sys_error s -> let _ = s in [%warn_log "%s" s]
 
-  method dump_json ?(comp=Comp.none) fname =
+  method dump_map_json ?(comp=Comp.none) fname =
     let _fprintf ch fmt =
       Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt
     in
@@ -1273,7 +1369,7 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
     Nodetbl.iter f reptbl
 
   method private cache_rep_for_crossing is_move () : unit =
-    [%debug_log "mapping:\n%s" self#to_string_gid];
+    (*[%debug_log "mapping:\n%s" self#to_string_gid];*)
     let last_g1 = ref GI.unknown in
     let last_g2 = ref GI.unknown in
     let last_lg1 = ref GI.unknown in
@@ -1293,21 +1389,21 @@ class ['node_t] c (cenv : 'a Node.cenv_t) = object (self : 'self)
               is_mov <> !last_is_mov &&
               (lg1 <> !last_lg1 || lg2 <> !last_lg2)
             then begin
-              [%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+              (*[%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
               Nodetbl.add reptbl n1 n2;
             end
             else if
               n1#data#is_boundary && n2#data#is_boundary &&
               n1#data#is_order_insensitive && n2#data#is_order_insensitive
             then begin
-              [%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+              (*[%debug_log "%a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
               Nodetbl.add reptbl n1 n2;
             end
-            else
-              [%debug_log "(%a-%a %a)" GI.ps g1 GI.ps g2 nps n1]
+            (*else
+              [%debug_log "(%a-%a %a)" GI.ps g1 GI.ps g2 nps n1]*)
           end
           else begin
-            [%debug_log " %a-%a %a" GI.ps g1 GI.ps g2 nps n1];
+            (*[%debug_log " %a-%a %a" GI.ps g1 GI.ps g2 nps n1];*)
             Nodetbl.add reptbl n1 n2;
           end;
           last_g1 := g1;

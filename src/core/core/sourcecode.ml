@@ -497,6 +497,14 @@ module Tree (L : Spec.LABEL_T) = struct
       method to_simple_string = L.to_simple_string lab
 
 
+      method __set_digest d =
+        _digest <- Some d
+
+      method _reset_digest =
+        _digest <- None;
+        let ignore_identifiers_flag = options#ignore_identifiers_flag in
+        rep <- L.to_short_string ~ignore_identifiers_flag lab
+
       method _set_digest d =
         _digest <- Some d;
         let ignore_identifiers_flag = options#ignore_identifiers_flag in
@@ -585,6 +593,9 @@ module Tree (L : Spec.LABEL_T) = struct
         | None -> self#get_name
       method get_stripped_name = L.get_name ~strip:true lab
 
+      method get_nparams = L.get_nparams lab
+      method get_nargs = L.get_nargs lab
+
       method get_value = L.get_value lab
       method has_value = L.has_value lab
       method has_non_trivial_value = L.has_non_trivial_value lab
@@ -597,9 +608,11 @@ module Tree (L : Spec.LABEL_T) = struct
         L.is_string_literal lab || L.is_int_literal lab || L.is_real_literal lab
 
       method is_statement = L.is_statement lab
+      method is_assignment = L.is_assignment lab
       method is_block = L.is_block lab
       method is_primary = L.is_primary lab
       method is_op = L.is_op lab
+      method is_parameter = L.is_parameter lab
 
       method is_scope_creating = L.is_scope_creating lab
 
@@ -629,9 +642,9 @@ module Tree (L : Spec.LABEL_T) = struct
               | _ -> false)
             ||
               self#is_compatible_with ~weak:true x
-            ||
+            (*||
               self#is_named_orig && x#is_named_orig &&
-              get_orig_name self = get_orig_name x
+              get_orig_name self = get_orig_name x*)
             )
           else
             (fun x ->
@@ -753,11 +766,24 @@ module Tree (L : Spec.LABEL_T) = struct
     inherit node_maker options
     inherit [ node_t ] Otree.otree2 root is_whole as super
 
-
     method private create root is_whole =
       let t = new c options root is_whole in
       t#setup_initial_children;
       t
+
+    method scan_false_subtree rt (f : node_t -> unit) =
+      let rec do_scan nd f =
+        let ca =
+          if self#true_children_recovered && self#has_true_children nd then
+            nd#children
+          else
+            nd#initial_children
+        in
+        f nd; Array.iter (fun nd -> do_scan nd f) ca
+      in
+      do_scan rt f
+
+    method is_statement (nd : node_t) = nd#data#is_statement
 
     method extra_namespaces = ([] : (string * string) list)
 
@@ -842,6 +868,36 @@ module Tree (L : Spec.LABEL_T) = struct
       gi2 < gi1 && (self#initial_leftmost nd1)#gindex <= gi2 ||
       gi1 < gi2 && (self#initial_leftmost nd2)#gindex <= gi1
 
+
+    val mutable true_category_tbl = (Hashtbl.create 0 : (node_t, string) Hashtbl.t)
+    method find_true_category nd =
+      let cat = Hashtbl.find true_category_tbl nd in
+      [%debug_log "%a: %s -> %s" UID.ps nd#uid nd#data#get_category cat];
+      cat
+    method set_true_category_tbl tbl = true_category_tbl <- tbl
+
+    val mutable true_loc_tbl = (Hashtbl.create 0 : (node_t, Loc.t) Hashtbl.t)
+    method find_true_loc nd =
+      let loc = Hashtbl.find true_loc_tbl nd in
+      [%debug_log "%a: %s -> %s" UID.ps nd#uid (Loc.to_string nd#data#src_loc) (Loc.to_string loc)];
+      loc
+    method set_true_loc_tbl tbl = true_loc_tbl <- tbl
+
+    (*val mutable virtual_nodes = (Xset.create 0 : node_t Xset.t)
+    method is_virtual_node nd = Xset.mem virtual_nodes nd
+    method set_virtual_nodes set = virtual_nodes <- set*)
+
+    (*val mutable final_label_tbl = (Hashtbl.create 0 : (node_t, Obj.t) Hashtbl.t)
+    method set_final_label_tbl tbl = final_label_tbl <- tbl
+    method has_final_label nd = Hashtbl.mem final_label_tbl nd
+    method setup_final_labels () =
+      Hashtbl.iter
+        (fun nd lab ->
+          [%debug_log "%s -> %s\n" nd#data#label (L.to_string (Obj.obj lab : L.t))];
+          nd#data#relab ?orig:None lab
+        ) final_label_tbl*)
+
+
     val mutable true_parent_tbl = (Hashtbl.create 0 : (UID.t, node_t) Hashtbl.t)
     method set_true_parent_tbl tbl = true_parent_tbl <- tbl
     method find_true_parent uid = Hashtbl.find true_parent_tbl uid
@@ -849,18 +905,27 @@ module Tree (L : Spec.LABEL_T) = struct
     val mutable true_children_tbl = (Hashtbl.create 0 : (node_t, node_t array) Hashtbl.t)
     method set_true_children_tbl tbl = true_children_tbl <- tbl
     method has_true_children n = Hashtbl.mem true_children_tbl n
+    val mutable true_children_recovered_flag = false
+    method true_children_recovered = true_children_recovered_flag
+    val mutable false_nodes = Xset.create 0
+    method set_false_nodes ns = false_nodes <- ns
+    method is_false_node n = Xset.mem false_nodes n
 
     method recover_true_children ~initial_only () =
       (*Printf.printf "! [before] initial_size=%d (initial_only=%B)\n"
         self#initial_size initial_only;*)
       [%debug_log "initial_only=%B" initial_only];
-      let modified = ref false in
+      (*let modified = ref false in*)
+      let modified_nodes = Xset.create 0 in
       let deleted_node_list = ref [] in
+      let used_nodes = Xset.create 0 in
       Hashtbl.iter
         (fun nd c ->
 
-          [%debug_log "recovering true children: %a -> [%s]"
-            UID.ps nd#uid (Xarray.to_string (fun n -> UID.to_string n#uid) ";" c)];
+          [%debug_log "recovering true children: %a (%s) -> [%s]"
+            UID.ps nd#uid nd#data#label (Xarray.to_string (fun n -> UID.to_string n#uid) ";" c)];
+
+          Array.iter (Xset.add used_nodes) c;
 
           begin %debug_block
             let _nc = nd#initial_nchildren in
@@ -896,7 +961,15 @@ module Tree (L : Spec.LABEL_T) = struct
                 n#set_pos i
               end
             ) c;
-          modified := true
+          (*modified := true*)
+          begin
+            try
+              let loc = self#find_true_loc nd in
+              nd#data#set_loc loc
+            with
+              _ -> ()
+          end;
+          Xset.add modified_nodes nd
         ) true_children_tbl;
 
       begin %debug_block
@@ -906,17 +979,81 @@ module Tree (L : Spec.LABEL_T) = struct
           ) true_parent_tbl
       end;
 
-      if !modified then begin
+      let modified_node_list = ref [] in
+
+      if Xset.size modified_nodes > 0 then begin
         self#fast_scan_whole_initial (fun nd -> nd#set_gindex GI.unknown);
         self#setup_initial_size;
         self#setup_gindex_table;
         self#setup_initial_leftmost_table;
-        self#setup_apath
+        self#setup_apath;
+
+        [%debug_log "updating subtree digests (statements only)"];
+        Xset.iter
+          (fun x ->
+            if x#data#is_statement then begin
+              modified_node_list := x :: !modified_node_list;
+              x#data#_reset_digest
+            end
+          ) modified_nodes;
+        let modified_node_list_ =
+          let cmp x y = Stdlib.compare y#gindex x#gindex in
+          List.fast_sort cmp !modified_node_list
+        in
+        List.iter
+          (fun x ->
+            [%debug_log "x=%s" x#initial_to_string];
+            match x#data#_digest with
+            | None -> begin
+                let st = self#create x false in
+                x#hide_parent;
+                let i = ref 1 in
+                st#scan_whole_initial
+                  (fun n ->
+                    n#set_index !i;
+                    incr i
+                  );
+                [%debug_log "%s" x#initial_to_rep];
+                let buf = Buffer.create 0 in
+                st#scan_whole_initial
+                  (fun n ->
+                    Buffer.add_string buf (n#initial_to_rep);
+                    Buffer.add_string buf "\n"
+                  );
+                x#unhide_parent;
+                let rep = Buffer.contents buf in
+                let d = Xhash.digest_of_string self#hash rep in
+                [%debug_log "d=%s" (Xhash.to_hex d)];
+                x#data#__set_digest d
+            end
+            | _ -> ()
+          ) modified_node_list_;
+        modified_node_list := modified_node_list_
+
       end;
       (*Printf.printf "! [after] initial_size=%d\n" self#initial_size;*)
+      let deleted_node_list_ =
+        List.filter
+          (fun x ->
+            if Xset.mem used_nodes x then
+              false
+            else begin
+              Xset.add false_nodes x;
+              true
+            end
+          ) !deleted_node_list
+      in
       [%debug_log "deleted nodes: [%s]"
-         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" !deleted_node_list)];
-      !deleted_node_list
+         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" deleted_node_list_)];
+
+      [%debug_log "modified statement nodes: [%s]"
+         (Xlist.to_string (fun n -> UID.to_string n#uid) ";" !modified_node_list)];
+
+      [%debug_log "\n%s" self#initial_to_string];
+
+      true_children_recovered_flag <- true;
+
+      deleted_node_list_, !modified_node_list
 
     val mutable source_path = "unknown"
     method set_source_path p = source_path <- p
@@ -1072,7 +1209,7 @@ module Tree (L : Spec.LABEL_T) = struct
     method get_ident_use_list gid =
       let nd = self#search_node_by_gindex gid in
       let res = ref [] in
-      self#preorder_scan_whole_initial_subtree nd
+      self#preorder_scan_whole_initial_subtree nd ?after:None
         (fun n ->
           let s = n#data#get_ident_use in
           if  s <> "" && not (List.mem s !res) then
@@ -1169,6 +1306,7 @@ module Tree (L : Spec.LABEL_T) = struct
       let tree = self#create nd false in
       tree#_set_gindex_table gindex_table;
       tree#_set_initial_leftmost_table initial_leftmost_table;
+      tree#set_false_nodes false_nodes;
       tree
 
     method make_subtree_from_uid uid =
@@ -1377,7 +1515,7 @@ module Tree (L : Spec.LABEL_T) = struct
           Not_found -> false
       in
 
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           if nd != self#root then begin
             try
@@ -1433,7 +1571,7 @@ module Tree (L : Spec.LABEL_T) = struct
 
     method find_nodes_by_line_range (start_line, end_line) =
       let res = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           let loc = nd#data#src_loc in
           if start_line <= loc.Loc.start_line && loc.Loc.end_line <= end_line then
@@ -1446,7 +1584,7 @@ module Tree (L : Spec.LABEL_T) = struct
 
     method find_nodes_by_line_col_range ((start_line, start_col), (end_line, end_col)) =
       let res = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           let loc = nd#data#src_loc in
           if
@@ -1481,7 +1619,7 @@ module Tree (L : Spec.LABEL_T) = struct
       if token_array = [||] then
         let l = ref [] in
         let ndl = ref [] in
-        self#preorder_scan_whole_initial
+        self#preorder_scan_whole_initial ?after:None
           (fun nd ->
             if nd#data#not_frommacro then begin
               l := nd#data#to_short_string :: !l;
@@ -1509,7 +1647,7 @@ module Tree (L : Spec.LABEL_T) = struct
     method get_token_array_pat (frag : GIDfragment.c) =
       let l = ref [] in
       let ndl = ref [] in
-      self#preorder_scan_whole_initial
+      self#preorder_scan_whole_initial ?after:None
         (fun nd ->
           if frag#contains nd#gindex && nd#data#not_frommacro then begin
             l := nd#data#to_short_string :: !l;
@@ -1922,6 +2060,8 @@ module Tree (L : Spec.LABEL_T) = struct
       !labs
 
     method dump_subtree_for_delta_ch
+        ?(add_info=false)
+        ?(node_map=(fun _ -> raise Not_found: node_t -> node_t))
         (root : node_t)
         (except : node_t list)
         (ch : Xchannel.out_channel)
@@ -1937,11 +2077,26 @@ module Tree (L : Spec.LABEL_T) = struct
       let rec doit nd =
         if not (List.memq nd except) then
           let name, attrs, _ = nd#data#orig_to_elem_data_for_delta in
+          let extra_attrs =
+            if add_info then begin
+              try
+                let nd' =
+                  if Binding.is_use nd#data#binding then
+                    node_map (Misc.get_def_node self nd)
+                  else
+                    node_map nd
+                in
+                sprintf " bid=\"%a\"" BID.ps (Binding.get_bid nd'#data#binding)
+              with _ -> ""
+            end
+            else
+              ""
+          in
           if nd#is_leaf then begin
-            fprintf ch "<%s%s/>" name (attrs_to_string attrs)
+            fprintf ch "<%s%s%s/>" name (attrs_to_string attrs) extra_attrs
           end
           else begin
-            fprintf ch "<%s%s>" name (attrs_to_string attrs);
+            fprintf ch "<%s%s%s>" name (attrs_to_string attrs) extra_attrs;
             Array.iter doit nd#initial_children;
             fprintf ch "</%s>" name
           end
@@ -2010,6 +2165,9 @@ let find_nearest_p_ancestor_node ?(moveon_=fun _ -> true) pred nd =
   [%debug_log "%a --> %a" UID.ps nd#uid UID.ps a#uid];
   a
 ]
+
+let find_nearest_anc_stmt nd =
+  find_nearest_p_ancestor_node (fun n -> n#data#is_statement) nd
 
 [%%capture_path
 let find_nearest_mapped_ancestor_node ?(moveon_=fun _ -> true) is_mapped nd =

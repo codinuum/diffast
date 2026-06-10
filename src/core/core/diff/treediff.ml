@@ -282,7 +282,7 @@ let find_glue_cands ?(simple=false) (*tree1*)_ (*tree2*)_ nodes1 nodes2 (*matche
       List.iter (fun nd -> add ltbl1 nd#data#_label nd) nodes1;
       List.iter (fun nd -> add ltbl2 nd#data#_label nd) nodes2;
 
-      let add_cand (nd1, nd2) =
+      let add_cand nd1 nd2 =
         if not (try List.assq nd1 !cands == nd2 with Not_found -> false) then
           cands := (nd1, nd2) :: !cands
       in
@@ -292,7 +292,7 @@ let find_glue_cands ?(simple=false) (*tree1*)_ (*tree2*)_ nodes1 nodes2 (*matche
           try
             let nds2 = Hashtbl.find ltbl2 lab in
             match nds1, nds2 with
-            | [nd1], [nd2] -> add_cand (nd1, nd2)
+            | [nd1], [nd2] -> add_cand nd1 nd2
             | _::_, _::_ -> begin
                 [%debug_log "[%s] vs [%s] --> abort"
                   (Xlist.to_string (fun n -> UID.to_string n#uid) ";" nds1)
@@ -325,7 +325,7 @@ let find_glue_cands ?(simple=false) (*tree1*)_ (*tree2*)_ nodes1 nodes2 (*matche
               try
                 let nds2 = Hashtbl.find nltbl2 nl in
                 match nds1, nds2 with
-                | [nd1], [nd2] -> add_cand (nd1, nd2)
+                | [nd1], [nd2] -> add_cand nd1 nd2
                 | _::_, [nd2] when nd2#data#is_named_orig -> begin
                     let lab2 = try get_anc_labs nd2 with _ -> "" in
                     [%debug_log "%a: lab2=%s" nups nd2 lab2];
@@ -340,7 +340,7 @@ let find_glue_cands ?(simple=false) (*tree1*)_ (*tree2*)_ nodes1 nodes2 (*matche
                         ) nds1
                     in
                     match nds1_ with
-                    | [nd1] -> add_cand (nd1, nd2)
+                    | [nd1] -> add_cand nd1 nd2
                     | _ -> begin
                         [%debug_log "[%s] vs [%a] --> abort"
                           (Xlist.to_string (fun n -> UID.to_string n#uid) ";" nds1_)
@@ -361,7 +361,7 @@ let find_glue_cands ?(simple=false) (*tree1*)_ (*tree2*)_ nodes1 nodes2 (*matche
                         ) nds2
                     in
                     match nds2_ with
-                    | [nd2] -> add_cand (nd1, nd2)
+                    | [nd2] -> add_cand nd1 nd2
                     | _ -> begin
                         [%debug_log "[%a] vs [%s] --> abort"
                           nups nd1
@@ -569,7 +569,10 @@ let fast_match_trees tree1 tree2 ref_nmapping = (* fast but inaccurate *)
   let matches_tbl = Nodetbl.create 0 in
   List.iter (fun (n1, n2) -> Nodetbl.add matches_tbl n1 n2) !matches;
   let extra_matches =
-    find_glue_cands tree1 tree2 !deletes !inserts matches_tbl
+    find_glue_cands tree1 tree2
+      (List.filter (fun x -> not (tree1#is_false_node x)) !deletes)
+      (List.filter (fun x -> not (tree2#is_false_node x)) !inserts)
+      matches_tbl
   in
 (*
       begin %debug_block
@@ -624,11 +627,34 @@ let match_trees
   in
   let deletes, inserts, relabels = Edit.seq_split eds in
 
+  let deletes, inserts, mapping =
+    List.fold_left
+      (fun (dl, il, ml) (i1, i2) ->
+        let n1 = tree1#get i1 in
+        let n2 = tree2#get i2 in
+        if tree1#is_false_node n1 || tree2#is_false_node n2 then
+          i1::dl, i2::il, ml
+        else
+          dl, il, (i1, i2)::ml
+      ) (deletes, inserts, []) mapping
+  in
+  let relabels =
+    List.filter
+      (fun (i1, i2) ->
+        let n1 = tree1#get i1 in
+        let n2 = tree2#get i2 in
+        not (tree1#is_false_node n1 || tree2#is_false_node n2)
+      ) relabels
+  in
+
   begin %debug_block
     (*[%debug_log "eds (raw):\n%s" (Edit.seq_to_string eds)];*)
     let to_s1 i = UID.to_string (tree1#get i)#uid in
     let to_s2 j = UID.to_string (tree2#get j)#uid in
-    [%debug_log "eds:\n%s" (Edit._seq_to_string to_s1 to_s2 eds)];
+    (*[%debug_log "eds:\n%s" (Edit._seq_to_string to_s1 to_s2 eds)];*)
+    [%debug_log "deleted:\n[%s]" (Xlist.to_string to_s1 ";" deletes)];
+    [%debug_log "inserted:\n[%s]" (Xlist.to_string to_s2 ";" inserts)];
+    [%debug_log "relabeled:\n%s" (Mapping._to_string to_s1 to_s2 relabels)];
     [%debug_log "mapping:\n%s" (Mapping._to_string to_s1 to_s2 mapping)]
   end;
 
@@ -704,7 +730,10 @@ let match_trees
 
       (* get more matches! *)
       let extra_matches =
-        find_glue_cands tree1 tree2 (deletes @ rel1) (inserts @ rel2) matches_tbl
+        find_glue_cands tree1 tree2
+          (List.filter (fun x -> not (tree1#is_false_node x)) (deletes @ rel1))
+          (List.filter (fun x -> not (tree2#is_false_node x)) (inserts @ rel2))
+          matches_tbl
       in
 
       [%debug_log "extra_matches: [%s]"

@@ -49,6 +49,8 @@ class c = object
   val mutable conservative_flag            = true
   val mutable ignore_move_of_unordered_flag = false
   val mutable ignore_non_orig_relabel_flag = false
+  val mutable ignore_phantom_node_flag     = false
+  val mutable moderate_moves_flag          = false
 
   val mutable rename_rectification_level = 2 (* 0: no rr, 1: rru, 2: rru+rrd, 3: rru+rrd(strict) *)
 (* *)
@@ -181,6 +183,14 @@ class c = object
   method ignore_non_orig_relabel_flag = ignore_non_orig_relabel_flag
   method set_ignore_non_orig_relabel_flag = ignore_non_orig_relabel_flag <- true
   method clear_ignore_non_orig_relabel_flag = ignore_non_orig_relabel_flag <- false
+
+  method ignore_phantom_node_flag = ignore_phantom_node_flag
+  method set_ignore_phantom_node_flag = ignore_phantom_node_flag <- true
+  method clear_ignore_phantom_node_flag = ignore_phantom_node_flag <- false
+
+  method moderate_moves_flag = moderate_moves_flag
+  method set_moderate_moves_flag = moderate_moves_flag <- true
+  method clear_moderate_moves_flag = moderate_moves_flag <- false
 
 (* *)
 

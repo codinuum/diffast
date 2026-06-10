@@ -511,37 +511,31 @@ module F (Label : Spec.LABEL_T) = struct
         (Xlist.to_string (Diffast_misc.Edit._to_string to_s1 to_s2) "\n" rels)]
     end;
 
-    match rels with
-(*
-  [Diffast_misc.Edit.Relabel(i1, i2)] ->
-  let nd1, nd2 = tree1#get i1, tree2#get i2 in
-  addtree [] nd1 nd2
- *)
-    | _ ->
-        let subs =
-          List.fold_left
-            (fun subs ed ->
-              match ed with
-                Diffast_misc.Edit.Relabel(i1, i2) ->
-                  let nd1, nd2 = tree1#get i1, tree2#get i2 in
-                  if matching_cond options tree1 tree2 nd1 nd2 then
-                    addtree subs nd1 nd2
-                  else
-                    subs
-              | _ -> subs
-            ) [] rels
-        in
-        begin %debug_block
-          let len = (List.length subs) in
-          [%debug_log "%d subtree(s)\n" len];
-          List.iter
-            (fun (t1, t2) ->
-              [%debug_log "T1:\n%s\nT2:\n%s\n"
-                t1#to_string t2#to_string]
-            ) subs
-        end;
+    let subs =
+      List.fold_left
+        (fun subs ed ->
+          match ed with
+            Diffast_misc.Edit.Relabel(i1, i2) ->
+              let nd1 = tree1#get i1 in
+              let nd2 = tree2#get i2 in
+              if matching_cond options tree1 tree2 nd1 nd2 then
+                addtree subs nd1 nd2
+              else
+                subs
+          | _ -> subs
+        ) [] rels
+    in
 
-        subs
+    begin %debug_block
+      let len = (List.length subs) in
+      [%debug_log "%d subtree(s)\n" len];
+      List.iter
+        (fun (t1, t2) ->
+          [%debug_log "T1:\n%s\nT2:\n%s\n"
+             t1#to_string t2#to_string]
+        ) subs
+    end;
+    subs
   (* end of func find_matching_subtrees *)
 
 
@@ -959,6 +953,7 @@ module F (Label : Spec.LABEL_T) = struct
     (*let dstat     = Filename.concat cache_path Stat.stat_file_name in*)
     let dstat_json = Filename.concat cache_path Stat.stat_file_name^".json" in
     let dmap      = Filename.concat cache_path Stat.map_file_name in
+    let dstmtmap  = Filename.concat cache_path ("stmt-"^Stat.map_file_name) in
     let dgmap     = Filename.concat cache_path "g"^Stat.map_file_name in
     let dmapfact  = Filename.concat cache_path Stat.map_file_name^".nt" in
     let dsrc      = Filename.concat cache_path Stat.sources_file_name in
@@ -1053,7 +1048,8 @@ module F (Label : Spec.LABEL_T) = struct
 
       if not options#dist_flag then begin
         nmapping#dump_with_info ~comp:Compression.gzip (dmap^".gz");
-        nmapping#dump_json ~comp:Compression.gzip (dmap^".json.gz");
+        nmapping#dump_map_json ~comp:Compression.gzip (dmap^".json.gz");
+        edits#dump_stmt_map_json ~comp:Compression.gzip cenv nmapping (dstmtmap^".json.gz");
 
         let moved_nodes = edits#get_moved_nodes tree1 in
         let is_mov n1 n2 =
@@ -1552,8 +1548,8 @@ end;
       [%debug_log "nmapping BEFORE EDIT SEQ GENERATION: %s" nmapping#to_string];
 
       if options#recover_orig_ast_flag then begin
-        let dnl1 = tree1#recover_true_children ~initial_only:true () in
-        let dnl2 = tree2#recover_true_children ~initial_only:true () in
+        let dnl1, mnl1 = tree1#recover_true_children ~initial_only:true () in
+        let dnl2, mnl2 = tree2#recover_true_children ~initial_only:true () in
         List.iter
           (fun dn1 ->
             try
@@ -1569,7 +1565,52 @@ end;
               ignore (nmapping#remove dn2' dn2);
               cenv#multiple_node_matches#remove dn2#data#_label
             with _ -> ()
-          ) dnl2
+          ) dnl2;
+        cenv#multiple_subtree_matches#filter mnl1 mnl2;
+
+        let getmems tree nd =
+          let m = ref [] in
+          tree#fast_scan_whole_initial_subtree nd (fun n -> m := n::!m);
+          !m
+        in
+        let dtbl1 = Hashtbl.create 0 in
+        let dtbl2 = Hashtbl.create 0 in
+        List.iter
+          (fun (nl, dtbl, tree) ->
+            List.iter
+              (fun n ->
+                match n#data#_digest with
+                | Some d -> begin
+                    let ndmem = (n, getmems tree n) in
+                    try
+                      let ndmems = Hashtbl.find dtbl d in
+                      Hashtbl.replace dtbl d (ndmem::ndmems)
+                    with
+                      Not_found -> Hashtbl.add dtbl d [ndmem]
+                end
+                | None -> ()
+              ) nl
+          ) [mnl1, dtbl1, tree1; mnl2, dtbl2, tree2];
+        Hashtbl.iter
+          (fun d ndmems1 ->
+            try
+              let ndmems2 = Hashtbl.find dtbl2 d in
+              match ndmems1, ndmems2 with
+              | [], _ | _, [] -> ()
+              | ndmem1::rest1, ndmem2::rest2 -> begin
+                  let sz = List.length (snd ndmem1) in
+                  [%debug_log "multiple subtree matches (sz=%d)" sz];
+                  [%debug_log "[%s] <--> [%s]"
+                     (Xlist.to_string (fun (n, _) -> UID.to_string n#uid) ";" ndmems1)
+                     (Xlist.to_string (fun (n, _) -> UID.to_string n#uid) ";" ndmems2)];
+                  match rest1, rest2 with
+                  | [], [] -> cenv#add_subtree_match (fst ndmem1) (fst ndmem2) sz
+                  | _ -> cenv#multiple_subtree_matches#add d (ndmems1, ndmems2)
+              end
+            with
+              Not_found -> ()
+          ) dtbl1
+
       end;
 
 
@@ -1588,13 +1629,16 @@ end;
       Xprint.verbose options#verbose_flag "fixing up edit sequences...";
       Postprocessing.fixup_edits options lang cenv tree1 tree2 pruned edits nmapping pre_nmapping;
 
+      (*tree1#setup_final_labels();
+      tree2#setup_final_labels();*)
+
       let dchange = Filename.concat cache_path Stat.changes_file_name in
       let edits_copy = edits#copy in
       edits_copy#ungroup tree1 tree2;
       edits_copy#cleanup_ghost tree1 tree2;
       Edit.dump_changes options lang tree1 tree2 nmapping edits_copy edits dchange;
 
-      if options#dump_delta_flag then begin
+      (*if options#dump_delta_flag then begin
         let delta =
           if options#dump_delta_out <> "" then
             options#dump_delta_out
@@ -1603,10 +1647,13 @@ end;
         in
         let info_file_path = Filename.concat cache_path "delta_info.json" in
         edits#dump_delta ~info_file_path tree1 tree2 nmapping edits_copy delta
-      end;
+      end;*)
 
       let orig_edits, find_mov_gr, find_mov_gr_mems =
-        if options#ignore_non_orig_relabel_flag || options#ignore_move_of_unordered_flag then
+        if
+          options#ignore_non_orig_relabel_flag ||
+          options#ignore_move_of_unordered_flag
+        then
           edits#copy, Hashtbl.find edits_copy#_mov_gr_tbl, Hashtbl.find edits_copy#_mov_gr_mem_tbl
         else
           edits, (fun _ -> raise Not_found), (fun _ -> raise Not_found)
@@ -1637,9 +1684,11 @@ end;
                   [%debug_log "filtered: %s" (Edit.to_string rel)];
                   false
                 end
-                | _ when nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq -> begin
-                    [%debug_log "filtered: %s" (Edit.to_string rel)];
-                    false
+                | _ when begin
+                    nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
+                end -> begin
+                  [%debug_log "filtered: %s" (Edit.to_string rel)];
+                  false
                 end
 
                 | _ -> true
@@ -1692,6 +1741,8 @@ end;
           b
         in
         let has_stably_mapped_descendant nd1 nd2 =
+          let gi1 = nd1#gindex in
+          let lgi1 = (tree1#initial_leftmost nd1)#gindex in
           let gi2 = nd2#gindex in
           let lgi2 = (tree2#initial_leftmost nd2)#gindex in
           let b =
@@ -1699,12 +1750,47 @@ end;
               (fun x1 ->
                 try
                   let x2 = nmapping#find x1 in
-                  let g2 = x2#gindex in
-                  lgi2 <= g2 && g2 < gi2 &&
-                  not (edits#mem_mov12 x1 x2)
+                  if edits_copy#mem_mov12 x1 x2 then begin
+                    [%debug_log "move: %a -> %a" nps x1 nps x2];
+                    let g2 = x2#gindex in
+                    if lgi2 <= g2 && g2 < gi2 then begin
+                      false
+                    end
+                    else begin
+                      [%debug_log "outgoing"];
+                      true
+                    end
+                  end
+                  else begin
+                    [%debug_log "found: %a -> %a" nps x1 nps x2];
+                    true
+                  end
                 with
                   _ -> false
               ) nd1
+          ||
+            Misc.has_p_descendant
+              (fun x2 ->
+                try
+                  let x1 = nmapping#inv_find x2 in
+                  if edits_copy#mem_mov12 x1 x2 then begin
+                    [%debug_log "move: %a <- %a" nps x1 nps x2];
+                    let g1 = x1#gindex in
+                    if lgi1 <= g1 && g1 < gi1 then begin
+                      false
+                    end
+                    else begin
+                      [%debug_log "incoming"];
+                      true
+                    end
+                  end
+                  else begin
+                    [%debug_log "found: %a <- %a" nps x1 nps x2];
+                    true
+                  end
+                with
+                  _ -> false
+              ) nd2
           in
           [%debug_log "%a-%a -> %B" nups nd1 nups nd2 b];
           b
@@ -1735,11 +1821,14 @@ end;
           end
           | _ -> assert false
         in
+
         let check_mov_for_delta nd1 nd2 = function
           | Editop.Move(mid, _, (_, exc1), (_, exc2)) as mov -> begin
+              [%debug_log "nd1=%a" nps nd1];
+              [%debug_log "nd2=%a" nps nd2];
               let b =
                 nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
-                !exc1 = [] && !exc2 = [] &&
+                (*!exc1 = [] && !exc2 = [] &&*)
                 let pnd1 = nd1#initial_parent in
                 let pnd2 = nd2#initial_parent in
                 (try nmapping#find pnd1 == pnd2 with _ -> false) &&
@@ -1845,9 +1934,24 @@ end;
                 true
           end
           | _ -> true
-        )
+        );
+        edits#sync
       end;
+      [%debug_log "moves filtered."];
+      [%debug_log "\nEdits:\n%s\n" (edits#to_string)];
+
       Xprint.verbose options#verbose_flag "done.";
+
+      if options#dump_delta_flag then begin
+        let delta =
+          if options#dump_delta_out <> "" then
+            options#dump_delta_out
+          else
+            Filename.concat cache_path Delta_base.delta_file_name^".xml"
+        in
+        let info_file_path = Filename.concat cache_path "delta_info.json" in
+        edits#dump_delta ~info_file_path tree1 tree2 nmapping edits_copy delta
+      end;
 
       begin %debug_block
         let moved_nodes = edits#get_moved_nodes tree1 in
@@ -1987,30 +2091,6 @@ end;
       Stat.dump_file_info options file1 tree1;
       Stat.dump_file_info options file2 tree2;
 
-      if options#fact_flag then begin
-        let extract_fact1 = lang#extract_fact options cache_path1 in
-        let extract_fact2 = lang#extract_fact options cache_path2 in
-
-        begin
-          try
-            let r = options#fact_proj_roots.(0) in
-            tree1#set_proj_root r
-        with
-          Invalid_argument _ -> ()
-        end;
-        begin
-          try
-            let r = options#fact_proj_roots.(1) in
-            tree2#set_proj_root r
-        with
-          Invalid_argument _ -> ()
-        end;
-
-        extract_fact1 tree1;
-        extract_fact2 tree2;
-
-      end;
-
 (*
       Xprint.verbose options#verbose_flag "line terminator of T1: %s"
         tree1#line_terminator_name;
@@ -2026,6 +2106,8 @@ end;
 
       Xprint.verbose options#verbose_flag "digest of T1: %s" (Xhash.to_hex digest1);
       Xprint.verbose options#verbose_flag "digest of T2: %s" (Xhash.to_hex digest2);
+
+      let diff_status =
 
       if digest1 = digest2 then begin
         [%debug_log "genarating trivial mapping..."];
@@ -2077,6 +2159,10 @@ end;
 
         if options#preprune_flag || options#prematch_flag then begin
 
+          let get_orig_name n =
+            sprintf "%s %s" n#data#get_category (Comparison.get_orig_name n)
+          in
+
           tree1#fast_scan_whole_initial
             (fun nd ->
               add ltbl1 (getlab nd) nd;
@@ -2084,7 +2170,7 @@ end;
                 nd#data#is_boundary && nd#data#is_named_orig &&
                 not nd#data#is_sequence && not nd#data#is_ntuple
               then
-                add b_ltbl1 (Comparison.get_orig_name nd) nd
+                add b_ltbl1 (get_orig_name nd) nd
             );
           tree2#fast_scan_whole_initial
             (fun nd ->
@@ -2093,7 +2179,7 @@ end;
                 nd#data#is_boundary && nd#data#is_named_orig &&
                 not nd#data#is_sequence && not nd#data#is_ntuple
               then
-                add b_ltbl2 (Comparison.get_orig_name nd) nd
+                add b_ltbl2 (get_orig_name nd) nd
             );
 
           begin %debug_block
@@ -2354,7 +2440,7 @@ end;
             [%debug_log "%sdigest (or value) match: %a[%a] <--> %a[%a] <%a> (size=%d)" mes
               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1 sz];
 
-            cenv#add_subtree_match (nd1, nd2, sz);
+            cenv#add_subtree_match nd1 nd2 sz;
 
             if not add_parent_match_only then begin
               pre_map_add nd1 nd2;
@@ -3109,6 +3195,7 @@ end;
             in
             List.iter
               (fun (c1, c2) ->
+                [%debug_log "%a-%a" nups c1 nups c2];
                 if not (c1#data#relabel_allowed c2#data) then
                   ()
                 else begin
@@ -3119,6 +3206,7 @@ end;
                   let cc1 = c1#initial_children.(0) in
                   let cc2 = c2#initial_children.(0) in
                   if cc1#data#anonymized_label = cc2#data#anonymized_label then begin
+                    [%debug_log "%a-%a" nups cc1 nups cc2];
                     ignore (pre_nmapping#add_unsettled cc1 cc2);
                     pre_nmapping#add_to_pre_boundary_mapping cc1 cc2
                   end
@@ -3143,20 +3231,54 @@ end;
                     in
                     SMP.get_stable_matches cmpr cca1 cca2
                   in
+                  let rec matchx ccx1 ccx2 =
+                    [%debug_log "%a-%a" nups ccx1 nups ccx2];
+                    ignore (pre_nmapping#add_settled ~stable ccx1 ccx2);
+                    pre_nmapping#add_to_pre_boundary_mapping ccx1 ccx2;
+                    if ccx1#initial_nchildren = 1 && ccx2#initial_nchildren = 1 then begin
+                      let cccx1 = ccx1#initial_children.(0) in
+                      let cccx2 = ccx2#initial_children.(0) in
+                      if cccx1#data#anonymized_label = cccx2#data#anonymized_label then begin
+                        matchx cccx1 cccx2
+                      end
+                    end
+                    else if
+                      let nc1 = ccx1#initial_nchildren in
+                      let nc2 = ccx2#initial_nchildren in
+                      nc1 = nc2 &&
+                      let count_distinct ca =
+                        let s = Xset.create 0 in
+                        Array.iter (fun n -> Xset.add s n#data#_label) ca;
+                        Xset.size s
+                      in
+                      count_distinct ccx1#initial_children = nc1 &&
+                      count_distinct ccx2#initial_children = nc2
+                    then begin
+                      let cccxa1 = ccx1#initial_children in
+                      let cccxa2 = ccx2#initial_children in
+                      let selected_child_child_child_pair_list =
+                        let cmpr =
+                          new SMP.ComparatorFloat.c
+                            (fun cccx1 cccx2 ->
+                              if cccx1#data#eq cccx2#data then
+                                1.0
+                              else if cccx1#data#anonymized_label = cccx2#data#anonymized_label then
+                                0.5
+                              else
+                                0.0
+                            ) cccxa1 cccxa2
+                        in
+                        SMP.get_stable_matches cmpr cccxa1 cccxa2
+                      in
+                      List.iter
+                        (fun (cccx1, cccx2) ->
+                          matchx cccx1 cccx2
+                        ) selected_child_child_child_pair_list
+                    end
+                  in
                   List.iter
                     (fun (cc1, cc2) ->
-                      ignore (pre_nmapping#add_settled ~stable cc1 cc2);
-                      pre_nmapping#add_to_pre_boundary_mapping cc1 cc2;
-
-                      if cc1#initial_nchildren = 1 && cc2#initial_nchildren = 1 then begin
-                        let ccc1 = cc1#initial_children.(0) in
-                        let ccc2 = cc2#initial_children.(0) in
-                        if ccc1#data#anonymized_label = ccc2#data#anonymized_label then begin
-                          ignore (pre_nmapping#add_unsettled ccc1 ccc2);
-                          pre_nmapping#add_to_pre_boundary_mapping ccc1 ccc2
-                        end
-                      end
-
+                      matchx cc1 cc2
                     ) selected_child_child_pair_list
                 end
                 end
@@ -3214,13 +3336,30 @@ end;
                 begin
                   [%debug_log "[%a]-[%a]" nsps nds1 nsps nds2];
                   let get_uniq_child_ntuple n =
-                    let xl = ref [] in
-                    Array.iter
-                      (fun c ->
-                        if c#data#is_ntuple then
-                          xl := c :: !xl
-                      ) n#initial_children;
-                    match !xl with
+                    let xl =
+                      Array.fold_left
+                        (fun xl c ->
+                          if c#data#is_ntuple then
+                            c :: xl
+                          else
+                            xl
+                        ) [] n#initial_children
+                    in
+                    match xl with
+                    | [x] -> [%debug_log "%a -> %a" nups n nups x]; x
+                    | _ -> raise Not_found
+                  in
+                  let get_uniq_child_named_seq n =
+                    let xl =
+                      Array.fold_left
+                        (fun xl c ->
+                          if c#data#is_named && c#data#is_sequence then
+                            c :: xl
+                          else
+                            xl
+                        ) [] n#initial_children
+                    in
+                    match xl with
                     | [x] -> [%debug_log "%a -> %a" nups n nups x]; x
                     | _ -> raise Not_found
                   in
@@ -3228,17 +3367,49 @@ end;
                   | [nd1], [nd2] -> begin
                       if
                         nd1#data#is_boundary && nd1#data#is_named_orig &&
-                        not nd1#data#is_sequence && not nd1#data#is_ntuple &&
-                        try
-                          let cnd1 = get_uniq_child_ntuple nd1 in
-                          let cnd2 = get_uniq_child_ntuple nd2 in
-                          not (cnd1#data#subtree_equals cnd2#data)
-                        with _ -> false
+                        not nd1#data#is_sequence && not nd1#data#is_ntuple
                       then begin
-                        [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
-                          nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
+                        try
+                          if
+                            let ntpl1 = get_uniq_child_ntuple nd1 in
+                            let ntpl2 = get_uniq_child_ntuple nd2 in
+                            not (ntpl1#data#subtree_equals ntpl2#data)
+                          then begin
+                            [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
+                               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
 
-                        setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
+                            setup_boundary_mapping ~weak:true(* ~stable:true*) nd1 nd2
+                          end
+                          else begin
+                            [%debug_log "boundary node match: %a[%a] <--> %a[%a] <%a>"
+                               nups nd1 locps nd1 nups nd2 locps nd2 labps nd1];
+
+                            let seq1 = get_uniq_child_named_seq nd1 in
+                            let seq2 = get_uniq_child_named_seq nd2 in
+                            [%debug_log "seq1=%a" nps seq1];
+                            [%debug_log "seq2=%a" nps seq2];
+                            let _lab1 = getlab seq1 in
+                            let _lab2 = getlab seq2 in
+                            if
+                              _lab1 = _lab2 &&
+                              let nl1 =
+                                try List.length (Hashtbl.find ltbl1 _lab1) with _ -> 0
+                              in
+                              let nl2 =
+                                try List.length (Hashtbl.find ltbl2 _lab2) with _ -> 0
+                              in
+                              [%debug_log "nl1=%d nl2=%d" nl1 nl2];
+                              nl1 > 1 && nl1 = nl2
+                            then begin
+                              ignore (pre_nmapping#add_unsettled seq1 seq2);
+                              pre_nmapping#add_to_pre_boundary_mapping seq1 seq2;
+                              ignore (pre_nmapping#add_settled nd1 nd2);
+                              pre_nmapping#add_to_pre_boundary_mapping nd1 nd2;
+                              pre_nmapping#finalize_mapping nd1 nd2;
+                            end
+                          end
+                        with
+                          _ -> ()
                       end
                   end
                   | _ -> ()
@@ -3281,6 +3452,34 @@ end;
           tree1 tree2
 
       end
+
+      in
+
+      if options#fact_flag then begin
+        let extract_fact1 = lang#extract_fact options cache_path1 in
+        let extract_fact2 = lang#extract_fact options cache_path2 in
+
+        begin
+          try
+            let r = options#fact_proj_roots.(0) in
+            tree1#set_proj_root r
+        with
+          Invalid_argument _ -> ()
+        end;
+        begin
+          try
+            let r = options#fact_proj_roots.(1) in
+            tree2#set_proj_root r
+        with
+          Invalid_argument _ -> ()
+        end;
+
+        extract_fact1 tree1;
+        extract_fact2 tree2;
+
+      end;
+
+      diff_status
 (*
     with
     | Sys_error msg -> Xprint.error "%s" msg; exit 1

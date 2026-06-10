@@ -341,7 +341,7 @@ class c = object (self)
   method clear_ignore_if0_flag = ignore_if0_flag <- false
 
   (* Java *)
-  val mutable java_anon_ctor_body_flag = false
+  val mutable java_anon_ctor_body_flag = true
   val mutable java_lang_spec = default_java_lang_spec
 
   (* Python *)

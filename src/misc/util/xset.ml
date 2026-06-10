@@ -44,7 +44,12 @@ let to_list (set : 'a t) = Hashtbl.fold (fun x _ l -> x::l) set []
 
 let from_list l =
   let s = create (List.length l) in
-  List.iter (fun x -> add s x) l;
+  List.iter (add s) l;
+  s
+
+let from_array a =
+  let s = create (Array.length a) in
+  Array.iter (add s) a;
   s
 
 exception Found
@@ -105,3 +110,17 @@ let filter_inplace f (s : 'a t) =
         to_be_removed := x :: !to_be_removed
     ) s;
   List.iter (remove s) !to_be_removed
+
+let intersection (s0 : 'a t) (s1 : 'a t) =
+  let s' = create 0 in
+  iter
+    (fun x ->
+      if mem s1 x then
+        add s' x
+    ) s0;
+  s'
+
+let union (s0 : 'a t) (s1 : 'a t) =
+  let s' = copy s0 in
+  iter (add s') s1;
+  s'

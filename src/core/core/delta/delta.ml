@@ -373,6 +373,8 @@ module Edit = struct
       val mutable _filter = fun _ -> true
       val filt_blacklist = Xset.create 0 (* node set *)
 
+      val mutable hunk_count = 0
+
       val staying_moves = Xset.create 0
       val remote_stable_tbl = Hashtbl.create 0
 
@@ -467,6 +469,7 @@ module Edit = struct
       initializer
         List.iter
           (fun ed ->
+            (*[%debug_log "@@@ %s" (to_string ed)];*)
             match ed with
             | Delete(nd1, excluded1) -> begin
                 scan_initial_cluster nd1 excluded1
@@ -511,7 +514,8 @@ module Edit = struct
                     options#ignore_non_orig_relabel_flag &&
                     match nd1#data#orig_lab_opt, nd2#data#orig_lab_opt with
                     | Some o1, Some o2 ->
-                        o1 = o2 || nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
+                        o1 = o2 ||
+                        nd1#data#orig_to_elem_data_for_eq = nd2#data#orig_to_elem_data_for_eq
                     | _ -> false
                   end then begin
                     [%debug_log "filtered: %s" (to_string ed)];
@@ -549,7 +553,8 @@ module Edit = struct
                       Exit -> false) &&
                     match edit_seq#find12 pnd1 pnd2 with
                     | [] -> true
-                    | [Editop.Relabel _] -> pnd1#data#elem_name_for_delta = pnd2#data#elem_name_for_delta
+                    | [Editop.Relabel _] ->
+                        pnd1#data#elem_name_for_delta = pnd2#data#elem_name_for_delta
                     | _ -> false
                   then begin
                     [%debug_log "filtered: %s" (to_string ed)];
@@ -565,6 +570,8 @@ module Edit = struct
         failwith ("Delta.Edit.seq#"^mes)
 
       method private filter ed = _filter ed
+
+      method hunk_count = hunk_count
 
       method private is_node_to_be_lifted = Hashtbl.mem nodes_to_be_lifted_tbl
       method private get_key_of_node_to_be_lifted k =
@@ -6749,6 +6756,8 @@ module Edit = struct
           (nmapping : 'node Node_mapping.c)
           (ch : Xchannel.out_channel)
           =
+        let delta_info_flag = true in
+
         let node_diff_elem_attrs node1 node2 =
           let a1 = node1#data#orig_elem_attrs_for_delta in
           let a2 = node2#data#orig_elem_attrs_for_delta in
@@ -9987,7 +9996,12 @@ module Edit = struct
         in
 
         let dump_content tree root excluded =
-          tree#dump_subtree_for_delta_ch root excluded
+          let add_info = delta_info_flag && info_file_name <> "" in
+          tree#dump_subtree_for_delta_ch
+            ?add_info:(Some add_info)
+            ?node_map:(Some nmapping#inv_find)
+            root
+            excluded
         in
 
         let irrf x = Fmt.Irr x in
@@ -10049,14 +10063,12 @@ module Edit = struct
           _get_child_staying_moves parent_staying_move_tbl2 mid paths
         in
 
-        let delta_info_flag = true in
-
         let is_def nd = Binding.is_def nd#data#binding in
 
         let info_add, paths_info_add, dump_info =
           if delta_info_flag && info_file_name <> "" then begin
             let scope_nodes = Xset.create 0 in
-            let info_tbl = Hashtbl.create 0 in (* apath -> syn_cat * line_num * column_num *)
+            let info_tbl = Hashtbl.create 0 in (* apath -> node_data * line_num * column_num *)
             let add ?(add_scope_node=true) ?(path="") nd =
               let ap =
                 if path = "" then
@@ -10113,14 +10125,15 @@ module Edit = struct
               Xset.iter add_defs scope_nodes;
               let l =
                 Hashtbl.fold
-                  (fun ap (name, ln, cn, scope_path_opt, nchildren) l ->
-                    (ap, name, ln, cn, scope_path_opt, nchildren)::l
+                  (fun ap (ndat, ln, cn, scope_path_opt, nchildren) l ->
+                    (ap, ndat, ln, cn, scope_path_opt, nchildren)::l
                   ) info_tbl []
               in
               let sorted =
                 List.fast_sort
-                  (fun (_, _, ln0, cn0, _, _) (_, _, ln1, cn1, _, _) -> compare (ln0, cn0) (ln1, cn1))
-                  l
+                  (fun (_, _, ln0, cn0, _, _) (_, _, ln1, cn1, _, _) ->
+                    compare (ln0, cn0) (ln1, cn1)
+                  ) l
               in
               let dest = Xchannel.Destination.of_file info_file_name in
               let info_ch = new Xchannel.out_channel dest in
@@ -10141,9 +10154,15 @@ module Edit = struct
                       | Some p -> sprintf ",\"scope_path\":\"%s\"" p
                       | None -> ""
                     in
+                    let bid_ =
+                      try
+                        let bid = Binding.get_bid ndata#binding in
+                        sprintf ",\"bid\":\"%a\"" Binding.ID.ps bid
+                      with _ -> ""
+                    in
                     Xchannel.fprintf info_ch
-                      "%s\"%s\":{\"name\":\"%s\"%s,\"line\":%d,\"column\":%d%s,\"nchildren\":%d}"
-                      comma ap name aname_ ln cn scope_path_ nchildren;
+                      "%s\"%s\":{\"name\":\"%s\"%s,\"line\":%d,\"column\":%d%s,\"nchildren\":%d%s}"
+                      comma ap name aname_ ln cn scope_path_ nchildren bid_;
                     ","
                   ) "" sorted
               in
@@ -10733,6 +10752,11 @@ module Edit = struct
               begin
                 try
                   info_add pnd1#initial_parent;
+                with _ -> ()
+              end;
+              begin
+                try
+                  info_add nd1#initial_children.(0);
                 with _ -> ()
               end;
 
@@ -12061,6 +12085,8 @@ module Edit = struct
           ch;
 
         List.iter (dump ch) fmtl;
+
+        hunk_count <- List.length fmtl;
 
         output_ed_elem_root ch;
 

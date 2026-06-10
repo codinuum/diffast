@@ -35,6 +35,7 @@ let r ch mid = Stdlib.output_string ch (to_raw mid)
 
 let ps () mid = to_string mid
 
+[%%capture_path
 class generator = object
   val mutable id = 0
   method reset = id <- 0
@@ -44,3 +45,4 @@ class generator = object
     [%debug_log "%a" ps mid];
     mid
 end
+]

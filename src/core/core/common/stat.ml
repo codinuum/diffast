@@ -126,6 +126,7 @@ module File = struct
                      s_units            : int;
                      s_unmodified_units : int;
                      s_total_changes    : int;
+                     s_total_hunks      : int;
                      s_similarity       : string;
                      s_change_ratio     : string;
                      s_unmodified_rate  : string;
@@ -147,6 +148,7 @@ module File = struct
                                  s_units    = 0;
                                  s_unmodified_units = 0;
                                  s_total_changes    = 0;
+                                 s_total_hunks      = 0;
                                  s_similarity       = "0.0";
                                  s_change_ratio     = "0.0";
                                  s_unmodified_rate  = "1.0";
@@ -174,6 +176,7 @@ module File = struct
           s_units    = units;
           s_unmodified_units = unmodified_units;
           s_total_changes    = 0;
+          s_total_hunks      = 0;
           s_similarity       = "0.0";
           s_change_ratio     = "0.0";
           s_unmodified_rate  = "1.0";
@@ -194,6 +197,7 @@ module File = struct
     "mov+rels : %d(orig:%d)\n" ^^
     "moves(hunks) : %d(%d)\n\n" ^^
     "total changes : %d\n" ^^
+    "total hunks   : %d\n" ^^
     "mapping size  : %d\n" ^^
     "similarity    : %s\n" ^^
     "CMR           : %s\n\n" ^^
@@ -214,6 +218,7 @@ module File = struct
     "mov+rels : %d (orig:%d)\n" ^^
     "moves(hunks) : %d(%d)\n" ^^
     "total changes : %d\n" ^^
+    "total hunks   : %d\n" ^^
     "mapping size  : %d\n" ^^
     "similarity    : %s\n"
 
@@ -226,6 +231,7 @@ module File = struct
     "\"move+relabels\":%d,\"orig_move+relabels\":%d," ^^
     "\"moves\":%d,\"move_groups\":%d," ^^
     "\"edit_cost\":%d," ^^
+    "\"nhunks\":%d," ^^
     "\"nmappings\":%d," ^^
     "\"similarity\":%s" ^^
     "}"
@@ -239,6 +245,7 @@ module File = struct
       s.s_movrels s.s_movrels_orig
       s.s_moves s.s_moves_gr
       s.s_total_changes
+      s.s_total_hunks
       s.s_mapping
       s.s_similarity
 
@@ -252,6 +259,7 @@ module File = struct
         s.s_movrels s.s_movrels_orig
         s.s_moves s.s_moves_gr
         s.s_total_changes
+        s.s_total_hunks
         s.s_mapping
         s.s_similarity
     else
@@ -263,6 +271,7 @@ module File = struct
         s.s_movrels s.s_movrels_orig
         s.s_moves s.s_moves_gr
         s.s_total_changes
+        s.s_total_hunks
         s.s_mapping
         s.s_similarity
         s.s_change_ratio
@@ -331,7 +340,7 @@ module File = struct
     scan_paths ~max_retry_count
       (fun ch ->
         fscanf ch (diff_stat_fmt())
-          (fun n1 n2 d dg i ig r ro rg rm rmo m mg tc map sim cr u uu ur spsm mgsm spm mgm ahs ->
+          (fun n1 n2 d dg i ig r ro rg rm rmo m mg tc th map sim cr u uu ur spsm mgsm spm mgm ahs ->
             { s_nnodes1  = n1; s_nnodes2     = n2;
               s_deletes  = d;  s_deletes_gr  = dg;
               s_inserts  = i;  s_inserts_gr  = ig;
@@ -342,6 +351,7 @@ module File = struct
               s_units            = u;
               s_unmodified_units = uu;
               s_total_changes    = tc;
+              s_total_hunks      = th;
               s_similarity       = sim;
               s_change_ratio     = cr;
               s_unmodified_rate  = ur;
@@ -380,6 +390,7 @@ module Dir = struct
                      mutable s_relabels         : int; mutable s_relabels_gr : int;
                      mutable s_movrels          : int;
                      mutable s_moves            : int; mutable s_moves_gr    : int;
+                     mutable s_hunks            : int;
                      mutable s_mapping          : int;
                      mutable s_units            : int;
                      mutable s_unmodified_units : int;
@@ -392,6 +403,7 @@ module Dir = struct
                             s_relabels = 0; s_relabels_gr = 0;
                             s_movrels  = 0;
                             s_moves    = 0; s_moves_gr    = 0;
+                            s_hunks    = 0;
                             s_mapping  = 0;
                             s_units    = 0;
                             s_unmodified_units = 0;
@@ -407,6 +419,7 @@ module Dir = struct
     "mov+rels : %d\n" ^^
     "moves(hunks) : %d(%d)\n" ^^
     "total changes : %d\n" ^^
+    "total hunks   : %d\n" ^^
     "mapping size  : %d\n" ^^
     "similarity    : %s\n"
 
@@ -429,6 +442,7 @@ module Dir = struct
         s.s_movrels
         s.s_moves s.s_moves_gr
         total
+        s.s_hunks
         s.s_mapping
         sim
     else begin
@@ -440,6 +454,7 @@ module Dir = struct
       fprintf ch "movrels  : %d\n" s.s_movrels;
       fprintf ch "moves    : %d(%d)\n\n" s.s_moves s.s_moves_gr;
       fprintf ch "total changes : %d\n" total;
+      fprintf ch "total hunks   : %d\n" s.s_hunks;
       fprintf ch "mapping size  : %d\n" s.s_mapping;
       fprintf ch "similarity    : %s\n" sim;
       fprintf ch "CMR           : %.6f\n\n"
@@ -452,7 +467,7 @@ module Dir = struct
       fprintf ch "SPM  : %d\n" (s.s_mapping - s.s_moves);
       fprintf ch "AHS  : %.6f\n"
         ((float_of_int (s.s_deletes + s.s_inserts + s.s_moves))
-           /. (float_of_int (s.s_deletes_gr + s.s_inserts_gr + s.s_moves_gr)))
+           /. (float_of_int (s.s_deletes_gr + s.s_inserts_gr + s.s_moves_gr)));
     end
 
   let show_diff_stat ?(short=false) stat =

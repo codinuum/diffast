@@ -238,6 +238,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
   val del_tbl = Hashtbl.create 0 (* node -> (node * node list) *)
 
+  val mutable deferred_delete_list = []
+
   val marked_keys = Xset.create 0
 
   val mask_tbl = Hashtbl.create 0 (* key -> index list *)
@@ -303,6 +305,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
   val renamed_nodes = Xset.create 0
 
   (*val no_trans_mutations = Xset.create 0*)
+
+  method add_deferred_delete f = deferred_delete_list <- f::deferred_delete_list
 
   method add_deferred_relabel f = deferred_relabel_list <- f::deferred_relabel_list
 
@@ -1502,12 +1506,15 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     self#prune_deferred nodes;
 
+    [%debug_log "performing deferred deletes..."];
+    List.iter (fun f -> f()) deferred_delete_list;
+
     (*Printf.printf "*** begin1\n";
     preorder_scan_whole_initial_subtree tree#root
       (fun n -> Printf.printf "%s\n" n#initial_to_string);
     Printf.printf "*** end1\n";*)
 
-    [%debug_log "finished"]
+    [%debug_log "finished."]
 
 
   method prune_deferred nodes =
@@ -5539,6 +5546,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     in
     let mems = ref [] in
     let sub_del_mem_tbl = Hashtbl.create 0 in
+
+    if not (Hashtbl.mem deleted_mems_tbl nd) then
     scan_initial_cluster nd nds
       (fun n ->
         [%debug_log "%a -> %s" nps n (key_opt_to_string key_opt)];
@@ -5770,25 +5779,42 @@ class ['tree] interpreter (tree : 'tree) = object (self)
     Hashtbl.add excluded_paths_tbl mid (subtree, nd, paths_from);
 
     let excluded = List.map (fun p -> subtree#acc ?from:None p#path) paths_from in
-    [%debug_log "excluded:\n%s"
+    [%debug_log "excluded (%d):\n%s" (List.length excluded)
       (String.concat "\n" (List.map (fun n -> n#initial_to_string) excluded))];
 
     subtree#prune_initial_nodes excluded;
-
-    [%debug_log "copied subtree:\n%s" subtree#initial_to_string];
 
     let finally_deleted_nodes = Xset.create 0 in
     begin
       try
         let compo_tbl = Hashtbl.create 0 in
         let specs = Hashtbl.find_all sub_del_spec_tbl mid in
+        (*let specs =
+          if excluded <> [] then
+            specs
+          else
+            let sl = ref [] in
+            Hashtbl.iter
+              (fun dk (p, pl) ->
+                match dk with
+                | K_del _ when pl <> [] -> begin
+                    if p#path = path_from#path then begin
+                      [%debug_log "del_spec found: %s" (key_to_string dk)];
+                      sl := (new path_c Path.root, pl) :: !sl
+                    end
+                end
+                | _ -> ()
+              ) del_spec_tbl;
+            specs @ !sl
+        in*)
         let specs_ =
           List.map
             (fun (p, pl) ->
-              [%debug_log "sub_del_spec found: (%s,[%s])"
-                p#to_string (String.concat ";" (List.map (fun x -> x#to_string) pl))];
+              [%debug_log "%sdel_spec found: (%s,[%s])"
+                 (if p#path = Path.root then "" else "sub_")
+                 p#to_string (String.concat ";" (List.map (fun x -> x#to_string) pl))];
               let rt = subtree#acc ?from:None p#path in
-              let pnd = rt#initial_parent in
+              let pnd = try rt#initial_parent with _ -> rt in
               let pos = rt#initial_pos in
               let nds = List.map (fun x -> subtree#acc ?from:(Some rt) x#path) pl in
               [%debug_log "rt=%a pnd=%a pos=%d nds=[%a]" nps rt nps pnd pos nsps nds];
@@ -5811,17 +5837,55 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         List.iter
           (fun (rt, pnd, pos, nds) ->
             if not (Xset.mem used rt) then begin
+              [%debug_log "rt=%a pnd=%a pos=%d nds=[%a]" nps rt nps pnd pos nsps nds];
               let nds' = List.concat_map trace nds in
-              [%debug_log "rt=%a pnd=%a pos=%d nds'=[%a]" nps rt nps pnd pos nsps nds'];
-              if nds' <> [] then begin
-                scan_initial_cluster rt nds' (fun x -> Xset.add finally_deleted_nodes x#uid)
-              end;
-              self#prune_cluster pnd pos nds'
+              [%debug_log "nds'=[%a]" nsps nds'];
+              if nds' = [] then begin
+                scan_whole_initial_subtree rt
+                  (fun x ->
+                    [%debug_log "x=%a" nps x];
+                    Xset.add finally_deleted_nodes x#uid
+                  );
+                self#add_deferred_delete
+                  (fun () ->
+                    [%debug_log "rt=%a" nps rt];
+                    subtree#prune_initial_nodes [rt])
+              end
+              else(* if rt != pnd then*) begin
+                scan_initial_cluster rt nds'
+                  (fun x ->
+                    [%debug_log "x=%a" nps x];
+                    Xset.add finally_deleted_nodes x#uid
+                  );
+                self#add_deferred_delete
+                  (fun () ->
+                    [%debug_log "rt=%a nds'=[%a]" nps rt nsps nds'];
+                    let nds' =
+                      List.map
+                        (fun n ->
+                          [%debug_log "n=%s" n#to_string];
+                          try
+                            let n' =
+                              let pn = n#parent in
+                              [%debug_log "pn=%s" pn#initial_to_string];
+                              pn#initial_children.(n#pos)
+                            in
+                            if n' != n then
+                              [%debug_log "%a -> %a" nps n nps n'];
+                            n'
+                          with _ -> n
+                        ) nds'
+                    in
+                    subtree#prune_initial_cluster rt nds')
+              end
+              (*self#prune_cluster pnd pos nds'*)
             end
           ) specs_
       with
         Not_found -> ()
     end;
+
+    [%debug_log "copied subtree:\n%s" subtree#initial_to_string];
 
     Hashtbl.add copied_subtree_tbl mid subtree;
     Hashtbl.add copied_subtree_sz_tbl mid (subtree#size_of_initial_cluster (subtree#root, []));
@@ -5847,7 +5911,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       (fun n ->
         [%debug_log "%a -> %s" nps n (key_to_string key)];
         if Xset.mem finally_deleted_nodes n#uid then
-          [%debug_log "canceled since %a will be deleted at last" nps n]
+          [%debug_log "canceled since %a will eventually be deleted" nps n]
         else
           Hashtbl.add key_tbl n key
       );
@@ -6112,7 +6176,16 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       ) paths
 
 
-  method insert_into_subtree ?(adj=0) ?(shift=0) (path : path_c) depth parent_tree subtree nes =
+  method insert_into_subtree
+      ?(partial=false)
+      ?(adj=0)
+      ?(shift=0)
+      (path : path_c)
+      depth
+      parent_tree
+      subtree
+      nes
+      =
     let head_path = Path.head path#path (-depth) in
     [%debug_log "head_path=%s" (Path.to_string head_path)];
 
@@ -6138,7 +6211,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       else
         pa
     in
-    self#insert_cluster pnd pos' ofs subtree#root nes
+    self#insert_cluster ~partial pnd pos' ofs subtree#root nes
 
 
 
@@ -6330,6 +6403,8 @@ class ['tree] interpreter (tree : 'tree) = object (self)
       (Xlist.to_string
          (fun (n, e) -> sprintf "<%a,%s>" nps n (Elem.to_string e)) ";" nes)];
 
+    let partial = self#is_marked_key key in
+
     let default() =
       let pos', ofs' =
         match shift_opt with
@@ -6337,8 +6412,6 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         | None -> pos, ofs
       in
       [%debug_log "-> pos'=%d ofs'=%s" pos' (Elem.ofs_to_str ofs')];
-
-      let partial = self#is_marked_key key in
 
       self#insert_cluster ~partial pnd pos' ofs' subtree#root nes
     in (* default *)
@@ -6366,7 +6439,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
             in
             [%debug_log "-> shift=%d" shift];
 
-            self#insert_into_subtree ~adj ~shift path depth parent_tree subtree nes
+            self#insert_into_subtree ~partial ~adj ~shift path depth parent_tree subtree nes
 
           with
             Not_found -> default()

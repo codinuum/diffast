@@ -42,8 +42,10 @@ let mktag n = sprintf "%s:%s" delta_prefix n
 let mktag_ n = sprintf "%s%s" delta_ns n
 
 let bundle_tag = mktag "bundle"
+let bundle_tag_ = mktag_ "bundle"
 
 let loc_attr = mktag "location"
+let loc_attr_ = mktag_ "location"
 
 let root_tag = mktag "delta"
 let root_tag_ = mktag_ "delta"
@@ -84,6 +86,7 @@ let digest1_attr   = mktag "digest"
 let digest2_attr   = mktag "digest_"
 (*let mid_attr       = mktag "mid"*)
 let path_attr      = mktag "path"
+let path_attr_     = mktag_ "path"
 let path_from_attr = mktag "path_from"
 let path_to_attr   = mktag "path_to"
 let path1_attr     = mktag "path"
@@ -107,7 +110,9 @@ let ov_attr        = mktag "old_value"
 let nv_attr        = mktag "new_value"
 let v_attr         = mktag "value"
 let rvs_attr       = mktag "reversible"
+let rvs_attr_      = mktag_ "reversible"
 let normd_attr     = mktag "normalized"
+let normd_attr_    = mktag_ "normalized"
 let lang_attr      = mktag "lang"
 let stid_attr      = mktag "stid"
 let adj_attr       = mktag "adj"
@@ -470,13 +475,13 @@ let parse_file (*options*)_ ns_mgr file =
     if root#tag = root_tag_ then begin
       let reversible =
         try
-          bool_of_string (root#get_attr rvs_attr)
+          bool_of_string (root#get_attr rvs_attr_)
         with
           _ -> false
       in
       let normalized_delta =
         try
-          bool_of_string (root#get_attr normd_attr)
+          bool_of_string (root#get_attr normd_attr_)
         with
           _ -> false
       in
@@ -500,13 +505,13 @@ let parse_bundle_file (*options*)_ ns_mgr file =
   try
     let root = XML.parse_file ~ns:ns_mgr file in
     [%debug_log "root: %s" root#to_string];
-    if root#tag = bundle_tag then begin
+    if root#tag = bundle_tag_ then begin
       [%debug_log "%d sub nodes found" (List.length root#children)];
       List.map
         (fun xnode ->
           let loc =
             try
-              xnode#get_attr loc_attr
+              xnode#get_attr loc_attr_
             with
               XML.Attr_not_found _ -> ""
           in
@@ -532,7 +537,7 @@ let interpret_dir_delta options dnode =
     let get_path ?(path_attr=path_attr) x =
       try
         Xfile.abspath
-          (Filename.concat options#root_path (x#get_attr path_attr))
+          (Filename.concat options#root_path (x#get_attr path_attr_))
       with
         XML.Attr_not_found n ->
           invalid_delta x (sprintf "does not contain \"%s\" attribute" n)

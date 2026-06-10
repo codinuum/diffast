@@ -315,7 +315,7 @@ let sort_move_list_topdown movl = sort_mids_movs (comp_edits_topdown gid_of_edit
 let sort_move_list_bottomup movl = sort_mids_movs (comp_edits_bottomup gid_of_edit1) movl
 
 let tbl_remove tbl k =
-  (*while Hashtbl.mem tbl k do*)
+  (*while Nodetbl.mem tbl k do*)
     Nodetbl.remove tbl k
   (*done*)
 
@@ -348,6 +348,51 @@ type move_region_tbl_t = (MID.t, (GI.t*GI.t*GI.t*GI.t)) Hashtbl.t
 
 
 [%%capture_path
+let contains_stably_mapped ?(exact_match=false) tree root nmap find =
+  try
+    tree#fast_scan_whole_initial_subtree root
+      (fun n ->
+        try
+          let n' = nmap n in
+          match find n n' with
+          | [] -> begin
+              [%debug_log "found: %a" nps n];
+              raise Found
+          end
+          | [Relabel _] when not exact_match -> begin
+              [%debug_log "found: %a" nps n];
+              raise Found
+          end
+          | _ -> ()
+        with
+          Not_found -> ()
+      );
+    false
+  with
+    Found -> true
+]
+
+[%%capture_path
+let accompanies_p_boundaries pred x1 x2 =
+  let b =
+    (
+     x1#data#is_ntuple && x2#data#is_ntuple ||
+     x1#data#is_sequence && x2#data#is_sequence
+    ) &&
+    try
+      let px1 = x1#initial_parent in
+      let px2 = x2#initial_parent in
+      px1#data#is_boundary && px2#data#is_boundary &&
+      pred px1 px2
+    with
+      _ -> false
+  in
+  [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
+  b
+]
+
+
+[%%capture_path
 class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
   val mutable del_tbl  = Nodetbl.create 0
@@ -366,11 +411,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
   val mutable indivisible_moves = (Xset.create 0 : MID.t Xset.t)
 
+  val mutable hunk_count = 0
+
   method _init =
       tables <- [del_tbl; ins_tbl; rel1_tbl; rel2_tbl; mov1_tbl; mov2_tbl]
 
   initializer
     self#_init
+
+  method hunk_count = hunk_count
 
   method _indivisible_moves = indivisible_moves
   method _set_indivisible_moves s = indivisible_moves <- s
@@ -667,16 +716,16 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
     [%debug_log "%s" (to_string ed)];
 
     match ed with
-    | Delete(_, i, _) -> (*Hashtbl.remove*)tbl_remove del_tbl (Info.get_node i)
-    | Insert(_, i, _) -> (*Hashtbl.remove*)tbl_remove ins_tbl (Info.get_node i)
+    | Delete(_, i, _) -> tbl_remove del_tbl (Info.get_node i)
+    | Insert(_, i, _) -> tbl_remove ins_tbl (Info.get_node i)
     | Relabel(_, (i1, _), (i2, _)) ->
-        (*Hashtbl.remove*)tbl_remove rel1_tbl (Info.get_node i1);
-        (*Hashtbl.remove*)tbl_remove rel2_tbl (Info.get_node i2)
+        tbl_remove rel1_tbl (Info.get_node i1);
+        tbl_remove rel2_tbl (Info.get_node i2)
     | Move(_, _, (i1, _), (i2, _)) -> begin
         let n1 = Info.get_node i1 in
         let n2 = Info.get_node i2 in
-        (*Hashtbl.remove*)tbl_remove mov1_tbl n1;
-        (*Hashtbl.remove*)tbl_remove mov2_tbl n2;
+        tbl_remove mov1_tbl n1;
+        tbl_remove mov2_tbl n2;
         begin
           try
             match self#find_rel12 n1 n2 with
@@ -690,11 +739,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
   method remove_del nd =
     [%debug_log "%a" nups nd];
-    Nodetbl.remove del_tbl nd
+    tbl_remove del_tbl nd
 
   method remove_ins nd =
     [%debug_log "%a" nups nd];
-    Nodetbl.remove ins_tbl nd
+    tbl_remove ins_tbl nd
 
   method is_empty = self#get_nedits = 0
 
@@ -1241,7 +1290,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
   method sync =
     list <-
       List.concat_map
-        (fun tbl -> Nodetbl.fold (fun _ e l -> e :: l) tbl [])
+        self#edit_tbl_to_list
         [del_tbl; ins_tbl; rel1_tbl; mov1_tbl];
 
   method iter_topdown f =
@@ -1611,12 +1660,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                 not minimal ||
                 n1#data#is_named_orig && n2#data#is_named_orig ||
                 (not n1#data#is_named && n2#data#is_named || n1#data#is_named && not n2#data#is_named) ||
+                (not n1#data#is_named && not n2#data#is_named) ||
                 (not (n1#data#is_compatible_with ?weak:(Some true) n2#data) &&
                  n1#data#more_anonymized_label <> n2#data#more_anonymized_label) ||
-                 n1#data#has_value && n2#data#has_value && n1#data#get_value <> n2#data#get_value ||
-                 match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
-                 | Some o1, Some o2 -> o1 <> o2
-                 | _ -> false
+                n1#data#has_value && n2#data#has_value && n1#data#get_value <> n2#data#get_value ||
+                match n1#data#orig_lab_opt, n2#data#orig_lab_opt with
+                | Some o1, Some o2 -> o1 <> o2
+                | _ -> false
               in
               if ok then begin
                 if !movrel || n1#data#_anonymized_label <> n2#data#_anonymized_label then
@@ -2197,6 +2247,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       s_units            = nunits;
       s_unmodified_units = nunmodified;
       s_total_changes    = total;
+      s_total_hunks      = self#hunk_count;
       s_similarity       = sim;
       s_change_ratio     = cr;
       s_unmodified_rate  = ur;
@@ -3187,26 +3238,50 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       if !cands = [] then begin
         try
           let pnd = nd#initial_parent in
-          [%debug_log "pnd: %a" nps pnd];
+          [%debug_log "pnd=%a" nps pnd];
           if
             not nd#data#is_op &&
             not pnd#data#is_sequence && not pnd#data#is_op
           then begin
             try
               let pnd' = nmap pnd in
+              [%debug_log "pnd'=%a" nps pnd'];
               if not (mem_mov_nn pnd pnd') then begin
+                [%debug_log "@"];
                 if
-                  (not (pnd'#data#is_named_orig && pnd#data#is_named_orig) || pnd'#data#eq pnd#data) &&
-                  (
-                   pnd'#data#is_named_orig && pnd#data#is_named_orig ||
-                   pnd#data#_anonymized_label = pnd'#data#_anonymized_label
-                  )
+                  pnd#data#_anonymized_label = pnd'#data#_anonymized_label
                 then begin
                   let nd' = pnd'#initial_children.(nd#initial_pos) in
                   [%debug_log "nd': %a" nps nd'];
                   let cond0 =
                     not (List.memq nd' !cands) &&
-                    (nd'#data#eq nd#data) &&
+                    (
+                     nd'#data#eq nd#data ||
+                     (
+                      nd'#data#_anonymized_label = nd#data#_anonymized_label &&
+                      try
+                        let name' = Comparison.get_stripped_name nd' in
+                        let name = Comparison.get_stripped_name nd in
+                        cenv#is_rename_pat (name', name)
+                      with _ -> false
+                     ) ||
+                     let b =
+                     pnd#data#is_boundary && pnd'#data#is_boundary &&
+                     pnd#data#is_named_orig && pnd'#data#is_named_orig &&
+                     (
+                      nd#data#is_ntuple && nd'#data#is_ntuple ||
+                      nd#data#is_sequence && nd'#data#is_sequence
+                     ) &&
+                     try
+                       let nd_ = nmap nd in
+                       nd#data#is_named && nd_#data#is_named &&
+                       Comparison.get_stripped_name nd_ <> Comparison.get_stripped_name nd
+                     with _ -> true
+                     in
+                     if b then
+                       [%debug_log "@@@@@"];
+                     b
+                    ) &&
                     (mem_del_or_ins nd' || (mem_mov_n' nd' && nd0 != nd'))(* &&
                     try
                       let n = (nmap' nd') in
@@ -3229,28 +3304,47 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                     let stable_node_pairs = ref [] in
 
                     let cond1 =
+                      nd#initial_nchildren = 0 ||
                       let stable_count = ref 0 in
+                      let relabel_count = ref 0 in
+                      let move_count = ref 0 in
                       try
                         tree#fast_scan_whole_initial_subtree nd
                           (fun n ->
                             if n != nd then
                               try
                                 let n' = nmap n in
-                                if not (mem_mov_nn n n') then
+                                if mem_mov_nn n n' then begin
+                                  if tree'#is_initial_ancestor nd' n' then begin
+                                    [%debug_log "inner move: %a - %a" nps n nps n'];
+                                    incr move_count
+                                  end
+                                end
+                                else begin
                                   if
-                                    n#data#eq n'#data &&
                                     tree'#is_initial_ancestor nd' n'
                                   then begin
-                                    [%debug_log "stable: %a - %a" nps n nps n'];
-                                    stable_node_pairs := (n, n') :: !stable_node_pairs;
-                                    incr stable_count
+                                    if n#data#eq n'#data then begin
+                                      [%debug_log "stable: %a - %a" nps n nps n'];
+                                      stable_node_pairs := (n, n') :: !stable_node_pairs;
+                                      incr stable_count
+                                    end
+                                    else begin
+                                      [%debug_log "relabel: %a - %a" nps n nps n'];
+                                      incr relabel_count
+                                    end
                                   end
-                                  else
+                                  else begin
+                                    [%debug_log "unstable?: %a - %a" nps n nps n'];
                                     raise Exit
+                                  end
+                                end
                               with
                                 Not_found -> ()
                           );
-                        !stable_count > 0
+                        [%debug_log "stable_count=%d relabel_count=%d move_count=%d"
+                           !stable_count !relabel_count !move_count];
+                        !stable_count > 0 && !move_count = 0 && !stable_count > !relabel_count
                       with
                         Exit -> false
                     in
@@ -3394,7 +3488,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                       in
                       List.iter (fun (x, x') -> add ~parent_only:true x x') spairs;
 
-                      tree#(*fast_rev_scan_whole_initial_subtree*)fast_scan_whole_initial_subtree r
+                      let subtree_scan =
+                        if
+                          tree#true_children_recovered && r#data#is_statement && tree#has_true_children r
+                        then
+                          tree#scan_false_subtree
+                        else
+                          tree#(*fast_rev_scan_whole_initial_subtree*)fast_scan_whole_initial_subtree
+                      in
+                      subtree_scan r
                         (fun n ->
                           [%debug_log "n=%a" nps n];
                           match n#data#_digest with
@@ -3506,23 +3608,23 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
         let moveon =
           let b =
-          if same_digest ~digest_for_all:true nd1 nd2 then begin
-            assert (l1 = l2);
-            let rec loop i =
-              if i > l1 then
-                false
-              else
-                let n1 = tree1#search_node_by_gindex (lgi1 + i) in
-                let n2 = tree2#search_node_by_gindex (lgi2 + i) in
-                if not (nmapping#has_mapping n1 n2) then
-                  true
+            if same_digest ~digest_for_all:true nd1 nd2 then begin
+              assert (l1 = l2);
+              let rec loop i =
+                if i > l1 then
+                  false
                 else
-                  loop (i + 1)
-            in
-            loop 0
-          end
-          else
-            true
+                  let n1 = tree1#search_node_by_gindex (lgi1 + i) in
+                  let n2 = tree2#search_node_by_gindex (lgi2 + i) in
+                  if not (nmapping#has_mapping n1 n2) then
+                    true
+                  else
+                    loop (i + 1)
+              in
+              loop 0
+            end
+            else
+              true
           in
           [%debug_log "%B" b];
           b
@@ -3606,19 +3708,62 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               (fun (n1, n2) ->
                 [%debug_log "%a-%a" nups n1 nups n2];
 
-                let es1 = self#find1 n1 in
-                List.iter (remove_edit ~from_parent) es1;
-
-                let es2 = self#find2 n2 in
-                List.iter (remove_edit ~from_parent) es2;
+                let el = self#find12 n1 n2 in
+                List.iter (remove_edit ~from_parent) el;
+                begin
+                  try
+                    remove_edit ~from_parent (self#find_del n1)
+                  with Not_found -> ()
+                end;
+                begin
+                  try
+                    remove_edit ~from_parent (self#find_ins n2)
+                  with Not_found -> ()
+                end;
 
                 ignore (nmapping#remove n1 n2)
 
               ) !node_pairs
           in
 
+          let check_context x1 x2 =
+            let b =
+              x1#initial_nchildren = 0 && x2#initial_nchildren = 0 &&
+              try
+                let px1 = x1#initial_parent in
+                let px2 = x2#initial_parent in
+                nmapping#has_mapping px1 px2 &&
+                not (self#mem_mov12 px1 px2) &&
+                Array.for_all2
+                  (fun y1 y2 ->
+                    y1 == x1 || y2 == x2 ||
+                    nmapping#has_mapping y1 y2
+                  ) px1#initial_children px2#initial_children
+            with
+              _ -> false
+            in
+            let b =
+              b ||
+              x1#data#is_named && x2#data#is_named &&
+              Comparison.get_stripped_name x1 <> Comparison.get_stripped_name x2 &&
+              let pred px1 px2 =
+                px1#data#is_named_orig && px2#data#is_named_orig &&
+                nmapping#has_mapping px1 px2 &&
+                not (self#mem_mov12 px1 px2)
+              in
+              accompanies_p_boundaries pred x1 x2
+            in
+            [%debug_log "%a-%a --> %B" nups x1 nups x2 b];
+            b
+          in
+
           let check1 n1 =
             let b =
+              (
+               match !node_pairs with
+               | [_, n2] -> check_context n1 n2
+               | _ -> false
+              ) ||
               let pn1 = ref n1 in
               try
                 List.iter
@@ -3637,6 +3782,11 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
           let check2 n2 =
             let b =
+              (
+               match !node_pairs with
+               | [n1, _] -> check_context n1 n2
+               | _ -> false
+              ) ||
               let pn2 = ref n2 in
               try
                 List.iter
@@ -3847,7 +3997,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let move_root_tbl = Hashtbl.create 0 in (* mid -> root node pair list *)
 
-    self#iter_moves
+    let getmems tree nd =
+      let m = ref [] in
+      let add n =
+        if not (tree#is_false_node n) then
+          m := n::!m
+      in
+      tree#scan_false_subtree nd add;
+      !m
+    in
+
+    self#iter_moves_topdown
       (function
         | Move(mid, _, (i1, _), (i2, _)) -> begin
             let n1 = Info.get_node i1 in
@@ -3859,7 +4019,21 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
               let digest_for_leaf = n1#data#has_non_trivial_value || n1#data#is_named in
 
-              if same_digest ~digest_for_leaf n1 n2 then begin
+              if
+                tree1#true_children_recovered && tree2#true_children_recovered &&
+                n1#data#is_statement && n2#data#is_statement &&
+                tree1#has_true_children n1 && tree2#has_true_children n2 &&
+                let xl1 = getmems tree1 n1 in
+                let xl2 = getmems tree2 n2 in
+                List.for_all2 (fun x1 x2 -> nmapping#has_mapping x1 x2) xl1 xl2
+              then begin
+                [%debug_log "@"];
+                if not (Hashtbl.mem move_root_tbl !mid) then begin
+                  [%debug_log "@"];
+                  Hashtbl.add move_root_tbl !mid [n1, n2]
+                end
+              end
+              else if same_digest ~digest_for_leaf n1 n2 then begin
                 let gi1, gi2 = n1#gindex, n2#gindex in
                 let lgi1 = (tree1#initial_leftmost n1)#gindex in
                 let lgi2 = (tree2#initial_leftmost n2)#gindex in
@@ -3925,34 +4099,19 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         Otree.Parent_not_found _ -> raise Not_found
     in
 
-    let contain_stably_mapped tree root nmap find =
-      try
-        tree#fast_scan_whole_initial_subtree root
-          (fun n ->
-            try
-              let n' = nmap n in
-              match find n n' with
-              | [] | [Relabel _] -> raise Found
-              | _ -> ()
-            with
-              Not_found -> ()
-          );
-        false
-      with
-        Found -> true
-    in
-
     let full_tree_matcher t1 t2 =
       let _, m, _ = Treediff.find t1 t2 in
-      List.filter
-        (fun (nd1, nd2) ->
-          nd1#data#eq nd2#data
-        )
-        (List.map
-           (fun (i, j) ->
-             tree1#search_node_by_gindex (t1#get i)#gindex,
-             tree2#search_node_by_gindex (t2#get j)#gindex
-           ) m)
+      List.filter_map
+        (fun (i, j) ->
+          let n1 = tree1#search_node_by_gindex (t1#get i)#gindex in
+          let n2 = tree2#search_node_by_gindex (t2#get j)#gindex in
+          if tree1#is_false_node n1 || tree2#is_false_node n2 then
+            None
+          else if n1#data#eq n2#data then
+            Some (n1, n2)
+          else
+            None
+        ) m
     in
     let fast_tree_matcher t1 t2 =
       let matches = ref [] in
@@ -3974,9 +4133,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
              ) (mat @ rel))
       in
       scan (t1#root, t2#root);
-      List.map
+      List.filter_map
         (fun (n1, n2) ->
-          tree1#search_node_by_gindex n1#gindex, tree2#search_node_by_gindex n2#gindex
+          if tree1#is_false_node n1 || tree2#is_false_node n2 then
+            None
+          else
+            Some (tree1#search_node_by_gindex n1#gindex,
+                  tree2#search_node_by_gindex n2#gindex)
         ) !matches
     in
     let tree_matcher t1 t2 =
@@ -4003,7 +4166,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       let acands = ref [] in
       let lab = nd#data#_label in
       let alab = nd#data#_anonymized_label in
-      tree#preorder_scan_whole_initial_subtree an
+      tree#preorder_scan_whole_initial_subtree an ?after:None
         (fun n ->
           if n != an && not (Xset.mem nodes_to_be_excluded n) then
 
@@ -4062,9 +4225,18 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
     let is_crossing = Node_mapping.is_crossing in
     (*let is_incompatible = Node_mapping.is_incompatible tree1 tree2 in*)
 
+    let has_def_child nd =
+      let b = Array.exists (fun c -> Comparison.is_def c) nd#initial_children in
+      [%debug_log "%a --> %B" nups nd b];
+      b
+    in
+
     [%debug_log "-----"];
 
     let cand_tbl = Hashtbl.create 0 in
+
+    let exactly_matched_stmts1 = Xset.create 0 in
+    let exactly_matched_stmts2 = Xset.create 0 in
 
     Hashtbl.iter
       (fun mid pairs ->
@@ -4097,6 +4269,17 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           (fun (nd1, nd2) ->
 
             [%debug_log "  move %a-%a:" nups nd1 nups nd2];
+
+            if
+              nd1#data#is_statement && nd2#data#is_statement &&
+              not (has_def_child nd1) && not (has_def_child nd2) &&
+              nd1#data#subtree_equals nd2#data
+              (*cenv#is_uniq_subtree_match nd1 nd2*)
+            then begin
+              [%debug_log "exactly matched stmt: %a-%a" nps nd1 nps nd2];
+              Xset.add exactly_matched_stmts1 nd1;
+              Xset.add exactly_matched_stmts2 nd2
+            end;
 
             let nd1, nd2 =
               match root_pair_opt with
@@ -4193,14 +4376,23 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               with
                                 Found -> true
                             in
+                            [%debug_log "crossing=%B" crossing];
                             not
                               (
                                crossing ||
-                               tree2#is_initial_ancestor n2 nd2 ||
-                               tree2#is_initial_ancestor nd2 n2 ||
+                               (match nd1#data#_digest, n2#data#_digest with
+                               | Some d1, Some d2 -> begin
+                                   [%debug_log "d1=%s d2=%s" (Xhash.to_hex d1) (Xhash.to_hex d2)];
+                                   d1 <> d2
+                               end
+                               | _ -> true) &&
                                (
-                                n2#initial_nchildren > 0 &&
-                                contain_stably_mapped tree2 n2 nmapping#inv_find self#find21
+                                tree2#is_initial_ancestor n2 nd2 ||
+                                tree2#is_initial_ancestor nd2 n2 ||
+                                (
+                                 n2#initial_nchildren > 0 &&
+                                 contains_stably_mapped tree2 n2 nmapping#inv_find self#find21
+                                )
                                )
                               )
                           in
@@ -4225,7 +4417,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               []
                             else
                               let t2 = make_subtree_copy2 r2 in
-                              tree_matcher t1 t2
+                              List.filter
+                                (fun (x1, x2) ->
+                                  not (nmapping#has_mapping x1 x2)
+                                ) (tree_matcher t1 t2)
                           ) rcands2',
                         Some (an1, an2)
                       with
@@ -4264,6 +4459,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                           | [], _, _ | _, [], _ -> [], None
                           | l1, l2, _ -> begin
                               let cands = ref [] in
+
                               List.iter
                                 (fun (x1, mems1) ->
                                   List.iter
@@ -4335,11 +4531,19 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                             not
                               (
                                crossing ||
-                               tree1#is_initial_ancestor n1 nd1 ||
-                               tree1#is_initial_ancestor nd1 n1 ||
+                               (match n1#data#_digest, nd2#data#_digest with
+                               | Some d1, Some d2 -> begin
+                                   [%debug_log "d1=%s d2=%s" (Xhash.to_hex d1) (Xhash.to_hex d2)];
+                                   d1 <> d2
+                               end
+                               | _ -> true) &&
                                (
-                                n1#initial_nchildren > 0 &&
-                                contain_stably_mapped tree1 n1 nmapping#find self#find12
+                                tree1#is_initial_ancestor n1 nd1 ||
+                                tree1#is_initial_ancestor nd1 n1 ||
+                                (
+                                 n1#initial_nchildren > 0 &&
+                                 contains_stably_mapped tree1 n1 nmapping#find self#find12
+                                )
                                )
                               )
                           in
@@ -4365,7 +4569,10 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                               []
                             else
                               let t1 = make_subtree_copy1 r1 in
-                              tree_matcher t1 t2
+                              List.filter
+                                (fun (x1, x2) ->
+                                  not (nmapping#has_mapping x1 x2)
+                                ) (tree_matcher t1 t2)
                           ) rcands1',
                         Some (an1, an2)
                       with
@@ -4401,6 +4608,14 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       (fun (an1, an2) cands ->
 
         [%debug_log "stably mapped: %a - %a:" nps an1 nps an2];
+        begin %debug_block
+          List.iter
+            (fun cand ->
+              [%debug_log "cand: [%s]"
+                (Xlist.to_string
+                   (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand)]
+            ) cands
+        end;
 
         let stable_matches = ref [] in
 
@@ -4492,10 +4707,32 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         let stable_matches1, stable_matches2 = List.split !stable_matches in
         let is_invalid_cand cand =
           let b =
-            List.exists (fun (n1, _) -> List.memq n1 stable_matches1) cand ||
-            List.exists (fun (_, n2) -> List.memq n2 stable_matches2) cand
+            List.exists
+              (fun (n1, x2) ->
+                (let b = List.memq n1 stable_matches1 in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
+              ||
+                (let b = Xset.mem exactly_matched_stmts1 n1 && not (n1#data#subtree_equals x2#data) in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
+              ||
+                (let b = try cenv#is_uniq_subtree_match n1 (nmapping#find n1) with _ -> false in
+                [%debug_log "%a-%a %B" nups n1 nups x2 b]; b)
+              ) cand
+          ||
+            List.exists
+              (fun (x1, n2) ->
+                (let b = List.memq n2 stable_matches2 in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
+              ||
+                (let b = Xset.mem exactly_matched_stmts2 n2 && not (x1#data#subtree_equals n2#data) in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
+              ||
+                (let b = try cenv#is_uniq_subtree_match (nmapping#inv_find n2) n2 with _ -> false in
+                [%debug_log "%a-%a %B" nups x1 nups n2 b]; b)
+              ) cand
           in
-          [%debug_log "[%s] -> %B" (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
+          [%debug_log "[%s] -> %B"
+             (Xlist.to_string (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand) b];
           b
         in
 
@@ -4547,6 +4784,15 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
         let cands = (* extract connected pairs *)
           List.concat_map get_largest_connected_subset cands
         in
+
+        begin %debug_block
+          List.iter
+            (fun cand ->
+              [%debug_log "cand: [%s]"
+                (Xlist.to_string
+                   (fun (n1, n2) -> sprintf "%a-%a" nups n1 nups n2) ";" cand)]
+            ) cands
+        end;
 
         let filtered_cands =
           List.map
@@ -4635,6 +4881,20 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
               | _ -> assert false
             in
             let pair_weight_list = List.map get_top_pair_len cands in
+            let pair_weight_list =
+              match pair_weight_list with
+              | (_, _, w)::_ when begin
+                  List.for_all (fun (_, _, w0) -> w0 = w) pair_weight_list
+              end -> begin
+                List.map
+                  (fun (n1, n2, _) ->
+                    let a = Stdlib.truncate ((cenv#get_adjacency_score n1 n2) *. 10000.0) in
+                    let w = Comparison.weight_of_int a in
+                    (n1, n2, w)
+                  ) pair_weight_list
+              end
+              | _ -> pair_weight_list
+            in
             let compat, _ =
               cenv#select_compatible_and_not_crossing_pairs pair_weight_list
             in
@@ -4699,8 +4959,16 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
     let used_matches = ref [] in
 
+    let _cand_list = ref [] in
     Hashtbl.iter
       (fun (an1, an2) cands ->
+        _cand_list := (an1, an2, cands) :: !_cand_list
+      ) cand_tbl;
+    let cmp (x1, _, _) (x2, _, _) = Stdlib.compare x1#gindex x2#gindex in
+    let cand_list = List.fast_sort cmp !_cand_list in
+
+    List.iter
+      (fun (an1, an2, cands) ->
         let _ = an1 in
         let _ = an2 in
         let cands' =
@@ -4734,6 +5002,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
             List.iter
               (fun (nd1, nd2) ->
+                [%debug_log "%a-%a" nups nd1 nups nd2];
                 try
                   let to_be_removed, nmap_to_be_removed, to_be_added =
                     try
@@ -4793,11 +5062,12 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
                   used_matches := (nd1, nd2) :: !used_matches
                 with
                   Abort -> ()
+
               ) cand
 
           ) cands'
 
-      ) cand_tbl;
+      ) cand_list;
 
     Xprint.verbose options#verbose_flag "%d matches added by move shrinkage" (List.length !used_matches)
 
@@ -4808,6 +5078,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
       ?(mask=[])
       ?(incompatible_only=false)
       ?(weak=true)
+      ?(cross_boundary_check=false)
       (nmapping : 'node_t Node_mapping.c)
       nd1 nd2
       =
@@ -4833,6 +5104,7 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
           nmapping#iter_crossing_or_incompatible_mapping_rep is_move
     in
     let flag = ref false in
+    let cross_boundary_flag = ref true in
     try
       iter nd1 nd2
         (fun n1 n2 ->
@@ -4847,7 +5119,13 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
             if self#mem_mov12 n1 n2 then begin
               [%debug_log "mem_mov12 %a %a --> true" nups n1 nups n2];
-              flag := true
+              flag := true;
+              if
+                cross_boundary_check &&
+                !cross_boundary_flag &&
+                not (Misc.is_cross_boundary nmapping n1 n2)
+              then
+                cross_boundary_flag := false
             end
             else begin
               [%debug_log "mem_mov12 %a %a --> false" nups n1 nups n2];
@@ -4865,13 +5143,619 @@ class ['node_t, 'tree_t] seq_base options = object (self : 'edits)
 
           end
         );
-      let b = weak && !flag in
+      [%debug_log "flag=%B cross_boundary_flag=%B" !flag !cross_boundary_flag];
+      let b = weak && !flag && (not cross_boundary_check || not !cross_boundary_flag) in
       [%debug_log "%B" b];
       b
     with
       Exit ->
         [%debug_log "true"];
         true
+
+
+  method dump_stmt_map_json
+      ?(comp=Compression.none)
+      (cenv : ('node_t, 'tree_t) Comparison.c)
+      (nmapping : 'node_t Node_mapping.c)
+      fname
+      =
+    let tree1 = cenv#tree1 in
+    let tree2 = cenv#tree2 in
+    let cmp n1 n2 = Stdlib.compare n1#gindex n2#gindex in
+    let modified = Xset.create 0 in
+
+    let to_be_removed = Xset.create 0 in
+
+    let map_add map n1 n2 =
+      [%debug_log "%a-%a" nups n1 nups n2];
+      Nodetbl.add map n1 n2;
+      begin
+        try
+          let n1' = nmapping#find n1 in
+          if n1' != n2 then
+            Xset.add to_be_removed (n1, n1')
+        with _ -> ()
+      end;
+      begin
+        try
+          let n2' = nmapping#inv_find n2 in
+          if n2' != n1 then
+            Xset.add to_be_removed (n2', n2)
+        with _ -> ()
+      end
+    in
+
+    let has_mapping rt1 rt2 =
+      let b =
+        Misc.has_p_descendant
+          (fun n1 ->
+            try
+              let n1' = nmapping#find n1 in
+              tree2#initial_subtree_mem rt2 n1'
+            with _ -> false
+          ) rt1
+      in
+      [%debug_log "%a-%a --> %B" nups rt1 nups rt2 b];
+      b
+    in
+
+    let get_orig_name = Comparison.get_orig_name in
+    let get_deco_name = Comparison.get_deco_name in
+
+    let extract_stmt_map iter =
+      let map = Nodetbl.create 0 in
+      iter cmp
+        (fun n1 n2 ->
+          if tree1#is_statement n1 && tree2#is_statement n2 then begin
+            [%debug_log "%a-%a" nps n1 nps n2];
+            if
+              n1#data#is_assignment && n2#data#is_assignment &&
+              try
+                let lhs1 = n1#initial_children.(0) in
+                let lhs2 = n2#initial_children.(0) in
+                (
+                 lhs1#initial_nchildren = 0 && lhs2#initial_nchildren = 0 &&
+                 lhs1#data#eq lhs2#data
+                ||
+                  lhs1#data#subtree_equals lhs2#data
+                ) &&
+                nmapping#has_mapping lhs1 lhs2 &&
+                if
+                  let rhs1 = n1#initial_children.(1) in
+                  let rhs2 = n2#initial_children.(1) in
+                  not (nmapping#has_mapping rhs1 rhs2) &&
+                  (
+                   cenv#is_uniq_subtree_match n1 (nmapping#find rhs1)#initial_parent
+                  ||
+                   cenv#is_uniq_subtree_match (nmapping#inv_find rhs2)#initial_parent n2
+                  )
+                then
+                  false
+                else
+                  true
+              with
+                _ ->
+                  contains_stably_mapped ~exact_match:true tree1 n1 nmapping#find self#find12
+            then begin
+              [%debug_log "@"];
+              map_add map n1 n2
+            end
+            else if
+              let has_no_mapped_def tree is_mapped lhs =
+                let b =
+                  try
+                    let def = Comparison.get_def_node tree lhs in
+                    not (is_mapped def)
+                  with _ -> true
+                in
+                [%debug_log "%a --> %B" nups lhs b];
+                b
+              in
+              n1#data#is_assignment && n2#data#is_assignment &&
+              try
+                let lhs1 = n1#initial_children.(0) in
+                let lhs2 = n2#initial_children.(0) in
+                lhs1#initial_nchildren = 0 && lhs2#initial_nchildren = 0 &&
+                not (lhs1#data#eq lhs2#data) &&
+                let cond1 = nmapping#mem_dom lhs1 in
+                let cond2 = nmapping#mem_cod lhs2 in
+                cond1 && not cond2 && not (has_no_mapped_def tree2 nmapping#mem_cod lhs2)
+              ||
+                not cond1 && cond2 && not (has_no_mapped_def tree1 nmapping#mem_dom lhs1)
+              with
+                _ -> false
+            then begin
+              [%debug_log "@"];
+              let n1_, n2_ =
+                try
+                  let lhs1 = n1#initial_children.(0) in
+                  let lhs2 = n2#initial_children.(0) in
+                  if nmapping#mem_dom lhs1 then
+                    let lhs1' = nmapping#find lhs1 in
+                    let n1' = lhs1'#initial_parent in
+                    if n1'#data#is_statement && n1'#data#is_assignment then begin
+                      [%debug_log "n2_=%a" nups n1'];
+                      n1, n1'
+                    end
+                    else
+                      n1, n2
+                  else if nmapping#mem_cod lhs2 then
+                    let lhs2' = nmapping#inv_find lhs2 in
+                    let n2' = lhs2'#initial_parent in
+                    if n2'#data#is_statement && n2'#data#is_assignment then begin
+                      [%debug_log "n1_=%a" nups n2'];
+                      n2', n2
+                    end
+                    else
+                      n1, n2
+                  else
+                    n1, n2
+                with
+                  _ -> n1, n2
+              in
+              map_add map n1_ n2_
+            end
+            else if
+              not (self#mem_mov12 n1 n2) &&
+              (*n1#data#_anonymized_label = n2#data#_anonymized_label*)
+              n1#data#relabel_allowed n2#data &&
+              (
+               not n1#data#is_named || not n2#data#is_named
+              ||
+               n1#data#get_name <> n2#data#get_name
+              )
+            then begin
+              [%debug_log "%a-%a" nps n1 nps n2];
+
+              let is_def n =
+                let b = Comparison.is_def n in
+                [%debug_log "%a --> %B" nups n b];
+                b
+              in
+
+              let def_stmts = Xset.create 0 in
+
+              let cand_tbl1 = Nodetbl.create 0 in
+              let cand_tbl2 = Nodetbl.create 0 in
+              let add_cand ?(isdef=false) tbl n =
+                if isdef then
+                  Xset.add def_stmts n;
+                try
+                  let c = Nodetbl.find tbl n in
+                  Nodetbl.replace tbl n (c + 1)
+                with
+                  Not_found -> Nodetbl.add tbl n 1
+              in
+              let is_def_stmt = Xset.mem def_stmts in
+              let skip_flag = ref false in
+              let map_count = ref 0 in
+              let node_count = ref 0 in
+
+              let evidence_tbl1 = Nodetbl.create 0 in
+              let evidence_tbl2 = Nodetbl.create 0 in
+
+              let names1 = Xset.create 0 in
+              let names2 = Xset.create 0 in
+
+              let get_stripped_name = Comparison.get_stripped_name in
+              let get_rename_pat n1 n2 =
+                try
+                  let name1 = get_stripped_name n1 in
+                  let name2 = get_stripped_name n2 in
+                  let np = (name1, name2) in
+                  if
+                    n1#data#is_named && n2#data#is_named &&
+                    cenv#is_rename_pat np
+                  then begin
+                    [%debug_log "%a-%a --> (%s, %s)" nups n1 nups n2 name1 name2];
+                    Some np
+                  end
+                  else
+                    None
+                with _ -> None
+              in
+
+              tree1#preorder_scan_whole_initial_subtree n1 ?after:None
+                (fun x1 ->
+                  incr node_count;
+
+                  begin
+                    try
+                      let name1 = get_stripped_name x1 in
+                      Xset.add names1 name1
+                    with _ -> ()
+                  end;
+                  begin
+                    try
+                      if tree2#is_initial_ancestor n2 (nmapping#find x1) then
+                        incr map_count
+                    with _ -> ()
+                  end;
+
+                  if x1#data#is_block then
+                    skip_flag := true;
+
+                  if self#mem_mov1 x1 then begin
+                    try
+                      if !skip_flag then
+                        raise Exit;
+                      let x2 = nmapping#find x1 in
+                      [%debug_log "  %a -> %a" nps x1 nps x2];
+                      let stmt2 = Misc.get_stmt x2 in
+                      [%debug_log "  stmt2=%a" nps stmt2];
+                      if
+                        stmt2 != n2 &&
+                        stmt2#data#_anonymized_label = n1#data#_anonymized_label &&
+                        (not (nmapping#mem_cod stmt2) || has_mapping (nmapping#inv_find stmt2) n2)
+                      then begin
+                        [%debug_log "@"];
+                        let isdef = is_def x2 in
+                        add_cand ~isdef cand_tbl2 stmt2;
+                        match get_rename_pat x1 x2 with
+                        | Some (_, nm) -> Nodetbl.add evidence_tbl2 stmt2 nm
+                        | None -> ()
+                      end
+                    with _ -> ()
+                  end
+                );
+              let stability1 = (float !map_count) /. (float !node_count) in
+              [%debug_log "  stability1=%f" stability1];
+
+              skip_flag := false;
+              map_count := 0;
+              node_count := 0;
+
+              tree2#preorder_scan_whole_initial_subtree n2 ?after:None
+                (fun x2 ->
+                  incr node_count;
+
+                  begin
+                    try
+                      let name2 = get_stripped_name x2 in
+                      Xset.add names2 name2
+                    with _ -> ()
+                  end;
+                  begin
+                    try
+                      if tree1#is_initial_ancestor n1 (nmapping#inv_find x2) then
+                        incr map_count
+                    with _ -> ()
+                  end;
+
+                  if x2#data#is_block then
+                    skip_flag := true;
+
+                  if self#mem_mov2 x2 then begin
+                    try
+                      if !skip_flag then
+                        raise Exit;
+                      let x1 = nmapping#inv_find x2 in
+                      [%debug_log "  %a <- %a" nps x1 nps x2];
+                      let stmt1 = Misc.get_stmt x1 in
+                      [%debug_log "  stmt1=%a" nps stmt1];
+                      if
+                        stmt1 != n1 &&
+                        stmt1#data#_anonymized_label = n2#data#_anonymized_label &&
+                        (not (nmapping#mem_dom stmt1) || has_mapping n1 (nmapping#find stmt1))
+                      then begin
+                        [%debug_log "@"];
+                        let isdef = is_def x1 in
+                        add_cand ~isdef cand_tbl1 stmt1;
+                        match get_rename_pat x1 x2 with
+                        | Some (nm, _) -> Nodetbl.add evidence_tbl1 stmt1 nm
+                        | None -> ()
+                      end
+                    with _ -> ()
+                  end
+                );
+              let stability2 = (float !map_count) /. (float !node_count) in
+              [%debug_log "  stability2=%f" stability2];
+
+              let count1 = ref 0 in
+              let count2 = ref 0 in
+              let cand1 = ref n1 in
+              let cand2 = ref n2 in
+
+              let stability_thresh_low = 0.5 in
+              let stability_thresh_high = 0.9 in
+
+              let stability_low1 = stability1 < stability_thresh_low in
+              let stability_low2 = stability2 < stability_thresh_low in
+
+              let stability_high1 = stability1 > stability_thresh_high in
+              let stability_high2 = stability2 > stability_thresh_high in
+
+              [%debug_log "  stability_low1=%B" stability_low1];
+              [%debug_log "  stability_low2=%B" stability_low2];
+              [%debug_log "  stability_high1=%B" stability_high1];
+              [%debug_log "  stability_high2=%B" stability_high2];
+
+              begin %debug_block
+                List.iter
+                  (fun (i, etbl) ->
+                    [%debug_log "evidence_tbl%d:" i];
+                    Nodetbl.iter
+                      (fun s nm ->
+                        [%debug_log "  %a --> %s" nups s nm];
+                      ) etbl
+                  ) [1, evidence_tbl1; 2, evidence_tbl2]
+              end;
+
+              let chk_ev etbl names s =
+                let b =
+                  let nml = Nodetbl.find_all etbl s in
+                  nml <> [] &&
+                  List.for_all (fun nm -> not (Xset.mem names nm)) nml
+                in
+                [%debug_log "%a --> %B" nups s b];
+                b
+              in
+
+              let get_nsibs x =
+                try
+                  x#initial_parent#initial_nchildren - 1
+                with _ -> 0
+              in
+
+              Nodetbl.iter
+                (fun s1 c1 ->
+                  [%debug_log "  s1=%a c1=%d" nups s1 c1];
+                  if
+                    (
+                     stability_low1
+                    ||
+                     is_def_stmt s1
+                    ||
+                     chk_ev evidence_tbl1 names1 s1
+                    ||
+                     not stability_high1 &&
+                     tree1#initial_subtree_mem s1 n1 &&
+                     get_nsibs n1 = 0
+                    ||
+                     try
+                       get_orig_name n1 = get_orig_name n2 &&
+                       get_deco_name n1 = get_deco_name (get_bn s1)
+                     with _ -> false
+                    ) &&
+                    c1 > !count1
+                  then begin
+                    cand1 := s1;
+                    count1 := c1
+                  end
+                ) cand_tbl1;
+
+              Nodetbl.iter
+                (fun s2 c2 ->
+                  [%debug_log "  s2=%a c2=%d" nups s2 c2];
+                  if
+                    (
+                     stability_low2
+                    ||
+                     is_def_stmt s2
+                    ||
+                     chk_ev evidence_tbl2 names2 s2
+                    ||
+                     not stability_high2 &&
+                     tree2#initial_subtree_mem s2 n2 &&
+                     get_nsibs n2 = 0
+                    ||
+                     try
+                       get_orig_name n1 = get_orig_name n2 &&
+                       get_deco_name n2 = get_deco_name (get_bn s2)
+                     with _ -> false
+                    ) &&
+                    c2 > !count2
+                  then begin
+                    cand2 := s2;
+                    count2 := c2
+                  end
+                ) cand_tbl2;
+
+              let cand = ref None in
+              if !cand2 != n2 then begin
+                [%debug_log "  %a -> %a (%d)" nups n1 nups !cand2 !count2];
+                cand := Some (n1, !cand2)
+              end;
+              if
+                !cand1 != n1 && !count1 > !count2 &&
+                try not (Nodetbl.find map !cand1 == n2) with _ -> true
+              then begin
+                [%debug_log "  %a (%d) <- %a" nups !cand1 !count1 nups n2];
+                cand := Some (!cand1, n2);
+                Xset.add modified (!cand1)
+              end
+              else if !cand2 != n2 then begin
+                Xset.add modified (!cand2)
+              end;
+              match !cand with
+              | Some (x1, x2) when begin
+                  if x1 == n1 then
+                    try
+                      let x2' = nmapping#inv_find x2 in
+                      self#mem_mov12 x2' x2 &&
+                      cenv#get_adjacency_score x2' x2 >
+                      cenv#get_adjacency_score x1 x2
+                    with
+                      _ -> false
+                  else if x2 == n2 then
+                    try
+                      let x1' = nmapping#find x1 in
+                      self#mem_mov12 x1 x1' &&
+                      cenv#get_adjacency_score x1 x1' >
+                      cenv#get_adjacency_score x1 x2
+                    with
+                      _ -> false
+                  else
+                    false
+              end -> map_add map n1 n2
+              | Some (x1, x2) -> map_add map x1 x2
+              | None -> map_add map n1 n2
+            end
+            else if self#mem_mov12 n1 n2 then begin
+              [%debug_log "@"];
+              begin
+                try
+                  let bn1 = get_bn n1 in
+                  let bn2 = get_bn n2 in
+                  let name1 = bn1#data#get_orig_name in
+                  let name2 = bn2#data#get_orig_name in
+                  if
+                    name1 = name2 &&
+                    (
+                     nmapping#mem_dom bn1 &&
+                     (nmapping#find bn1)#data#get_orig_name = name1 &&
+                     self#mem_ins bn2
+                    ||
+                     nmapping#mem_cod bn2 &&
+                     (nmapping#inv_find bn2)#data#get_orig_name = name2 &&
+                     self#mem_del bn1
+                    )
+                  then begin
+                    [%debug_log "@"];
+                    let siba1 = n1#initial_parent#initial_children in
+                    let siba2 = n2#initial_parent#initial_children in
+                    let next1 = siba1.(n1#initial_pos + 1) in
+                    let next2 = siba2.(n2#initial_pos + 1) in
+                    if next1#data#eq next2#data then begin
+                      [%debug_log "@"];
+                      map_add map next1 next2
+                    end
+                  end
+                with
+                  _ -> ()
+              end;
+              map_add map n1 n2
+            end
+            else begin
+              [%debug_log "@"];
+              map_add map n1 n2
+            end
+          end
+          else begin
+            try
+              let pn1 = n1#initial_parent in
+              let pn2 = n2#initial_parent in
+              if pn1#data#is_statement || pn2#data#is_statement then
+                let an1 = Sourcecode.find_nearest_anc_stmt n1 in
+                let an2 = Sourcecode.find_nearest_anc_stmt n2 in
+                if
+                  an1#data#_anonymized_label = an2#data#_anonymized_label &&
+                  not (nmapping#mem_dom an1) && not (nmapping#mem_cod an2) &&
+                  not (Misc.is_cross_boundary nmapping an1 an2) &&
+                  let c = ref 0 in
+                  [%debug_log "cand: %a-%a" nps an1 nps an2];
+                  try
+                    tree1#fast_scan_whole_initial_subtree n1
+                      (fun n ->
+                        [%debug_log "n=%a" nps n];
+                        try
+                          if
+                            let n' = nmapping#find n in
+                            n' == n2 || tree2#is_initial_ancestor n2 n'
+                          then begin
+                            incr c;
+                            [%debug_log "c=%d" !c]
+                          end
+                          else
+                            raise Exit
+                        with _ ->(* raise Exit*)()
+                      );
+                    !c > 2
+                  with Exit -> false
+                then begin
+                  [%debug_log "%a-%a" nps an1 nps an2];
+                  map_add map an1 an2
+                end
+            with
+              _ -> ()
+          end
+        );
+      map
+    in
+    let stmt_map = extract_stmt_map nmapping#iter_unsettled_sorted in
+    let stmt_s_map = extract_stmt_map nmapping#iter_settled_sorted in
+
+    [%debug_log "to_be_removed: [%s]"
+       (String.concat ";"
+          (List.map (fun (x1, x2) ->
+            sprintf "%a-%a" nups x1 nups x2) (Xset.to_list to_be_removed)))];
+
+    if Xset.size to_be_removed > 0 then begin
+      Xset.iter
+        (fun (x1, x2) ->
+          List.iter
+            (fun map ->
+              try
+                let x1' = Nodetbl.find map x1 in
+                if x1' == x2 then begin
+                  Nodetbl.remove map x1;
+                  [%debug_log "removed: %a-%a" nups x1 nups x2]
+                end
+              with
+                _ -> ()
+            ) [stmt_map; stmt_s_map]
+        ) to_be_removed
+     end;
+
+    let _fprintf ch fmt =
+      Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt
+    in
+    let dump_node ch tree nd =
+      let loc =
+        try
+          tree#find_true_loc nd
+        with
+          Not_found -> nd#data#src_loc
+      in
+      let so = loc.Loc.start_offset in
+      let eo = loc.Loc.end_offset in
+      let sl = loc.Loc.start_line in
+      let el = loc.Loc.end_line in
+      let lab =
+        try
+          tree#find_true_category nd
+        with
+          Not_found -> nd#data#get_category
+      in
+      _fprintf ch "{";
+      _fprintf ch "\"label\":\"%s\"" lab;
+      _fprintf ch ",\"start_offset\":%d,\"end_offset\":%d,\"start_line\":%d,\"end_line\":%d" so eo sl el;
+      if Xset.mem modified nd then
+        _fprintf ch ",\"modified\":true";
+      _fprintf ch "}";
+    in
+    let dump_map ?(comma=false) ch map =
+      let comma_flag = ref comma in
+      Nodetbl.iter
+        (fun n1 n2 ->
+          if
+            (*tree1#is_virtual_node n1 || tree2#is_virtual_node n2*)
+            tree1#is_false_node n1 || tree2#is_false_node n2
+          then
+            [%debug_log "%a-%a: skipped" nups n1 nups n2]
+          else begin
+            if !comma_flag then
+              _fprintf ch ",";
+            _fprintf ch "[";
+            dump_node ch tree1 n1;
+            _fprintf ch ",";
+            dump_node ch tree2 n2;
+            _fprintf ch "]";
+            comma_flag := true;
+          end
+        ) map;
+      !comma_flag
+    in
+    try
+      let ch = new Xchannel.out_channel ~comp (Xchannel.Destination.of_file fname) in
+      _fprintf ch "[";
+      let comma = dump_map ch stmt_map in
+      let _ = dump_map ~comma ch stmt_s_map in
+      _fprintf ch "]";
+      ch#close
+    with
+    | Xchannel.Error s -> let _ = s in [%warn_log "%s" s]
+
 
   method dump_delta
       ?(extra_ns_decls=([] : (string * string) list))

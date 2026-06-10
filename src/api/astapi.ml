@@ -291,6 +291,8 @@ class virtual base_c options = object (self)
         let _ = Cache.prepare_cache_dir options cache_path in
         let tree = self#__parse_file ~proj_root ~version file in
 
+        (*tree#setup_final_labels();*)
+
         if options#recover_orig_ast_flag then
           ignore (tree#recover_true_children ~initial_only:true ());
 

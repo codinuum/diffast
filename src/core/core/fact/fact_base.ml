@@ -16,6 +16,7 @@
 (* fact_base.ml *)
 
 module Xhash = Diffast_misc.Xhash
+module Xfile = Diffast_misc.Xfile
 module Xprint = Diffast_misc.Xprint
 module Otree = Diffast_misc.Otree
 module Loc = Diffast_misc.Loc
@@ -130,14 +131,26 @@ class fact_store ?(lock=true) options cache_path =
   let _ = [%debug_log "cache_path: %s" cache_path] in
   let _ = [%debug_log "fact_file_path: %s" fact_file_path] in
   let cache_name = Cache.get_cache_name options cache_path in
-  let lock_fd = ref None in
-  let acquire_lock() =
-    if lock then
-      let fd = Triple.lock_fact cache_path in
-      lock_fd := Some fd
-  in
   let into_virtuoso = options#fact_into_virtuoso <> "" in
   let into_directory = options#fact_into_directory <> "" in
+  let lock_fd = ref None in
+  let acquire_lock =
+    if lock then
+      let lock_dir_path =
+        if into_directory then
+          let p = Triple._create_cache_path_lv2 options#fact_into_directory cache_name in
+          if not (Xfile.dir_exists p) then
+            Xfile.mkdir p;
+          p
+        else
+          cache_path
+      in
+      fun () ->
+        let fd = Triple.lock_fact lock_dir_path in
+        lock_fd := Some fd
+    else
+      fun () -> ()
+  in
   object (self)
 
     method id = ""

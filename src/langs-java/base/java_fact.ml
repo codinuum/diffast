@@ -280,8 +280,10 @@ class extractor options cache_path tree = object (self)
               (fun c ->
                 if L.is_parameters (getlab c) then begin
                   nparams := Array.length c#initial_children;
-                  let last_param = c#initial_children.(!nparams - 1) in
-                  is_va := L.is_va_parameter (getlab last_param);
+                  if !nparams > 0 then begin
+                    let last_param = c#initial_children.(!nparams - 1) in
+                    is_va := L.is_va_parameter (getlab last_param)
+                  end;
                   raise Exit
                 end
               ) nd#initial_children

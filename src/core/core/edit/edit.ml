@@ -54,7 +54,8 @@ class seq options = object (self)
       ~extra_ns_decls
       ~comp
       ~info_file_path
-      nmapping fname
+      nmapping fname;
+    hunk_count <- dedits#hunk_count
 
 end (* of class seq *)
 
@@ -261,10 +262,57 @@ let combine_node_lists
     ?(filt=(fun _ _ -> true))
     (cenv : (node_t, tree_t) Comparison.c)
     nmapping
+    edits
     cands1
     cands2
     =
-  [%debug_log "cands1=[%a] cands2=[%a]" nsps cands1 nsps cands2];
+  [%debug_log "cands1=[%a]" nsps cands1];
+  [%debug_log "cands2=[%a]" nsps cands2];
+
+  (*let cands1, cands2 =
+    let cands2_ =
+      List.fold_left
+        (fun nl2 n1 ->
+          try
+            let n1' = nmapping#find n1 in
+            if
+              not (List.memq n1' cands2) &&
+              not (cenv#is_bad_pair n1 n1') &&
+              not (cenv#is_too_bad_pair n1 n1') &&
+              (*n1#data#subtree_equals n1'#data &&*)
+              not (Misc.is_cross_boundary nmapping n1 n1')
+            then
+              n1' :: nl2
+            else
+              nl2
+          with
+            Not_found -> nl2
+        ) cands2 cands1
+    in
+    let cands1_ =
+      List.fold_left
+        (fun nl1 n2 ->
+          try
+            let n2' = nmapping#inv_find n2 in
+            if
+              not (List.memq n2' cands1) &&
+              not (cenv#is_bad_pair n2' n2) &&
+              not (cenv#is_too_bad_pair n2' n2) &&
+              (*n2'#data#subtree_equals n2#data &&*)
+              not (Misc.is_cross_boundary nmapping n2' n2)
+            then
+              n2' :: nl1
+            else
+              nl1
+          with
+            Not_found -> nl1
+        ) cands1 cands2
+    in
+    cands1_, cands2_
+  in
+  [%debug_log "cands1=[%a]" nsps cands1];
+  [%debug_log "cands2=[%a]" nsps cands2];*)
+
   match cands1, cands2 with
   | [], _ | _, [] -> []
   | [nd1], [nd2] -> [nd1, nd2]
@@ -295,13 +343,31 @@ let combine_node_lists
       [%debug_log "anc1=%a anc2=%a" nps anc1 nps anc2];
       let anchor = Some (anc1, anc2) in
       let pair_weight_list = ref [] in
+
+      let excluded1, excluded2 =
+        if anc1#data#is_sequence && anc1#data#is_sequence then
+          List.filter
+            (fun x -> edits#mem_del x || edits#mem_mov1 x)
+            (Array.to_list anc1#initial_children),
+          List.filter
+            (fun x -> edits#mem_ins x || edits#mem_mov2 x)
+            (Array.to_list anc2#initial_children)
+        else
+          [], []
+      in
+      [%debug_log "excluded1=[%a]" nsps excluded1];
+      [%debug_log "excluded2=[%a]" nsps excluded2];
+
       List.iter
         (fun nd1 ->
           List.iter
             (fun nd2 ->
               if filt nd1 nd2 then begin
                 let a =
-                  Stdlib.truncate ((cenv#get_adjacency_score ~anchor nd1 nd2) *. 10000.0)
+                  Stdlib.truncate
+                    ((cenv#get_adjacency_score
+                        ~anchor ~excluded1 ~excluded2 nd1 nd2
+                     ) *. 10000.0)
                 in
                 let w = Comparison.weight_of_int a in
                 pair_weight_list := (nd1, nd2, w) :: !pair_weight_list
@@ -387,12 +453,118 @@ let generate_compatible_edits
           matches;
       end;
 
+      let is_map x1 x2 = try nmapping#find x1 == x2 with _ -> false in
+
+      let matches =
+        List.filter
+          (fun (n1, n2) ->
+            (try
+              let n1' = nmapping#find n1 in
+              if
+                n1' != n2 &&
+                (
+                 nmapping#is_final_mapping n1 n1' ||
+                 try
+                   let pn1 = n1#initial_parent in
+                   let pn1' = n1'#initial_parent in
+                   is_map pn1 pn1' &&
+                   match pn1#data#_digest with
+                   | Some d -> begin
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | nml1, nml2, _ ->
+                           try
+                             let nl1 = List.assq pn1 nml1 in
+                             let nl2 = List.assq pn1' nml2 in
+                             List.for_all2 (fun x1 x2 -> is_map x1 x2) nl1 nl2
+                           with
+                             _ -> false
+                   end
+                   | None -> false
+                 with
+                   _ -> false
+                )
+              then
+                false
+              else
+                true
+            with _ -> true) &&
+            (try
+              let n2' = nmapping#inv_find n2 in
+              if
+                n2' != n1 &&
+                (
+                 nmapping#is_final_mapping n2' n2 ||
+                 try
+                   let pn2' = n2'#initial_parent in
+                   let pn2 = n2#initial_parent in
+                   is_map pn2' pn2 &&
+                   match pn2#data#_digest with
+                   | Some d -> begin
+                       match cenv#multiple_subtree_matches#find d with
+                       | [], _, _ | _, [], _ -> false
+                       | nml1, nml2, _ ->
+                           try
+                             let nl1 = List.assq pn2' nml1 in
+                             let nl2 = List.assq pn2 nml2 in
+                             List.for_all2 (fun x1 x2 -> is_map x1 x2) nl1 nl2
+                           with
+                             _ -> false
+                   end
+                   | None -> false
+                 with
+                   _ -> false
+                )
+              then
+                false
+              else
+                true
+            with _ -> true)
+          ) matches
+      in
+
+      begin %debug_block
+        [%debug_log "matches (filtered):"];
+        List.iter
+          (fun (n1, n2) -> [%debug_log "%a-%a" nups n1 nups n2])
+          matches;
+        [%debug_log "matches (gindex) (filtered):"];
+        List.iter
+          (fun (n1, n2) -> [%debug_log "%a-%a" GI.ps n1#gindex GI.ps n2#gindex])
+          matches;
+      end;
+
+      let has_rename_pat n1 n2 =
+        let b =
+          n1#data#is_named_orig && n2#data#is_named_orig &&
+          let nm1 = Comparison.get_orig_name n1 in
+          let nm2 = Comparison.get_orig_name n2 in
+          cenv#is_rename_pat (nm1, nm2)
+        in
+        [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+        b
+      in
+
       List.iter
         (fun (n1, n2) ->
           [%debug_log "%a-%a" nups n1 nups n2];
           let incompat, (*by_non_renames*)_ = is_incompatible n1 n2 in
           if incompat then
             [%debug_log "incompatible"]
+          else if
+            not (has_rename_pat n1 n2) &&
+            (
+             (try
+               let n1' = nmapping#find n1 in
+               n1' != n2 && has_rename_pat n1 n1'
+             with _ -> false) ||
+             (try
+               let n2' = nmapping#inv_find n2 in
+               n2' != n1 && has_rename_pat n2' n2
+             with _ -> false)
+            )
+          then
+            [%debug_log "not a rename pattern"]
           else begin
             (* remove conflicting edits *)
             begin
@@ -578,11 +750,10 @@ let mkfilt getlab is_x nd =
   with
     Not_found -> false
 
-
-let is_def nd = B.is_def nd#data#binding
-let is_non_local_def nd = B.is_non_local_def nd#data#binding
-let is_use nd = B.is_use nd#data#binding
-let get_def_node tree n = tree#search_node_by_uid (B.get_uid n#data#binding)
+let is_use n = Misc.is_use n
+let is_def n = Misc.is_def n
+let is_local_def n = Misc.is_local_def n
+let get_def_node tree n = Misc.get_def_node tree n
 let get_bid nd = B.get_bid nd#data#binding
 let get_bid_opt nd = B.get_bid_opt nd#data#binding
 
@@ -657,8 +828,19 @@ let collect_use_renames ?(filt=fun _ _ -> true) cenv nmapping edits is_possible_
 
   let add_use_rename ?(force=false) ?(bonus=1) ?(strip=false) node1 node2 bid1 bid2 =
     [%debug_log "force=%B bonus=%d strip=%B" force bonus strip];
-    let name1 = if strip then Comparison.get_orig_name node1 else node1#data#get_name in
-    let name2 = if strip then Comparison.get_orig_name node2 else node2#data#get_name in
+    let get_name tree node =
+      if strip then
+        Comparison.get_orig_name node
+      else
+        try
+          let def = get_def_node tree node in
+          def#data#get_name
+        with
+          _ -> node#data#get_orig_name
+    in
+    let name1 = get_name cenv#tree1 node1 in
+    let name2 = get_name cenv#tree2 node2 in
+
     [%debug_log "adding %a -> %a (\"%s\" -> \"%s\")" BID.ps bid1 BID.ps bid2 name1 name2];
     let add tbl bkey bi1 bi2 =
       let bi_tbl =
@@ -794,10 +976,12 @@ let collect_use_renames ?(filt=fun _ _ -> true) cenv nmapping edits is_possible_
       let k = name1, name2 in
       if
         not node1#data#is_order_insensitive && not node2#data#is_order_insensitive &&
+        node1#initial_nchildren = 1 && node2#initial_nchildren = 1 &&
         try
           let pnd1 = node1#initial_parent in
           let pnd2 = node2#initial_parent in
           not pnd1#data#is_order_insensitive && not pnd2#data#is_order_insensitive &&
+          pnd1#initial_nchildren = 1 && pnd2#initial_nchildren = 1 &&
           nmapping#find pnd1 == pnd2 &&
           let ppnd1 = pnd1#initial_parent in
           let ppnd2 = pnd2#initial_parent in
@@ -1065,6 +1249,8 @@ let rectify_renames_u
     bi1
   in
 
+  let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)
+
   nmapping#iter
     (fun n1 n2 ->
       [%debug_log "non_rename: checking %a-%a" nups n1 nups n2];
@@ -1077,10 +1263,13 @@ let rectify_renames_u
       try
         let bi1 = get_bid n1 in
         let bi2 = get_bid n2 in
+        [%debug_log "bi1=%a bi2=%a" BID.ps bi1 BID.ps bi2];
         if n1#data#eq n2#data then begin
 
           let name = try n1#data#get_name with _ -> "" in
           let _ = name in
+
+          [%debug_log "name=\"%s\"" name];
 
           if (*is_non_local_def*)is_def n1 && (*is_non_local_def*)is_def n2 then begin
             set_tbl_def non_rename_bid_tbl1 bi1;
@@ -1097,6 +1286,32 @@ let rectify_renames_u
             Hashtbl.add non_rename_bid_map2 bi2 bi1;
 
             [%debug_log "non_rename (use): %a-%a (%s)" BID.ps bi1 BID.ps bi2 name];
+
+            try
+              let d1 = get_def_node tree1 n1 in
+              let d2 = get_def_node tree2 n2 in
+              [%debug_log "d1=%a" nps d1];
+              [%debug_log "d2=%a" nps d2];
+              if
+                not (d1#data#eq d2#data) &&
+                d1#data#relabel_allowed d2#data &&
+                (Comparison.get_orig_name d1) = (Comparison.get_orig_name d2) &&
+                (
+                 not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
+                 (try
+                   let d1' = nmapping#find d1 in
+                   d1' != d2 && not (d1#data#relabel_allowed d1'#data)
+                 with _ -> false) ||
+                 (try
+                   let d2' = nmapping#inv_find d2 in
+                   d2' != d1 && not (d2'#data#relabel_allowed d2#data)
+                 with _ -> false)
+                )
+              then begin
+                [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
+                Hashtbl.add cands_pair_tbl (bi1, bi2) ([d1], [d2])
+              end
+            with _ -> ()
           end
 
         end
@@ -1146,8 +1361,8 @@ let rectify_renames_u
       let same_name() =
         let b =
           try
-            node1#data#get_name = node2#data#get_name &&
-            node1#data#get_category <> node2#data#get_category
+            node1#data#get_name = node2#data#get_name(* &&
+            node1#data#get_category <> node2#data#get_category*)
           with
             _ -> false
         in
@@ -1879,6 +2094,9 @@ let rectify_renames_u
       try
         let bi1 = get_bid n1 in
         let bi2 = get_bid n2 in
+        let scope1 = Misc.get_scope_node n1 in
+        let scope2 = Misc.get_scope_node n2 in
+        nmapping#mem_dom scope1 && nmapping#mem_cod scope2 &&
         Hashtbl.find rename_tbl1 bi1 <> bi2
       with
         Not_found -> false
@@ -1932,8 +2150,8 @@ let rectify_renames_u
           if incompat then begin
             [%debug_log "incompatible relabel%s: %s"
               (if by_non_renames then "[by non-renames]" else "") (Editop.to_string rel)];
-            let is_good = is_good_relabel nd1 nd2 in
-            if is_good then begin
+
+            if is_good_relabel nd1 nd2 then begin
               if
                 nd1#data#is_order_insensitive && nd2#data#is_order_insensitive &&
                 nd1#initial_nchildren = 0 && nd2#initial_nchildren = 0
@@ -1952,6 +2170,27 @@ let rectify_renames_u
                 end
               end
             end
+            (*else if
+              nd1#data#is_named_orig && nd2#data#is_named_orig &&
+              let nm1 = Comparison.get_orig_name nd1 in
+              let nm2 = Comparison.get_orig_name nd2 in
+              Misc.uqn_matches nm1 nm2
+            then begin
+              if
+                is_incompatible_def nd1 nd2
+              then begin
+                [%debug_log "not so good relabel: %a-%a" nups nd1 nups nd2];
+                to_be_removed := (nd1, nd2, by_non_renames) :: !to_be_removed;
+                remove_from_rename_tbls nd1 nd2
+              end
+              else begin
+                [%debug_log "good relabel"];
+                if is_use nd1 && is_use nd2 then begin
+                  Xset.add good1 nd1;
+                  Xset.add good2 nd2
+                end
+              end
+            end*)
             else begin
               [%debug_log "bad relabel: %a-%a" nups nd1 nups nd2];
               to_be_removed := (nd1, nd2, by_non_renames) :: !to_be_removed;
@@ -1977,7 +2216,7 @@ let rectify_renames_u
 
   [%debug_log "* finding compatible pairs..."];
 
-  let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)
+  (*let cands_pair_tbl = Hashtbl.create 0 in (* (bid * bid) -> node list * node list *)*)
 
   let subtree_eq n1 n2 =
     let b = n1#data#_digest <> None && n1#data#subtree_equals n2#data in
@@ -2002,7 +2241,7 @@ let rectify_renames_u
           (
            is_def nd &&
            (*non_rename non_rename_bid_tbl1 bid &&*)
-           subtree_or_node_eq nd (nmapping#find nd)
+           try subtree_or_node_eq nd (nmapping#find nd) with _ -> false
           )
       then begin
         let bid_ = Hashtbl.find rename_tbl1 bid in
@@ -2028,7 +2267,7 @@ let rectify_renames_u
           (
            is_def nd &&
            (*non_rename non_rename_bid_tbl2 bid &&*)
-           subtree_or_node_eq (nmapping#inv_find nd) nd
+           try subtree_or_node_eq (nmapping#inv_find nd) nd with _ -> false
           )
       then begin
         let _bid = Hashtbl.find rename_tbl2 bid in
@@ -2088,7 +2327,7 @@ let rectify_renames_u
     );
 
   begin %debug_block
-    [%debug_log "cands pair table:"];
+    [%debug_log "cands_pair_tbl:"];
     Hashtbl.iter
       (fun (bid1, bid2) (cands1, cands2) ->
         [%debug_log "  (%a,%a) [%a]-[%a]" BID.ps bid1 BID.ps bid2 nugsps cands1 nugsps cands2]
@@ -2112,7 +2351,7 @@ let rectify_renames_u
         is_def1 && is_def2 || is_use1 && is_use2 ||
         not is_def1 && not is_def2 && not is_use1 && not is_use2
       in
-      compatible_pairs := (combine_node_lists ~filt cenv nmapping cands1 cands2) @ !compatible_pairs
+      compatible_pairs := (combine_node_lists ~filt cenv nmapping edits cands1 cands2) @ !compatible_pairs
 
     ) cands_pair_tbl;
 
@@ -2128,6 +2367,48 @@ let rectify_renames_u
      Hashtbl.iter (fun b1 b2 -> [%debug_log "rename_tbl1: %a->%a" BID.ps b1 BID.ps b2]) rename_tbl1;
      Hashtbl.iter (fun b2 b1 -> [%debug_log "rename_tbl2: %a<-%a" BID.ps b1 BID.ps b2]) rename_tbl2
   end;
+
+  let extra_pairs = Xset.create 0 in
+  let compatible_nodes1 = Xset.create 0 in
+  let compatible_nodes2 = Xset.create 0 in
+  List.iter
+    (fun (n1, n2) ->
+      Xset.add compatible_nodes1 n1;
+      Xset.add compatible_nodes2 n2;
+      if is_use n1 && is_use n2 then begin
+        [%debug_log "%a-%a" nups n1 nups n2];
+        try
+          let d1 = get_def_node tree1 n1 in
+          let d2 = get_def_node tree2 n2 in
+          [%debug_log "d1=%a" nps d1];
+          [%debug_log "d2=%a" nps d2];
+          if
+            not (Xset.mem extra_pairs (d1, d2)) &&
+            not (d1#data#eq d2#data) &&
+            d1#data#relabel_allowed d2#data &&
+            (
+             not (nmapping#mem_dom d1) && not (nmapping#mem_cod d2) ||
+             (try
+               let d1' = nmapping#find d1 in
+               d1' != d2 && not (d1#data#relabel_allowed d1'#data)
+             with _ -> false) ||
+             (try
+               let d2' = nmapping#inv_find d2 in
+               d2' != d1 && not (d2'#data#relabel_allowed d2#data)
+             with _ -> false)
+            )
+          then begin
+            [%debug_log "def rename cand: %a-%a" nups d1 nups d2];
+            Xset.add extra_pairs (d1, d2)
+          end
+        with _ -> ()
+      end
+    ) !compatible_pairs;
+  Xset.iter
+    (fun (n1, n2) ->
+      if not (Xset.mem compatible_nodes1 n1) && not (Xset.mem compatible_nodes2 n2) then
+        compatible_pairs := (n1, n2) :: !compatible_pairs
+    ) extra_pairs;
 
   (*[%debug_log "* generating compatible edits..."];
   let nrels =
@@ -2185,7 +2466,7 @@ let rectify_renames_u
             (def_flag &&
              (
               nd1#data#_anonymized_label = nd2#data#_anonymized_label ||
-              B.is_local_def nd1#data#binding = B.is_local_def nd2#data#binding
+              is_local_def nd1 = is_local_def nd2
              )
             )
           then begin
@@ -2360,6 +2641,35 @@ let rectify_renames_d
       Nodetbl.replace tbl def (use::ul)
     with
       Not_found -> Nodetbl.add tbl def [use]
+  in
+
+  let get_bn = Comparison.get_bn in
+  let get_orig_name = Comparison.get_orig_name in
+  let is_extract_or_inline def1 def2 n1 n2 =
+    let b =
+      def1#data#is_parameter && def2#data#is_parameter &&
+      try
+        let bdef1 = get_bn def1 in
+        let bdef2 = get_bn def2 in
+        [%debug_log "bdef1=%a" nps bdef1];
+        [%debug_log "bdef2=%a" nps bdef2];
+        let bdef_name = get_orig_name bdef1 in
+        [%debug_log "bdef_name=\"%s\"" bdef_name];
+        bdef_name = get_orig_name bdef2 &&
+        let tree1 = cenv#tree1 in
+        let tree2 = cenv#tree2 in
+        (
+         tree1#is_initial_ancestor bdef1 n1 && not (tree2#is_initial_ancestor bdef2 n2) &&
+         Misc.has_p_ancestor (fun x -> x#data#is_boundary && get_orig_name x = bdef_name) n2
+        ||
+         not (tree1#is_initial_ancestor bdef1 n1) && tree2#is_initial_ancestor bdef2 n2 &&
+         Misc.has_p_ancestor (fun x -> x#data#is_boundary && get_orig_name x = bdef_name) n1
+        )
+      with
+        _ -> false
+    in
+    [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+    b
   in
 
   (*edits#iter_relabels
@@ -2580,9 +2890,14 @@ let rectify_renames_d
               incr use_rename_count
             end
             else begin
-              [%debug_log "use mapping1: %a-%a" nps use1 nps use1'];
-              [%debug_log "            : %a-%a" BID.ps bid1 BID.ps bid1'];
-              conflicting_mapping_list1 := (use1, use1') :: !conflicting_mapping_list1
+              let eoi_flag = is_extract_or_inline def1 def2 use1 use1' in
+              begin %debug_block
+                let eoi_mark = if eoi_flag then " (Extract/Inline)" else "" in
+                [%debug_log "use mapping1: %a-%a" nps use1 nps use1'];
+                [%debug_log "            : %a-%a%s" BID.ps bid1 BID.ps bid1' eoi_mark];
+              end;
+              if not eoi_flag then
+                conflicting_mapping_list1 := (use1, use1') :: !conflicting_mapping_list1
             end
           with Not_found -> begin
             [%debug_log "use delete: %a" nps use1];
@@ -2618,7 +2933,7 @@ let rectify_renames_d
       [%debug_log "conflicting_use_mapping_count1=%d" conflicting_use_mapping_count1];
       [%debug_log "conflicting_use_mapping_count2=%d" conflicting_use_mapping_count2];
 
-      let local_def_flag = B.is_local_def def1#data#binding && B.is_local_def def2#data#binding in
+      let local_def_flag = is_local_def def1 && is_local_def def2 in
       [%debug_log "local_def_flag=%B" local_def_flag];
 
       let compatible_scope_flag = Misc.is_scope_compatible nmapping def1 def2 in
@@ -2633,10 +2948,20 @@ let rectify_renames_d
           (fun x -> x > 0)
           [!use_rename_count; use_delete_count; use_insert_count;
            conflicting_use_mapping_count1; conflicting_use_mapping_count2
-          ] &&
+          ]
+        &&
         (
-         Comparison.get_orig_name def1 <> Comparison.get_orig_name def2 &&
+         let def_orig_name1 = Comparison.get_orig_name def1 in
+         let def_orig_name2 = Comparison.get_orig_name def2 in
+         def_orig_name1 <> def_orig_name2 &&
          !use_rename_count = 0 &&
+         (if
+           use_delete_count > 0 && use_insert_count = 0 && conflicting_use_mapping_count1 > 0 ||
+           use_insert_count > 0 && use_delete_count = 0 && conflicting_use_mapping_count2 > 0
+         then
+           not (Misc.uqn_matches def_orig_name1 def_orig_name2)
+         else
+           true) &&
          (use_delete_count + conflicting_use_mapping_count1)
            * (use_insert_count + conflicting_use_mapping_count2) = 0
         ||
@@ -2749,22 +3074,122 @@ let rectify_renames_d
         | _ -> ()
       end
       else begin (* is good def pair *)
+        let non_rename_def_flag =
+          Comparison.get_orig_name def1 = Comparison.get_orig_name def2
+        in
+        [%debug_log "non_rename_def_flag=%B" non_rename_def_flag];
+        let non_rename_def_plausible_flag =
+          non_rename_def_flag &&
+          !use_rename_count >
+          (conflicting_use_mapping_count1 + conflicting_use_mapping_count2)
+        in
+        [%debug_log "non_rename_def_plausible_flag=%B" non_rename_def_plausible_flag];
+        let chk_def1 n1 n2 =
+          let b =
+            is_use n1 && is_use n2 &&
+            let d1 = get_def_node cenv#tree1 n1 in
+            try
+              let d1' = nmapping#find d1 in
+              Misc.is_cross_scope nmapping d1 d1' &&
+              not (Misc.is_scope_compatible nmapping d1 d1')
+            with
+              Not_found -> is_local_def d1
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+        let chk_def2 n1 n2 =
+          let b =
+            is_use n1 && is_use n2 &&
+            let d2 = get_def_node cenv#tree2 n2 in
+            try
+              let d2' = nmapping#inv_find d2 in
+              Misc.is_cross_scope nmapping d2' d2 &&
+              not (Misc.is_scope_compatible nmapping d2' d2)
+            with
+              Not_found -> is_local_def d2
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+        let name_cond n1 n2 =
+          let b =
+            non_rename_def_plausible_flag &&
+            Comparison.get_orig_name n1 <> Comparison.get_orig_name n2 &&
+            try
+              let d1 = get_def_node cenv#tree1 n1 in
+              let d2 = get_def_node cenv#tree2 n2 in
+              is_local_def d1 && is_local_def d2
+            with
+              _ -> false
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
+        let lhs_cond n1 n2 =
+          let b =
+            try
+              n1#initial_parent#data#is_assignment <> n2#initial_parent#data#is_assignment
+            with _ -> false
+          in
+          [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
+          b
+        in
         let conflicting_mapping_list1_, conflicting_mapping_list2_ =
-          let filt =
+          let is_cross_boundary = Misc.is_cross_boundary nmapping in
+          let tree1 = cenv#tree1 in
+          let tree2 = cenv#tree2 in
+          let filt chk_def =
             List.filter
               (fun (n1, n2) ->
                 let b =
-                  not (Misc.is_cross_boundary nmapping n1 n2) &&
-                  (strict_flag ||
-                  try
-                    nmapping#find n1#initial_parent != n2#initial_parent
-                  with _ -> true)
+                  not (is_cross_boundary n1 n2) &&
+                  not
+                    (
+                     let b =
+                       n1#initial_nchildren = 0 && n2#initial_nchildren = 0 &&
+                       try
+                         let pn1 = n1#initial_parent in
+                         let pn2 = n2#initial_parent in
+                         nmapping#has_mapping pn1 pn2 &&
+                         let ppn1 = pn1#initial_parent in
+                         let ppn2 = pn2#initial_parent in
+                         nmapping#has_mapping ppn1 ppn2 &&
+                         let def1 = get_def_node tree1 n1 in
+                         let def2 = get_def_node tree2 n2 in
+                         [%debug_log "def1=%a" nps def1];
+                         [%debug_log "def2=%a" nps def2];
+                         is_local_def def1 && not def1#data#is_parameter &&
+                         is_local_def def2 && not def2#data#is_parameter &&
+                         let mapped1 = nmapping#mem_dom def1 in
+                         let mapped2 = nmapping#mem_cod def2 in
+                         (
+                          not mapped1 && mapped2 && not (is_cross_boundary (nmapping#inv_find def2) def2)
+                         ||
+                          not mapped2 && mapped1 && not (is_cross_boundary def1 (nmapping#find def1))
+                         )
+                       with
+                         _ -> false
+                     in
+                     [%debug_log "%a - %a --> %B" nps n1 nps n2 b];
+                     b
+                    ) &&
+                  (
+                   strict_flag ||
+                   (try
+                     nmapping#find n1#initial_parent != n2#initial_parent
+                   with _ -> true) ||
+                   name_cond n1 n2 ||
+                   lhs_cond n1 n2 ||
+                   chk_def n1 n2
+                  )
                 in
                 [%debug_log "%a-%a --> %B" nups n1 nups n2 b];
                 b
               )
           in
-          filt !conflicting_mapping_list1, filt !conflicting_mapping_list2
+          filt chk_def2 !conflicting_mapping_list1,
+          filt chk_def1 !conflicting_mapping_list2
         in
         List.iter
           (fun ((*i*)_, pl) ->
@@ -2812,17 +3237,36 @@ let rectify_renames_d
             try
               let pn1 = n1#initial_parent in
               let pn2 = n2#initial_parent in
-              if nmapping#find pn1 == pn2 then
-                let ppn1 = pn1#initial_parent in
-                let ppn2 = pn2#initial_parent in
-                if nmapping#find ppn1 == ppn2 && ppn1#data#subtree_equals ppn2#data then begin
-                  let d = ppn1#data#_digest in
-                  try
-                    let pl = Hashtbl.find xnd_tbl d in
-                    Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
-                  with Not_found ->
-                    Hashtbl.add xnd_tbl d [(n1, n2)]
+              try
+                if nmapping#find pn1 == pn2 then
+                  let ppn1 = pn1#initial_parent in
+                  let ppn2 = pn2#initial_parent in
+                  if nmapping#find ppn1 == ppn2 && ppn1#data#subtree_equals ppn2#data then begin
+                    let d = ppn1#data#_digest in
+                    try
+                      let pl = Hashtbl.find xnd_tbl d in
+                      Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
+                    with Not_found ->
+                      Hashtbl.add xnd_tbl d [(n1, n2)]
+                  end
+              with _ -> begin
+                if
+                  conflicting_use_mapping_count1 = 0 &&
+                  conflicting_use_mapping_count2 = 0 &&
+                  pn1#data#_anonymized_label = pn2#data#_anonymized_label
+                then begin
+                  let ppn1 = pn1#initial_parent in
+                  let ppn2 = pn2#initial_parent in
+                  if ppn1#data#_anonymized_label = ppn2#data#_anonymized_label then begin
+                    let d = ppn1#data#_digest in
+                    try
+                      let pl = Hashtbl.find xnd_tbl d in
+                      Hashtbl.replace xnd_tbl d ((n1, n2)::pl)
+                    with Not_found ->
+                      Hashtbl.add xnd_tbl d [(n1, n2)]
+                  end
                 end
+              end
             with _ -> ()
           ) !use_renames1 !use_renames2;
         begin %debug_block
@@ -2868,7 +3312,7 @@ let rectify_renames_d
 
         let nds1__, nds2__ =
           if
-            B.is_local_def def1#data#binding && B.is_local_def def2#data#binding &&
+            is_local_def def1 && is_local_def def2 &&
             (nds1_ <> [] || nds2_ <> [])
           then begin
             List.iter2
@@ -2888,10 +3332,40 @@ let rectify_renames_d
           else
             nds1_, nds2_
         in
+        let cmp n1 n2 =
+          let get_ofs n = n#data#src_loc.Loc.start_offset in
+          Stdlib.compare (get_ofs n1) (get_ofs n2)
+        in
+        let nds1__, nds2__ =
+          List.fast_sort cmp nds1__, List.fast_sort cmp nds2__
+        in
         [%debug_log "nds1__=[%a]" nsps nds1__];
         [%debug_log "nds2__=[%a]" nsps nds2__];
+
         if nds1__ <> [] && nds2__ <> [] then
           to_be_mapped := (nds1__, nds2__) :: !to_be_mapped;
+
+        (*let is_lhs x =
+          x#initial_parent#data#is_assignment &&
+          x#initial_pos = 0
+        in
+        let lhss1, nds1___ = List.partition is_lhs nds1__ in
+        let lhss2, nds2___ = List.partition is_lhs nds2__ in
+        [%debug_log "lhss1=[%a]" nsps lhss1];
+        [%debug_log "lhss2=[%a]" nsps lhss2];
+        [%debug_log "nds1___=[%a]" nsps nds1___];
+        [%debug_log "nds2___=[%a]" nsps nds2___];
+
+        if lhss1 = [] || lhss2 = [] then begin
+          if nds1__ <> [] && nds2__ <> [] then
+            to_be_mapped := (nds1__, nds2__) :: !to_be_mapped;
+        end
+        else begin
+          if lhss1 <> [] && lhss2 <> [] then
+            to_be_mapped := (lhss1, lhss2) :: !to_be_mapped;
+          if nds1___ <> [] && nds2___ <> [] then
+            to_be_mapped := (nds1___, nds2___) :: !to_be_mapped;
+        end;*)
 
         Hashtbl.add def_bid_map1 bid1 bid2;
         Hashtbl.add def_bid_map2 bid2 bid1
@@ -2916,7 +3390,10 @@ let rectify_renames_d
       let ncands1 = List.length cands1 in
       let ncands2 = List.length cands2 in
       [%debug_log "ncands1=%d ncands2=%d" ncands1 ncands2];
-      if ncands1 > cands_thresh || ncands2 > cands_thresh then begin
+      if ncands1 = 1 && ncands2 = 1 then begin
+        compatible_pairs := [List.hd cands1, List.hd cands2] @ !compatible_pairs
+      end
+      else if ncands1 > cands_thresh || ncands2 > cands_thresh then begin
         let get_ofs n = n#data#src_loc.Loc.start_offset in
         let cmp n0 n1 = Stdlib.compare (get_ofs n0) (get_ofs n1) in
         let sorted_cands1 = List.fast_sort cmp cands1 in
@@ -2929,8 +3406,53 @@ let rectify_renames_d
         compatible_pairs := (comb sorted_cands1 sorted_cands2) @ !compatible_pairs
       end
       else
-        compatible_pairs := (combine_node_lists cenv nmapping cands1 cands2) @ !compatible_pairs
+        compatible_pairs := (combine_node_lists cenv nmapping edits cands1 cands2) @ !compatible_pairs
     ) !to_be_mapped;
+
+  begin
+    let get_siblings = Misc.get_siblings in
+    List.iter
+      (fun (n1, n2) ->
+        [%debug_log "compatible pair: %a-%a" nps n1 nps n2];
+        if
+          not n1#data#is_statement && not n2#data#is_statement &&
+          Misc.is_cross_boundary nmapping n1 n2
+        then
+          try
+            let bn1 = Comparison.get_bn n1 in
+            let bn2 = Comparison.get_bn n2 in
+            if Comparison.get_orig_name bn1 = Comparison.get_orig_name bn2 then begin
+              let stmt1 = Misc.get_stmt n1 in
+              let stmt2 = Misc.get_stmt n2 in
+              [%debug_log "stmt1: %a" nps stmt1];
+              [%debug_log "stmt2: %a" nps stmt2];
+              if
+                stmt1#data#is_named_orig && stmt2#data#is_named_orig &&
+                stmt1#data#relabel_allowed stmt2#data &&
+                Comparison.get_orig_name stmt1 = Comparison.get_orig_name stmt2
+              ||
+                stmt1#data#subtree_equals stmt2#data
+              then begin
+                try
+                  let pstmt2 = stmt2#initial_parent in
+                  let sibl1 = get_siblings stmt1 in
+                  if
+                    List.exists
+                      (fun sib1 ->
+                        let sib1' = nmapping#find sib1 in
+                        sib1'#initial_parent == pstmt2
+                      ) sibl1
+                  then begin
+                    [%debug_log "derived compatible pair: %a-%a" nps stmt1 nps stmt2];
+                    compatible_pairs := (stmt1, stmt2) :: !compatible_pairs
+                  end
+                with
+                  _ -> ()
+              end
+            end
+          with _ -> ()
+      ) !compatible_pairs
+  end;
 
   begin %debug_block
     List.iter
@@ -2967,6 +3489,7 @@ let rectify_renames_d
     (fun ?(strict=false) n1 n2 ->
       [%debug_log "is_possible_rename: strict=%B %a-%a" strict nups n1 nups n2];
       let b =
+        (*not (cenv#is_too_bad_pair n1 n2) &&*)
         not (Xset.mem local_bad_pairs (n1, n2)) &&
         is_possible_rename ?strict:(Some strict) n1 n2 &&
         (

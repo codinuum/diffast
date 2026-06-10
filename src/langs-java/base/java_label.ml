@@ -24,6 +24,7 @@ module Astml = Diffast_core.Astml
 module Spec = Diffast_core.Spec
 module Lang_base = Diffast_core.Lang_base
 module Charpool = Diffast_core.Charpool
+module Misc = Diffast_core.Misc
 
 module Ast = Java_parsing.Ast
 module Printer = Java_parsing.Printer
@@ -63,6 +64,7 @@ let xmldec = XML.decode_string
 let escaped_dollar_pat = Str.regexp_string "&#36;"
 let unescape_dollar = Str.global_replace escaped_dollar_pat "$"
 
+let deco_pat = Str.regexp {|^.+#\([0-9]+\)$|}
 let undeco_pat = Str.regexp "#[0-9]+"
 let undeco x = Str.global_replace undeco_pat "" (unescape_dollar x)
 let get_uqn x = Xlist.last (String.split_on_char '.' x)
@@ -231,6 +233,7 @@ module Type = struct
     List.iter (Xset.add s)
       ["java.lang.Object";
        "java.lang.Void";
+       "java.lang.Class";
        "java.lang.Character";
        "java.lang.String";
        "java.lang.Byte";
@@ -1346,7 +1349,7 @@ module Primary = struct
     | SuperMethodReference ident            -> combo 23 [ident]
     | TypeSuperMethodReference(name, ident) -> combo 24 [name; ident]
     | TypeNewMethodReference name           -> combo 25 [name]
-    | AmbiguousName name                    -> combo 26 [name]
+    | AmbiguousName name                    -> combo (*26*)0 [name]
     | AmbiguousMethodInvocation name        -> combo 27 [name]
 
   let to_tag p =
@@ -1400,12 +1403,22 @@ module Primary = struct
     else
       Xlist.last (Str.split sep_pat lname)
 
-  let is_compatible p1 p2 =
+  let is_compatible ?(weak=false) p1 p2 =
     match p1, p2 with
     | AmbiguousName name1, FieldAccess name2
     | FieldAccess name2, AmbiguousName name1 -> last_of_lname name1 = name2
     | Name name1, FieldAccess name2
     | FieldAccess name2, Name name1 -> name1 = name2
+
+    | PrimaryMethodInvocation x1, SimpleMethodInvocation x2
+    | SimpleMethodInvocation x2, PrimaryMethodInvocation x1 when weak -> x1 = x2
+    | PrimaryMethodInvocation x1, TypeMethodInvocation(_, x2)
+    | TypeMethodInvocation(_, x2), PrimaryMethodInvocation x1 when weak -> x1 = x2
+    | SimpleMethodInvocation x1, TypeMethodInvocation(_, x2)
+    | TypeMethodInvocation(_, x2), SimpleMethodInvocation x1 when weak -> x1 = x2
+
+    | lab1, lab2 when lab1 = lab2 -> true
+
     | _ -> false
 
   let common_methods =
@@ -1619,11 +1632,14 @@ module Statement = struct
     | Labeled of identifier
     | Expression of Expression.t * tie_id
     (*| FlattenedIf of tie_id*)
-    | ElseIf of tie_id
+    (*| ElseIf of tie_id*)
     | Else
+    (*| IfThen of tie_id*)
 
   let get_tid = function
-    | If tid -> tid
+    | If tid
+    (*| IfThen tid*)
+      -> tid
     (*| FlattenedIf tid | ElseIf tid -> tid*)
     (*| Expression tid -> tid*)
     | _ -> raise Not_found
@@ -1682,8 +1698,9 @@ module Statement = struct
       | Expression(se, tid) -> (Expression.to_string se)^"("^(tid_to_string tid)^")"
 
       (*| FlattenedIf tid -> sprintf "FlattenedIf(%s)" (tid_to_string tid)*)
-      | ElseIf tid      -> sprintf "ElseIf(%s)" (tid_to_string tid)
+      (*| ElseIf tid      -> sprintf "ElseIf(%s)" (tid_to_string tid)*)
       | Else            -> "Else"
+      (*| IfThen tid      -> sprintf "IfThen(%s)" (tid_to_string tid)*)
     in
     "Statement." ^ str
 
@@ -1691,7 +1708,8 @@ module Statement = struct
     | Expression(se, _) -> Expression(Expression.strip se, null_tid)
     | If _              -> If null_tid
     (*| FlattenedIf _   -> FlattenedIf null_tid*)
-    | ElseIf _          -> ElseIf null_tid
+    (*| ElseIf _          -> ElseIf null_tid*)
+    (*| IfThen _          -> IfThen null_tid*)
     | stmt              -> stmt
 
   let anonymize ?(more=false) = function
@@ -1702,7 +1720,10 @@ module Statement = struct
     | Expression(se, tid) -> Expression(Expression.anonymize ~more se, anonymize_tid ~more tid)
     | If _          -> If null_tid(*(anonymize_tid ~more tid)*)
     (*| FlattenedIf tid     -> FlattenedIf null_tid(*(anonymize_tid ~more tid)*)*)
-    | ElseIf _      -> ElseIf null_tid(*(anonymize_tid ~more tid)*)
+    (*| ElseIf _ when more -> If null_tid(*(anonymize_tid ~more tid)*)
+    | ElseIf _      -> ElseIf null_tid(*(anonymize_tid ~more tid)*)*)
+    (*| IfThen _ when more -> If null_tid(*(anonymize_tid ~more tid)*)
+    | IfThen _      -> IfThen null_tid(*(anonymize_tid ~more tid)*)*)
     | stmt          -> stmt
 
   let to_simple_string = function
@@ -1724,8 +1745,9 @@ module Statement = struct
     | Labeled ident      -> ident
     | Expression(_, _) -> "<se>" (* Expression.to_simple_string se *)
     (*| FlattenedIf tid -> "<flattened-if>"*)
-    | ElseIf _        -> "else if"
+    (*| ElseIf _        -> "else if"*)
     | Else            -> "else"
+    (*| IfThen _        -> "if"*)
 
   let to_short_string = function
     | Empty        -> mkstr 0
@@ -1756,8 +1778,9 @@ module Statement = struct
     | Labeled ident       -> catstr [mkstr 15; ident]
     | Expression(se, tid) -> catstr [mkstr 16; Expression.to_short_string se; tid_to_string tid]
     (*| FlattenedIf tid -> catstr [mkstr 17; tid_to_string tid]*)
-    | ElseIf tid      -> catstr [mkstr 18; tid_to_string tid]
+    (*| ElseIf tid      -> catstr [mkstr 18; tid_to_string tid]*)
     | Else            -> mkstr 19
+    (*| IfThen tid      -> catstr [mkstr 20; tid_to_string tid]*)
 
   let to_index = function
     | Empty            -> 3
@@ -1778,8 +1801,9 @@ module Statement = struct
     | Labeled _        -> 104
     | Expression(_, _) -> 105
     (*| FlattenedIf _    -> 106*)
-    | ElseIf _         -> 107
+    (*| ElseIf _         -> 107*)
     | Else             -> 108
+    (*| IfThen _         -> 109*)
 
   let to_tag ?(strip=false) s =
     let name, attrs =
@@ -1818,10 +1842,11 @@ module Statement = struct
 
       (*| FlattenedIf _ when strip -> "FlattenedIfStatement", []
       | FlattenedIf tid          -> "FlattenedIfStatement", mktidattr tid*)
-      | ElseIf _ when strip      -> "ElseIfStatement", []
-      | ElseIf tid               -> "ElseIfStatement", mktidattr tid
+      (*| ElseIf _ when strip      -> "ElseIfStatement", []
+      | ElseIf tid               -> "ElseIfStatement", mktidattr tid*)
       | Else                     -> "ElseStatement", []
-
+      (*| IfThen _ when strip      -> "IfThenStatement", []
+      | IfThen tid               -> "IfThenStatement", mktidattr tid*)
     in
     name, attrs
 
@@ -1838,7 +1863,13 @@ module Statement = struct
     | If _, Switch | Switch, If _
     | If _, If _
     (*| FlattenedIf _, Switch | Switch, FlattenedIf _*)
-    | ElseIf _, If _ | If _, ElseIf _
+    (*| ElseIf _, If _ | If _, ElseIf _
+    | ElseIf _, Else | Else, ElseIf _*)
+
+    (*| IfThen _, If _ | If _, IfThen _
+    | IfThen _, Else | Else, IfThen _*)
+
+    | Else, If _ | If _, Else
     | For, ForEnhanced | ForEnhanced, For
     | For, While | While, For
     | ForEnhanced, While | While, ForEnhanced
@@ -2329,8 +2360,32 @@ let anonymize ?(more=false) = function
   | VariableDeclarator(_, _) when more -> VariableDeclarator("", 0)
   | Modifiers _ when more -> Modifiers Kany
 
+  | IDsingle _ when more -> IDsingle ""
+
   | Type ty                        -> Type (Type.anonymize ty)
   | Primary p                      -> Primary (Primary.anonymize ~more p)
+
+  | Expression (Expression.BinaryOperator BinaryOperator.Neq) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Eq)
+  (*| Expression
+      (Expression.BinaryOperator (BinaryOperator.(Gt|Ge|Le))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Lt)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Sub))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Add)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Div|Mod))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.Mul)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(ShiftR|ShiftRU))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.ShiftL)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(BitOr|BitXor))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.BitAnd)
+  | Expression
+      (Expression.BinaryOperator (BinaryOperator.(Or))) ->
+      Expression (Expression.BinaryOperator BinaryOperator.And)*)
+
   | Expression (Primary p)         -> Primary (Primary.anonymize ~more p)
 (*  | Statement (Statement.Expression (Expression.Primary p, _)) -> Primary (Primary.anonymize ~more p)*)
   | Expression e                   -> Expression (Expression.anonymize ~more e)
@@ -2378,7 +2433,8 @@ let anonymize ?(more=false) = function
   | AnnotationTypeBody _           -> AnnotationTypeBody ""
   | InterfaceBody _                -> InterfaceBody ""
   | PackageDeclaration _           -> PackageDeclaration ""
-  | IDsingle _                     -> IDsingle ""
+  (*| IDsingle _                     -> IDsingle ""*)
+  | IDsingle n                     -> IDsingle (let uqn, flag = Misc.get_uqn n in if flag then uqn else "")
   | IDtypeOnDemand _               -> IDtypeOnDemand ""
   | IDsingleStatic _               -> IDsingleStatic("", "")
   | IDstaticOnDemand _             -> IDstaticOnDemand ""
@@ -2721,6 +2777,7 @@ let to_short_string ?(ignore_identifiers_flag=false) =
 
   | VariableDeclaration -> mkstr 121
 
+
 let sig_attr_name = "___signature"
 
 let to_tag ?(strip=false) l =
@@ -2745,7 +2802,7 @@ let to_tag ?(strip=false) l =
 (* element value *)
     | EVconditional               -> "ConditionalElementValue", []
     | EVannotation                -> "AnnotationElementValue", []
-    | EVarrayInit                 -> "ArrayInitElementValue", []
+    | EVarrayInit                 -> "ElementValueArrayInitializer", []
     | ElementValuePair name       -> "ElementValuePair", ["name",xmlenc name]
 
 (* class body declaration *)
@@ -3121,9 +3178,11 @@ let is_collapse_target options lab =
     | NamedArguments _
     | Modifiers _
     | Annotations
+    | Annotation _
     | FieldDeclarations _
     | InferredFormalParameters
     | ArrayInitializer
+    | EVarrayInit
     | SLconstant _
 (*    | CatchParameter _*)
 (*    | CatchClause _*)
@@ -3188,7 +3247,7 @@ let is_statement_expression = function
 
 let is_compatible ?(weak=false) lab1 lab2 =
   match lab1, lab2 with
-  | Primary p1, Primary p2 -> Primary.is_compatible p1 p2
+  | Primary p1, Primary p2 -> Primary.is_compatible ~weak p1 p2
   | Method(n1, _), Method(n2, _) -> n1 = n2
   | Constructor(n1, _), Constructor(n2, _) -> n1 = n2
 
@@ -3202,13 +3261,17 @@ let is_compatible ?(weak=false) lab1 lab2 =
       | Primary.SimpleMethodInvocation _
       | Primary.SuperMethodInvocation _
       | Primary.ClassSuperMethodInvocation _
-      | Primary.TypeMethodInvocation _ -> _p = p
+      | Primary.TypeMethodInvocation _ -> Primary.is_compatible ~weak _p p
       | _ -> false
   end
 
-  | ClassBody _, InterfaceBody _ | InterfaceBody _, ClassBody _ when weak -> true (* invalid when dumping delta *)
+  | ClassBody _, InterfaceBody _ | InterfaceBody _, ClassBody _ when
+      weak -> true (* invalid when dumping delta *)
   | ClassBody _, EnumBody _ | EnumBody _, ClassBody _ when weak -> true
   | EnumBody _, InterfaceBody _ | InterfaceBody _, EnumBody _ when weak -> true
+
+  | lab1, lab2 when lab1 = lab2 -> true
+
   | _ -> false
 
 let quasi_eq lab1 lab2 =
@@ -3335,6 +3398,12 @@ let relabel_allowed (lab1, lab2) =
     | VariableDeclarator _, InferredFormalParameter _
     | InferredFormalParameter _, VariableDeclarator _
 
+    | Parameter _, InferredFormalParameter _
+    | InferredFormalParameter _, Parameter _
+
+    | Parameters _, InferredFormalParameters
+    | InferredFormalParameters, Parameters _
+
     | LocalVariableDeclaration _, FieldDeclaration _
     | FieldDeclaration _, LocalVariableDeclaration _
 
@@ -3343,6 +3412,24 @@ let relabel_allowed (lab1, lab2) =
     | LocalVariableDeclaration _, CatchParameter _ | CatchParameter _, LocalVariableDeclaration _
 
     | StaticInitializer, InstanceInitializer | InstanceInitializer, StaticInitializer
+
+    | SwitchBlockStatementGroup, Statement Statement.If _
+    | Statement Statement.If _, SwitchBlockStatementGroup
+
+    (*| SwitchBlockStatementGroup, Statement Statement.ElseIf _
+    | Statement Statement.ElseIf _, SwitchBlockStatementGroup*)
+
+    (*| SwitchBlockStatementGroup, Statement Statement.IfThen _
+    | Statement Statement.IfThen _, SwitchBlockStatementGroup*)
+
+    | SwitchBlockStatementGroup, Statement Statement.Else
+    | Statement Statement.Else, SwitchBlockStatementGroup
+
+    | SLconstant _, SLdefault | SLdefault, SLconstant _
+    (*| SLconstant _, Expression _ | Expression _, SLconstant _
+    | SLconstant _, Primary _ | Primary _, SLconstant _*)
+    | SLdefault, Expression _ | Expression _, SLdefault
+    | SLdefault, Primary _ | Primary _, SLdefault
 
       -> true
 
@@ -3379,6 +3466,7 @@ let is_common = function (* common constracts that have names or non-trivial val
   (*| Statement (Statement.If _(* | Return*)) -> true*)
 
   | IDsingle n -> Xset.mem Type.common_classes n
+
   | _ -> false
 
 let is_order_insensitive = function
@@ -3595,13 +3683,17 @@ let is_if = function
   (*| Statement Statement.FlattenedIf _ -> true*)
   | _ -> false
 
-let is_elseif = function
+(*let is_elseif = function
   | Statement Statement.ElseIf _ -> true
-  | _ -> false
+  | _ -> false*)
 
 let is_else = function
   | Statement Statement.Else -> true
   | _ -> false
+
+(*let is_ifthen = function
+  | Statement Statement.IfThen _ -> true
+  | _ -> false*)
 
 let is_while = function
   | Statement Statement.While -> true
@@ -3629,6 +3721,10 @@ let is_method = function
 
 let is_parameter = function
   | Parameter _ -> true
+  | _ -> false
+
+let is_inferred_formal_parameter = function
+  | InferredFormalParameter _ -> true
   | _ -> false
 
 let is_va_parameter = function
@@ -3671,6 +3767,10 @@ let is_fieldaccess = function
 
 let is_import_single = function
   | IDsingle _ -> true
+  | _ -> false
+
+let is_import_single_static = function
+  | IDsingleStatic _ -> true
   | _ -> false
 
 let is_type = function
@@ -3956,6 +4056,7 @@ let is_op = function
     Expression.BinaryOperator _ |
     Expression.Instanceof |
     Expression.AssignmentOperator _ |
+    Expression.Cond |
     Expression.Cast)
       -> true
   | _ -> false
@@ -4006,7 +4107,9 @@ let is_invocation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _)
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   )
 
   | Statement (
     Statement.Expression (
@@ -4015,7 +4118,9 @@ let is_invocation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _), _))
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   ), _))
 
   | ThisInvocation
   | SuperInvocation
@@ -4057,7 +4162,9 @@ let is_invocation_or_instance_creation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _)
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   )
 
   | Statement (
     Statement.Expression (
@@ -4069,7 +4176,9 @@ let is_invocation_or_instance_creation = function
   | Primary.SimpleMethodInvocation _
   | Primary.SuperMethodInvocation _
   | Primary.ClassSuperMethodInvocation _
-  | Primary.TypeMethodInvocation _), _))
+  | Primary.TypeMethodInvocation _
+  | Primary.AmbiguousMethodInvocation _
+   ), _))
 
   | ThisInvocation
   | SuperInvocation
@@ -4118,7 +4227,10 @@ let is_binary_add = function
   | _ -> false
 
 let is_block = function
-  | Block _ -> true
+  | Block _
+  (*| MethodBody _
+  | ConstructorBody _*)
+    -> true
   | _ -> false
 
 let get_ident_use = function
@@ -4145,6 +4257,13 @@ let is_elementvalue = function
   | EVconditional
   | EVannotation
   | EVarrayInit -> true
+
+  | Primary _
+  | Expression _
+  | HugeExpr _ -> true
+
+  | Annotation _ -> true
+
   | _ -> false
 
 let is_ctor = function
@@ -4238,6 +4357,8 @@ let is_scope_creating lab =
   is_class_or_interface lab ||
   is_method lab ||
   is_methodbody lab ||
+  is_ctor lab ||
+  is_ctorbody lab ||
   is_for lab ||
   is_block lab ||
   is_try lab ||
@@ -4381,6 +4502,74 @@ let get_signature = function
   | Method(_, s) | Constructor(_, s) -> s
   | _ -> raise Not_found
 
+let get_nparams = function
+  | Method(_, s) | Constructor(_, s) -> begin
+      let count = ref 0 in
+      let in_paren_flag = ref false in
+      let refty_flag = ref false in
+      begin
+        try
+          String.iter
+            (fun c ->
+              if !in_paren_flag then begin
+                if !refty_flag then begin
+                  if c = ';' then begin
+                    incr count;
+                    refty_flag := false
+                  end
+                  else if c = ')' then
+                    raise Exit
+                end
+                else begin
+                  if c = 'L' then
+                    refty_flag := true
+                  else if c = ')' then
+                    raise Exit
+                  else
+                    incr count
+                end
+              end
+              else begin
+                if c = '(' then
+                  in_paren_flag := true
+              end
+            ) s;
+        with Exit -> ()
+      end;
+      !count
+  end
+  | _ -> raise Not_found
+
+let get_nargs = function
+  | Primary (
+    Primary.PrimaryMethodInvocation n
+  | Primary.SimpleMethodInvocation n
+  | Primary.SuperMethodInvocation n
+  | Primary.ClassSuperMethodInvocation n
+  | Primary.TypeMethodInvocation(_, n)
+  | Primary.AmbiguousMethodInvocation n
+   )
+
+  | Statement (
+    Statement.Expression (
+    Expression.Primary (
+    Primary.PrimaryMethodInvocation n
+  | Primary.SimpleMethodInvocation n
+  | Primary.SuperMethodInvocation n
+  | Primary.ClassSuperMethodInvocation n
+  | Primary.TypeMethodInvocation(_, n)
+  | Primary.AmbiguousMethodInvocation n
+   ), _)) -> begin
+     if Str.string_match deco_pat n 0 then
+       let i = Str.matched_group 1 n in
+       try
+         int_of_string i
+       with _ -> raise Not_found
+     else
+       raise Not_found
+   end
+  | _ -> raise Not_found
+
 let getlab nd = (Obj.obj nd#data#_label : t)
 
 let get_dimensions = function
@@ -4409,10 +4598,10 @@ let is_phantom = function
   | Modifiers _
   | ImportDeclarations
   | TypeDeclarations
-  | Specifier _
+  | FieldDeclarations _
+  (*| Specifier _*)
   | EVconditional
   | EVannotation
-  | EVarrayInit
     -> true
   | _ -> false
 
@@ -4608,8 +4797,9 @@ let of_elem_data =
     "AssertStatement",          (fun _ -> mks Statement.Assert);
     "IfStatement",              (fun a -> mks (Statement.If(find_tid a)));
     (*"FlattenedIfStatement",     (fun a -> mks (Statement.FlattenedIf(find_tid a)));*)
-    "ElseIfStatement",          (fun a -> mks (Statement.ElseIf(find_tid a)));
+    (*"ElseIfStatement",          (fun a -> mks (Statement.ElseIf(find_tid a)));*)
     "ElseStatement",            (fun _ -> mks Statement.Else);
+    (*"IfThenStatement",          (fun a -> mks (Statement.IfThen(find_tid a)));*)
     "BasicForStatement",        (fun _ -> mks Statement.For);
     "EnhancedForStatement",     (fun _ -> mks Statement.ForEnhanced);
     "WhileStatement",           (fun _ -> mks Statement.While);
@@ -4663,7 +4853,7 @@ let of_elem_data =
     "DefaultRuleLabel",          (fun _ -> SRLdefault);
     "ConditionalElementValue",   (fun _ -> EVconditional);
     "AnnotationElementValue",    (fun _ -> EVannotation);
-    "ArrayInitElementValue",     (fun _ -> EVarrayInit);
+    "ElementValueArrayInitializer", (fun _ -> EVarrayInit);
     "ElementValuePair",          (fun a -> ElementValuePair(find_name a));
     "ConstructorDeclaration",    (fun a -> Constructor(find_name a, find_sig a));
     "ConstructorBody",           (fun a -> ConstructorBody(find_name a, find_sig a));

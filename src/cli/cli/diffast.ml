@@ -59,12 +59,14 @@ let set_weak_flags() =
   options#set_weak_eq_flag;
   options#set_strip_empty_flag;
   options#set_ignore_non_orig_relabel_flag;
+  options#set_ignore_phantom_node_flag;
   options#set_ignore_move_of_unordered_flag;
   options#clear_recover_orig_ast_flag;
   options#set_sort_unordered_flag
 
 let set_minimize_delta_flags() =
   options#set_ignore_non_orig_relabel_flag;
+  options#set_ignore_phantom_node_flag;
   options#set_minimize_delta_flag
 
 let set_minimize_delta_more_flags() =
@@ -105,7 +107,7 @@ let set_dump_src_flag() =
 
 let set_dump_delta_flag () =
   options#set_dump_delta_flag;
-  options#set_java_anon_ctor_body_flag
+  options#set_moderate_moves_flag
 
 let set_dump_delta_out s =
   options#set_dump_delta_out s;

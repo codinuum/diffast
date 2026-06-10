@@ -29,6 +29,7 @@ val mem : 'a t -> 'a -> bool
 val copy : 'a t -> 'a t
 val to_list : 'a t -> 'a list
 val from_list : 'a list -> 'a t
+val from_array : 'a array -> 'a t
 val for_all : ('a -> bool) -> 'a t -> bool
 val exists : ('a -> bool) -> 'a t -> bool
 val subset_eq : 'a t -> 'a t -> bool
@@ -37,3 +38,5 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 val filter : ('a -> bool) -> 'a t -> 'a t
 val filter_map : ('a -> 'b option) -> 'a t -> 'b t
 val filter_inplace : ('a -> bool) -> 'a t -> unit
+val intersection : 'a t -> 'a t -> 'a t
+val union : 'a t -> 'a t -> 'a t
