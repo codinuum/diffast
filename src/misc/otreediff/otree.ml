@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2025 Codinuum Software Lab <https://codinuum.com>
+   Copyright 2012-2026 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -705,8 +705,13 @@ class [ 'a ] node2 (uid_gen : UID.generator) (d : 'a) =
 
       with 
         Invalid_argument _ ->
-          raise (Invalid_argument
-                   (sprintf "Otree.node2#_prune_children: %s" self#to_string))
+          let msg =
+            sprintf "Otree.node2#_prune_children: %s: nchildren=%d a=[%s] posl=[%s]"
+              self#to_string nchildren
+              (Xarray.to_string (fun x -> UID.to_string x#uid) ";" a)
+              (Xlist.to_string string_of_int "," posl)
+          in
+          raise (Invalid_argument msg)
     (* end of method _prune_children *)
 
     method prune_children posl =
