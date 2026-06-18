@@ -40,7 +40,7 @@
 (rule
  (target version.ml)
  (action
-  (write-file %{target} "let version=\"%{read:v}\"\nlet copyright=\"Copyright 2010-2025 Codinuum Software Lab <codinuum@me.com>\"\n")
+  (write-file %{target} "let version=\"%{read:v}\"\nlet copyright=\"Copyright 2010-2026 Codinuum Software Lab <codinuum@me.com>\"\n")
  )
 )
 
