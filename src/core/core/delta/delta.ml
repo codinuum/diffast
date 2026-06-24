@@ -551,7 +551,7 @@ module Edit = struct
                       true
                     with
                       Exit -> false) &&
-                    (try
+                    (*(try
                       edit_seq#iter
                         (function
                           | Editop.Insert(_, inf, _) -> begin
@@ -566,7 +566,7 @@ module Edit = struct
                         );
                       true
                     with
-                      Exit -> false) &&
+                      Exit -> false) &&*)
                     match edit_seq#find12 pnd1 pnd2 with
                     | [] -> true
                     | [Editop.Relabel _] ->
