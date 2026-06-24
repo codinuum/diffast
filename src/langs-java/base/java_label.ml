@@ -1139,12 +1139,12 @@ module Primary = struct
         if s = "" then
           raise Not_found
         else
-          s
+          Astml.Attr.b64enc s
     | Literal (Literal.TextBlock s) ->
         if s = "" then
           raise Not_found
         else
-          s
+          Astml.Attr.b64enc s
     (*| Literal (Literal.String s) -> s
     | Literal (Literal.Character s|Literal.Integer s|Literal.FloatingPoint s) -> s*)
 
