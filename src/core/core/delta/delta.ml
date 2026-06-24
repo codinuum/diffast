@@ -551,6 +551,22 @@ module Edit = struct
                       true
                     with
                       Exit -> false) &&
+                    (try
+                      edit_seq#iter
+                        (function
+                          | Editop.Insert(_, inf, _) -> begin
+                              if is_ancestor nd2 (Info.get_node inf) then
+                                raise Exit
+                          end
+                          | Editop.Move(_, _, _, (inf, _)) -> begin
+                              if is_ancestor nd2 (Info.get_node inf) then
+                                raise Exit
+                          end
+                          | _ -> ()
+                        );
+                      true
+                    with
+                      Exit -> false) &&
                     match edit_seq#find12 pnd1 pnd2 with
                     | [] -> true
                     | [Editop.Relabel _] ->
