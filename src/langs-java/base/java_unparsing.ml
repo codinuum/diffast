@@ -1062,7 +1062,8 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(blk_style=BSshort) ?(prec=0)
       | L.Statement.Try ->
           pr_string "try ";
           pr_selected ~fail_on_error ~tail:pad1 L.is_resource_spec children;
-          pr_selected ~fail_on_error ~tail:pad1 L.is_block children;
+          pr_selected ~fail_on_error ~tail:pad1 ~otherwise:(fun () -> pr_string "{}")
+            L.is_block children;
           pr_selected ~fail_on_error ~tail:pad1 L.is_catch_clause children;
           pr_selected ~fail_on_error ~tail:pad1 L.is_finally children
 
