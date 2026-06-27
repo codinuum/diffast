@@ -222,6 +222,9 @@ let tree_eq r1 r2 =
 
 exception Abort
 
+let pl_to_str pl =
+  Xlist.to_string (fun (n, ns) -> sprintf "%a[%a]" nps n nsps ns) ";" pl
+
 [%%capture_path
 class ['tree] interpreter (tree : 'tree) = object (self)
 
@@ -305,6 +308,17 @@ class ['tree] interpreter (tree : 'tree) = object (self)
   val renamed_nodes = Xset.create 0
 
   (*val no_trans_mutations = Xset.create 0*)
+
+  method private add_del n pl =
+    [%debug_log "%a -> %s" nps n (pl_to_str pl)];
+    if Hashtbl.mem del_tbl n then begin
+      let _pl = Hashtbl.find del_tbl n in
+      [%debug_log "found: %a -> %s" nps n (pl_to_str _pl)];
+      [%debug_log "overwriting"];
+      Hashtbl.replace del_tbl n pl
+    end
+    else
+      Hashtbl.add del_tbl n pl
 
   method add_deferred_delete f = deferred_delete_list <- f::deferred_delete_list
 
@@ -1630,6 +1644,18 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     let prune_tbl = Hashtbl.create 0 in
 
+    let prune_tbl_add n nl =
+      [%debug_log "%a -> %a" nps n nsps nl];
+      if Hashtbl.mem prune_tbl n then begin
+        let _nl = Hashtbl.find prune_tbl n in
+        [%debug_log "found: %a -> %a" nps n nsps _nl];
+        [%debug_log "overwriting"];
+        Hashtbl.replace prune_tbl n nl
+      end
+      else
+        Hashtbl.add prune_tbl n nl
+    in
+
     let excluded_insert_roots = Xset.create 0 in
 
     let extra_roots_tbl = Hashtbl.create 0 in
@@ -2256,7 +2282,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
     List.iter (* del_tbl *)
       (fun (nd, pl) ->
-        [%debug_log "nd=%a" nps nd];
+        [%debug_log "nd=%a" nps nd ];
 
         let fnodes = List.map (fun (x, _) -> x) pl in
 
@@ -2683,7 +2709,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
             in
             if has_no_upstream_descendant || other_excluded <> [] then begin
               let sorted = sort_nds nd excluded in
-              [%debug_log "%a: excluded=[%a] (sorted)" nps nd nsps excluded];
+              [%debug_log "%a: excluded=[%a] (sorted)" nps nd nsps sorted];
               sorted
             end
             else
@@ -2692,6 +2718,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
           else
             excluded
         in
+        [%debug_log "%a: excluded=[%a]" nps nd nsps excluded];
 
         List.iter
           (fun n ->
@@ -2985,7 +3012,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
 
           [%debug_log "prune_tbl: add %a -> excluded0:[%a]" nps nd nsps excluded0];
 
-          Hashtbl.add prune_tbl nd excluded0;
+          prune_tbl_add nd excluded0;
 
         end
         else begin (* !extra_roots <> [] && excluded <> [] *)
@@ -3156,7 +3183,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
                 [%debug_log "prune_tbl: add %a -> [%a]" nps root nsps excluded];
               end;
 
-              Hashtbl.add prune_tbl root excluded
+              prune_tbl_add root excluded
 
             ) roots
         end
@@ -4541,8 +4568,10 @@ class ['tree] interpreter (tree : 'tree) = object (self)
           end
         ) ktbl;
       let rec get_nds nd =
+        [%debug_log "nd=%a" nps nd];
         List.concat_map
           (fun x ->
+            [%debug_log "x=%a" nps x];
             (*if x == nd then
               []
               else *)if self#is_deleted x then
@@ -4604,7 +4633,7 @@ class ['tree] interpreter (tree : 'tree) = object (self)
         (fun n ns ->
           if not (Xset.mem excluded_insert_roots n) then begin
             [%debug_log "%a -> [%a]" nps n nsps ns];
-            Hashtbl.add prune_tbl n ns
+            prune_tbl_add n ns
           end
         ) tbl;
       [%debug_log "prune_tbl updated."];
@@ -6116,10 +6145,9 @@ class ['tree] interpreter (tree : 'tree) = object (self)
           ) fnodes
       in
       let rt = nd#initial_children.(pos) in
-      [%debug_log "subtree_root: %a -> frontier: %s" nps rt
-        (Xlist.to_string (fun (n, ns) -> sprintf "%a[%a]" nps n nsps ns) ";" pl)];
+      [%debug_log "subtree_root: %a -> frontier: %s" nps rt (pl_to_str pl)];
 
-      Hashtbl.add del_tbl rt pl
+      self#add_del rt pl
     end
 
   method acc p =
